@@ -40,63 +40,41 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 ## 📊 Dades de sessió (Exemple)
 {
   "sessionId": "sess_12345",
-
   "hostId": "host_1",
-
   "startedAt": 1690000000000,
-
   "endedAt": 1690000035000,
-
   "exercise": "squat",
-
   "settings": {
     "thresholds": {
       "knee_bottom_deg": 90,
       "knee_stand_deg": 160,
       "torso_lean_max_deg": 25
     },
-
     "smoothing_window": 5
   },
-
   "participants": [
     {
       "userId": "user_1",
-
       "displayName": "Anna",
-
       "reps": 12,
-
       "repDetails": [
         {
           "repIndex": 1,
-
           "startedAt": 1690000001000,
-
           "endedAt": 1690000002400,
-
           "durationMs": 1400,
-
           "quality": "good",
-
           "feedback": []
         },
-
         {
           "repIndex": 2,
-
           "startedAt": 1690000003000,
-
           "endedAt": 1690000004200,
-
           "durationMs": 1200,
-
           "quality": "poor",
-
           "feedback": ["torso_massa_inclinat"]
         }
       ],
-
       "aggregateMetrics": {
         "avgRepDurationMs": 1250,
         "goodReps": 9,
@@ -105,7 +83,6 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
       }
     }
   ],
-
   "summary": {
     "totalParticipants": 2,
     "totalReps": 20,
@@ -114,9 +91,7 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
       {"userId":"user_1","reps":8}
     ]
   },
-
   "rawDataRef": "frames/sess_12345_user_1_frames.json",
-
   "version": "1.0"
 }
 
