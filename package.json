@@ -1,0 +1,28 @@
+{
+  "name": "tr1-type-racer-royale-dam_25_26_tr1g2",
+  "version": "1.0.0",
+  "description": "Esquema mínim de carpetes pels projectes transversals",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inspedralbes/tr1-type-racer-royale-dam_25_26_tr1g2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/inspedralbes/tr1-type-racer-royale-dam_25_26_tr1g2/issues"
+  },
+  "homepage": "https://github.com/inspedralbes/tr1-type-racer-royale-dam_25_26_tr1g2#readme",
+  "dependencies": {
+    "vue": "^3.5.22",
+    "vuetify": "^3.10.7"
+  }
+}
