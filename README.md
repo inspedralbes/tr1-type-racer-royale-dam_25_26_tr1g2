@@ -120,8 +120,6 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
   "version": "1.0"
 }
 
-
-
 ## 🔑 Keypoints Analitzats
 - **Caderes:** Left Hip, Right Hip  
 - **Genolls:** Left Knee, Right Knee  
