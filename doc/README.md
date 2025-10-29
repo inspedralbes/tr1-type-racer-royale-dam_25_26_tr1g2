@@ -34,7 +34,6 @@ Aquest document conté tota la informació tècnica necessària per entendre, de
 
 ## ⚡ Esbós de l’estructura **Pinia Store** (`pinia-store.md`)
 
-```javascript
 import { defineStore } from 'pinia'
 
 export const useSessionStore = defineStore('session', {
