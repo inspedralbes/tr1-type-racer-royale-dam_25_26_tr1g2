@@ -14,6 +14,7 @@ FitAI
 # 🎯 Objectiu breu del projecte
 # 📈 Estat breu del projecte
 # 🌐 Enllaços del projecte
+Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 # 🗂️ Estructura del projecte
 
 # Arquitectura i Lògica 
