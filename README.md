@@ -34,7 +34,7 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 | `error`                                 | Servidor → Client | El servidor informa d’un **error** (per exemple, sessió inexistent o dades incorrectes).                                |
 | `ack`                                   | Servidor → Client | Confirmació genèrica que una acció s’ha rebut o processat correctament.                                                 |
 
-# Diagrama del Sistema Client-Servidor
+## Diagrama del Sistema Client-Servidor
 <img width="641" height="471" alt="Esquema del client-servidor" src="https://github.com/user-attachments/assets/7573870f-318d-458a-b757-87ac8efd015b" />
 
 ## 📊 Dades de sessió (Exemple)
