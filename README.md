@@ -34,8 +34,46 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 | `error`                                 | Servidor → Client | El servidor informa d’un **error** (per exemple, sessió inexistent o dades incorrectes).                                |
 | `ack`                                   | Servidor → Client | Confirmació genèrica que una acció s’ha rebut o processat correctament.                                                 |
 
-# Diagrama del Sistema
+# Diagrama del Sistema Client-Servidor
 <img width="641" height="471" alt="Esquema del client-servidor" src="https://github.com/user-attachments/assets/7573870f-318d-458a-b757-87ac8efd015b" />
+
+## 🔑 Keypoints Analitzats
+- **Caderes:** Left Hip, Right Hip  
+- **Genolls:** Left Knee, Right Knee  
+- **Tormells:** Left Ankle, Right Ankle  
+- **Espatlles:** Left Shoulder, Right Shoulder 
+
+---
+
+## 📐 Angles i Posicions Calculades
+- **Knee Angle:** Angle entre Hip → Knee → Ankle (flexió de genoll)  
+- **Hip Angle:** Angle entre Shoulder → Hip → Knee (profunditat del squat)  
+- **Torso Lean:** Inclinació de l’esquena  
+- **Shoulder-Mid-Hip:** Posició relativa de l’espatlla al centre de la cadera  
+- **Ankle Stability:** Projecció del peu vs genoll (estabilitat)  
+
+Aquestes mesures permeten **avaluar la tècnica i seguretat de cada squat**.  
+
+---
+
+## 🎛 Màquina d’Estats
+La lògica de seguiment segueix una **màquina d’estats simple**:  
+
+1. **Idle** – Esperant iniciar  
+2. **Stand** – Posició inicial dreta  
+3. **Descend** – Fase de baixada del squat  
+4. **Bottom** – Posició baixa, squat complet  
+5. **Ascend** – Fase de pujada  
+6. **Rep Complete** – Repetició finalitzada correctament  
+
+Cada transició depèn dels **angles i posicions calculades** per assegurar una rep correcta.
+
+---
+
+## ✨ Contacte
+Per dubtes o incidències, contactar amb qualsevol membre de l’equip.  
+
+---
 
 # transversals
 Esquema mínim de carpetes pels projectes transversals
@@ -53,3 +91,4 @@ Un cop comenceu heu de canviar aquesta explicació amb la corresponent al vostre
  * Adreça del prototip gràfic del projecte (Penpot, figma, moqups...)
  * URL de producció (quan la tingueu)
  * Estat: (explicació d'en quin punt està)
+
