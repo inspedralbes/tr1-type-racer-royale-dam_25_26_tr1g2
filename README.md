@@ -22,6 +22,8 @@ Desenvolupar una aplicació web que permeti a diversos usuaris realitzar session
 En producció...
 # 🌐 Enllaços del projecte
 Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
+
+
 Hestia
 - PreProducció: a24preproducciog2.dam.inspedralbes.cat
 - Producció: a24producciog2.dam.inspedralbes.cat
