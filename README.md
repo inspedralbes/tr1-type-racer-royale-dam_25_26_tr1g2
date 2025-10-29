@@ -1,12 +1,12 @@
 # Grup 2
 
-# 👥 Integrants del projecte
+## 👥 Integrants del projecte
 
-Hugo Córdoba Cobo
-Matías Arturo Negrón Carranza
-Marta Haro Font
-Arnau Perera Ganuza
-Pau Uclés Lahuerta
+- Hugo Córdoba Cobo
+- Matías Arturo Negrón Carranza
+- Marta Haro Font
+- Arnau Perera Ganuza
+- Pau Uclés Lahuerta
 
 # 🌟 Nom del Projecte
 FitAI
