@@ -43,8 +43,6 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 - **Tormells:** Left Ankle, Right Ankle  
 - **Espatlles:** Left Shoulder, Right Shoulder 
 
----
-
 ## 📐 Angles i Posicions Calculades
 - **Knee Angle:** Angle entre Hip → Knee → Ankle (flexió de genoll)  
 - **Hip Angle:** Angle entre Shoulder → Hip → Knee (profunditat del squat)  
@@ -53,8 +51,6 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 - **Ankle Stability:** Projecció del peu vs genoll (estabilitat)  
 
 Aquestes mesures permeten **avaluar la tècnica i seguretat de cada squat**.  
-
----
 
 ## 🎛 Màquina d’Estats
 La lògica de seguiment segueix una **màquina d’estats simple**:  
@@ -68,12 +64,16 @@ La lògica de seguiment segueix una **màquina d’estats simple**:
 
 Cada transició depèn dels **angles i posicions calculades** per assegurar una rep correcta.
 
----
-
 ## ✨ Contacte
-Per dubtes o incidències, contactar amb qualsevol membre de l’equip.  
+Per dubtes o incidències, contactar amb qualsevol membre de l’equip.  ## 🛠 Tecnologies Utilitzades
 
----
+- **Backend:** Node.js, WebSockets (`ws`)  
+
+- **Frontend:** [React / HTML / CSS / JS]  
+
+- **IA:** Detecció de keypoints (PoseNet, MediaPipe o similar)  
+
+- **Control de versions:** Git & GitHub   de front end es 
 
 # transversals
 Esquema mínim de carpetes pels projectes transversals
