@@ -65,15 +65,7 @@ La lògica de seguiment segueix una **màquina d’estats simple**:
 Cada transició depèn dels **angles i posicions calculades** per assegurar una rep correcta.
 
 ## ✨ Contacte
-Per dubtes o incidències, contactar amb qualsevol membre de l’equip.  ## 🛠 Tecnologies Utilitzades
-
-- **Backend:** Node.js, WebSockets (`ws`)  
-
-- **Frontend:** [React / HTML / CSS / JS]  
-
-- **IA:** Detecció de keypoints (PoseNet, MediaPipe o similar)  
-
-- **Control de versions:** Git & GitHub   de front end es 
+Per dubtes o incidències, contactar amb qualsevol membre de l’equip. 
 
 # transversals
 Esquema mínim de carpetes pels projectes transversals
