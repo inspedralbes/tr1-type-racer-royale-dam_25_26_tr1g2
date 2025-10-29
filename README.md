@@ -18,7 +18,7 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 # 🗂️ Estructura del projecte
 
 # Arquitectura i Lògica 
-# ⚙️ Taula d’Esdeveniments
+## ⚙️ Taula d’Esdeveniments
 
 | 🧩 **Nom de l’esdeveniment (`action`)** | 📤 **Enviat per** | 💬 **Descripció / Explicació**                                                                                          |
 | --------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -36,6 +36,65 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 
 # Diagrama del Sistema Client-Servidor
 <img width="641" height="471" alt="Esquema del client-servidor" src="https://github.com/user-attachments/assets/7573870f-318d-458a-b757-87ac8efd015b" />
+
+## 📊 Dades de sessió (Exemple)
+{
+  "sessionId": "sess_12345",
+  "hostId": "host_1",
+  "startedAt": 1690000000000,
+  "endedAt": 1690000035000,
+  "exercise": "squat",
+  "settings": {
+    "thresholds": {
+      "knee_bottom_deg": 90,
+      "knee_stand_deg": 160,
+      "torso_lean_max_deg": 25
+    },
+    "smoothing_window": 5
+  },
+  "participants": [
+    {
+      "userId": "user_1",
+      "displayName": "Anna",
+      "reps": 12,
+      "repDetails": [
+        {
+          "repIndex": 1,
+          "startedAt": 1690000001000,
+          "endedAt": 1690000002400,
+          "durationMs": 1400,
+          "quality": "good",
+          "feedback": []
+        },
+        {
+          "repIndex": 2,
+          "startedAt": 1690000003000,
+          "endedAt": 1690000004200,
+          "durationMs": 1200,
+          "quality": "poor",
+          "feedback": ["torso_massa_inclinat"]
+        }
+      ],
+      "aggregateMetrics": {
+        "avgRepDurationMs": 1250,
+        "goodReps": 9,
+        "badReps": 3,
+        "maxDepthAchievedDeg": 85
+      }
+    }
+  ],
+  "summary": {
+    "totalParticipants": 2,
+    "totalReps": 20,
+    "leaderboard": [
+      {"userId":"user_2","reps":12},
+      {"userId":"user_1","reps":8}
+    ]
+  },
+  "rawDataRef": "frames/sess_12345_user_1_frames.json",
+  "version": "1.0"
+}
+
 
 ## 🔑 Keypoints Analitzats
 - **Caderes:** Left Hip, Right Hip  
