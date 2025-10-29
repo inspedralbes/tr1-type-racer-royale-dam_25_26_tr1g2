@@ -72,7 +72,9 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
           "endedAt": 1690000004200,
           "durationMs": 1200,
           "quality": "poor",
-          "feedback": ["torso_massa_inclinat"]
+          "feedback": [
+            "torso_massa_inclinat"
+          ]
         }
       ],
       "aggregateMetrics": {
@@ -87,8 +89,14 @@ Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
     "totalParticipants": 2,
     "totalReps": 20,
     "leaderboard": [
-      {"userId":"user_2","reps":12},
-      {"userId":"user_1","reps":8}
+      {
+        "userId": "user_2",
+        "reps": 12
+      },
+      {
+        "userId": "user_1",
+        "reps": 8
+      }
     ]
   },
   "rawDataRef": "frames/sess_12345_user_1_frames.json",
