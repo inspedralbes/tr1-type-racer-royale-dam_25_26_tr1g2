@@ -24,7 +24,7 @@ En producció...
 Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 
 
-Hestia
+Hestia:
 - PreProducció: a24preproducciog2.dam.inspedralbes.cat
 - Producció: a24producciog2.dam.inspedralbes.cat
 # 🗂️ Estructura del projecte
