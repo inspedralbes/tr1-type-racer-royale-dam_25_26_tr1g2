@@ -12,7 +12,14 @@
 FitAI
 
 # 🎯 Objectiu breu del projecte
+Desenvolupar una aplicació web que permeti a diversos usuaris realitzar sessions d'entrenament conjuntes, on l'aplicació:
+
+- Analitzi els moviments de l'usuari en temps real mitjançant la seva càmera web i un model d'Intel·ligència Artificial (TensorFlow.js amb MoveNet).
+- Compti les repeticions i avaluï la tècnica de l'exercici.
+- Comparteixi les dades de tots els participants (comptador de repeticions) a l'instant mitjançant WebSockets Natius per crear una classificació (leaderboard) actualitzada.
+    
 # 📈 Estat breu del projecte
+En producció...
 # 🌐 Enllaços del projecte
 Taiga: https://tree.taiga.io/project/pul2-tr1-fitai/timeline
 Hestia
