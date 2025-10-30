@@ -19,8 +19,12 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
+    '/Ayuda': RouteRecordInfo<'/Ayuda', '/Ayuda', Record<never, never>, Record<never, never>>,
+    '/CrearSala': RouteRecordInfo<'/CrearSala', '/CrearSala', Record<never, never>, Record<never, never>>,
     '/Inicial': RouteRecordInfo<'/Inicial', '/Inicial', Record<never, never>, Record<never, never>>,
-    '/Joc': RouteRecordInfo<'/Joc', '/Joc', Record<never, never>, Record<never, never>>,
+    '/Login': RouteRecordInfo<'/Login', '/Login', Record<never, never>, Record<never, never>>,
+    '/Register': RouteRecordInfo<'/Register', '/Register', Record<never, never>, Record<never, never>>,
+    '/UnirSala': RouteRecordInfo<'/UnirSala', '/UnirSala', Record<never, never>, Record<never, never>>,
   }
 
   /**
@@ -38,12 +42,28 @@ declare module 'vue-router/auto-routes' {
       routes: '/'
       views: never
     }
+    'src/pages/Ayuda.vue': {
+      routes: '/Ayuda'
+      views: never
+    }
+    'src/pages/CrearSala.vue': {
+      routes: '/CrearSala'
+      views: never
+    }
     'src/pages/Inicial.vue': {
       routes: '/Inicial'
       views: never
     }
-    'src/pages/Joc.vue': {
-      routes: '/Joc'
+    'src/pages/Login.vue': {
+      routes: '/Login'
+      views: never
+    }
+    'src/pages/Register.vue': {
+      routes: '/Register'
+      views: never
+    }
+    'src/pages/UnirSala.vue': {
+      routes: '/UnirSala'
       views: never
     }
   }

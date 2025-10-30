@@ -42,8 +42,8 @@
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
-const goCreateRoom = () => router.push('/crear-sala')
-const goJoinRoom = () => router.push('/unirse-sala')
+const goCreateRoom = () => router.push('/crearSala')
+const goJoinRoom = () => router.push('/unirsala')
 const goSoloMode = () => router.push('/modo-individual')
 </script>
 
