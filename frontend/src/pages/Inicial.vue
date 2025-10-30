@@ -51,7 +51,10 @@ const router = useRouter()
 const goCreateRoom = () => router.push('/crearSala')
 const goJoinRoom = () => router.push('/unirsala')
 const goSoloMode = () => router.push('/individual')
+<<<<<<< HEAD
 const goRaidMode = () => router.push('/incursion')
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 </script>
 
 <style>

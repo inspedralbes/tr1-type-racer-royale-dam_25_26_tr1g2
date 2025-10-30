@@ -21,7 +21,10 @@ declare module 'vue-router/auto-routes' {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
     '/Ayuda': RouteRecordInfo<'/Ayuda', '/Ayuda', Record<never, never>, Record<never, never>>,
     '/CrearSala': RouteRecordInfo<'/CrearSala', '/CrearSala', Record<never, never>, Record<never, never>>,
+<<<<<<< HEAD
     '/Incursion': RouteRecordInfo<'/Incursion', '/Incursion', Record<never, never>, Record<never, never>>,
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
     '/Individual': RouteRecordInfo<'/Individual', '/Individual', Record<never, never>, Record<never, never>>,
     '/Inicial': RouteRecordInfo<'/Inicial', '/Inicial', Record<never, never>, Record<never, never>>,
     '/Login': RouteRecordInfo<'/Login', '/Login', Record<never, never>, Record<never, never>>,
@@ -53,10 +56,13 @@ declare module 'vue-router/auto-routes' {
       routes: '/CrearSala'
       views: never
     }
+<<<<<<< HEAD
     'src/pages/Incursion.vue': {
       routes: '/Incursion'
       views: never
     }
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
     'src/pages/Individual.vue': {
       routes: '/Individual'
       views: never

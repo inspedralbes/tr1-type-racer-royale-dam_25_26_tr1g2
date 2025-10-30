@@ -7,8 +7,11 @@ import Ayuda from '@/pages/Ayuda.vue'
 import CrearSala from '@/pages/CrearSala.vue'
 import UnirSala from '@/pages/UnirSala.vue'
 import Individual from '@/pages/Individual.vue'
+<<<<<<< HEAD
 import Incursion from '@/pages/Incursion.vue'
 import Profile from '@/pages/Profile.vue'
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 
 const routes = [
   { path: '/', component: Welcome },
@@ -19,8 +22,11 @@ const routes = [
   { path: '/crearsala', component: CrearSala, name: 'crearsala' },
   { path: '/unirsala', component: UnirSala, name: 'unirsala' },
   { path: '/individual', component: Individual, name: 'individual' },
+<<<<<<< HEAD
   { path: '/incursion', component: Incursion, name: 'incursion' },
   { path: '/profile', component: Profile, name: 'profile' },
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 ]
 
 const router = createRouter({

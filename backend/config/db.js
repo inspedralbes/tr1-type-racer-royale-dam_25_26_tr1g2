@@ -1,8 +1,12 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 // db.js
 =======
 require('dotenv').config();
 >>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
+=======
+// db.js
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 const mysql = require('mysql2/promise');
 const DB_HOST = process.env.DB_HOST || 'db';
 const DB_PORT = process.env.DB_PORT || 3306;
@@ -12,6 +16,9 @@ const DB_NAME = process.env.DB_NAME || 'fitai_db';
 
 const pool = mysql.createPool({
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
   host: process.env.DB_HOST || 'db', 
   
   user: process.env.DB_USER || 'fitai_user',
@@ -28,6 +35,7 @@ async function query(sql, params) {
     return rows;
 }
 
+<<<<<<< HEAD
 module.exports = { pool, query };
 =======
   host: DB_HOST,
@@ -53,3 +61,6 @@ pool.getConnection()
 module.exports = { pool };
 // ...existing code...
 >>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
+=======
+module.exports = { pool, query };
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)

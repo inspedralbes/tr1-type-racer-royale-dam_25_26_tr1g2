@@ -5,16 +5,23 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 <<<<<<< HEAD
+<<<<<<< HEAD
 const db = require('./config/db'); // Debe exportar pool de mysql2/promise
 =======
 const db = require('./config/db'); // exporta pool mysql2/promise
 >>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
+=======
+const db = require('./config/db'); // Debe exportar pool de mysql2/promise
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 // Extraemos el pool de la conexión de la base de datos para usarlo directamente
 // Asumo que 'db' exporta algo como { pool: <el_pool_de_mysql> }
 const pool = db.pool;
@@ -230,6 +237,7 @@ app.get('/', (req, res) => {
 
 const wss = new WebSocket.Server({ port: process.env.WS_PORT || 8080 }, () => {
     console.log(`Servidor WebSocket en marxa al port ${process.env.WS_PORT || 8080}`);
+<<<<<<< HEAD
 =======
 // Leer puertos / origen desde .env con valores por defecto
 const API_PORT = process.env.API_PORT || 9000;
@@ -431,6 +439,8 @@ app.get('/api/boss/:bossId', async (req, res) => {
 const wss = new WebSocket.Server({ port: WS_PORT }, () => {
   console.log(`Servidor WebSocket en marcha en el puerto ${WS_PORT}`);
 >>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
+=======
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 });
 
 const clients = new Map();
@@ -526,6 +536,7 @@ wss.on('connection', (ws) => {
 app.listen(process.env.API_PORT || 3000, () => {
     console.log(`Servidor Express en el puerto ${process.env.API_PORT || 3000}`);
     console.log('----------------------------------------------------');
+<<<<<<< HEAD
 });
 =======
 wss.on('connection', ws => {
@@ -609,3 +620,6 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 //
 >>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
+=======
+});
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)

@@ -59,6 +59,7 @@
               </template>
             </v-text-field>
 
+<<<<<<< HEAD
 
             <div class="d-flex align-center justify-center mt-4" style="gap: 16px;">
               <v-select
@@ -82,6 +83,21 @@
                 {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
               </v-btn>
             </div>
+=======
+            <!-- Botón "Iniciar Sala" -->
+            <v-btn
+              color="success"
+              class="button-shadow px-10 py-5 d-flex align-center justify-center"
+              rounded
+              @click="iniciarSala"
+              elevation="10"
+              :disabled="!codigoSala || salaIniciada"
+              block
+            >
+              <v-icon left size="28">mdi-play-circle</v-icon>
+              {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
+            </v-btn>
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 
             <p class="caption mt-4 grey--text text--lighten-1">
               Projecte col·laboratiu.

@@ -73,7 +73,12 @@
               </v-btn>
             </div>
 
+<<<<<<< HEAD
             <p class="caption mt-4 text-muted">
+=======
+
+            <p class="caption mt-4 grey--text text--lighten-1">
+>>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
               Projecte col·laboratiu.
             </p>
           </v-card-text>
