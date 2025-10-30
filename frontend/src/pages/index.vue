@@ -68,7 +68,7 @@
 
 
             <p class="caption mt-4 grey--text text--lighten-1">
-              Projecte col·laboratiu - Web i IA.
+              Projecte col·laboratiu.
             </p>
           </v-card-text>
         </v-card>
