@@ -59,19 +59,29 @@
               </template>
             </v-text-field>
 
-            <!-- Botón "Iniciar Sala" -->
-            <v-btn
-              color="success"
-              class="button-shadow px-10 py-5 d-flex align-center justify-center"
-              rounded
-              @click="iniciarSala"
-              elevation="10"
-              :disabled="!codigoSala || salaIniciada"
-              block
-            >
-              <v-icon left size="28">mdi-play-circle</v-icon>
-              {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
-            </v-btn>
+
+            <div class="d-flex align-center justify-center mt-4" style="gap: 16px;">
+              <v-select
+                v-model="maxPersonas"
+                :items="personasOptions"
+                label="Máx. personas"
+                dense
+                outlined
+                style="max-width: 140px;"
+                :disabled="salaIniciada"
+              />
+              <v-btn
+                color="success"
+                class="button-shadow px-10 py-5 d-flex align-center justify-center"
+                rounded
+                @click="iniciarSala"
+                elevation="10"
+                :disabled="!codigoSala || salaIniciada"
+              >
+                <v-icon left size="28">mdi-play-circle</v-icon>
+                {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
+              </v-btn>
+            </div>
 
             <p class="caption mt-4 grey--text text--lighten-1">
               Projecte col·laboratiu.
@@ -86,8 +96,11 @@
 <script setup>
 import { ref } from 'vue'
 
+
 const codigoSala = ref('')
 const salaIniciada = ref(false)
+const maxPersonas = ref(2)
+const personasOptions = [2,3,4,5,6,7,8]
 
 // Generar un código aleatorio de 6 caracteres
 function generarCodigo() {
