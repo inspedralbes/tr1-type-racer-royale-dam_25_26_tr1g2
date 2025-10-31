@@ -2,6 +2,7 @@
   <v-app dark class="app-background">
     <v-main>
       <v-container class="fill-height d-flex align-center justify-center pa-4" fluid>
+<<<<<<< HEAD
         <v-btn
           color="error"
           class="volver-btn"
@@ -12,6 +13,8 @@
           <v-icon left>mdi-arrow-left</v-icon>
           Volver
         </v-btn>
+=======
+>>>>>>> origin/frontend-develop
         <v-card
           elevation="16"
           class="pa-6 rounded-xl text-center card-elevated"
@@ -23,6 +26,21 @@
           </v-card-title>
 
           <v-card-text>
+            <!-- Botón Volver -->
+            <v-btn
+              color="error"
+              class="mb-4 button-shadow"
+              rounded
+              to="/inicial"
+              elevation="2"
+              block
+            >
+              <v-icon left>mdi-arrow-left</v-icon>
+              Volver
+            </v-btn>
+
+            <v-divider class="my-4"></v-divider>
+
             <p class="text-body-1 mb-4 grey--text text--lighten-1">
               Genera un código único para tu sala, compártelo con tus amigos y empieza a jugar.
             </p>
@@ -54,7 +72,7 @@
               </template>
             </v-text-field>
 
-            <!-- Botón “Iniciar Sala” (solo activa un flag para mostrar que empezó) -->
+            <!-- Botón "Iniciar Sala" -->
             <v-btn
               color="success"
               class="button-shadow px-10 py-5 d-flex align-center justify-center"
@@ -62,13 +80,14 @@
               @click="iniciarSala"
               elevation="10"
               :disabled="!codigoSala || salaIniciada"
+              block
             >
               <v-icon left size="28">mdi-play-circle</v-icon>
               {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
             </v-btn>
 
             <p class="caption mt-4 grey--text text--lighten-1">
-              Projecte col·laboratiu - Web i IA.
+              Projecte col·laboratiu.
             </p>
           </v-card-text>
         </v-card>
@@ -113,17 +132,7 @@ function iniciarSala() {
     height: 100vh;
   }
 
-  .volver-btn {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    opacity: 0.8;
-    transition: opacity 0.3s;
-  }
-
-  .volver-btn:hover {
-    opacity: 1;
-  }.card-elevated {
+.card-elevated {
   background-color: #212121;
   border: 1px solid #333;
 }
