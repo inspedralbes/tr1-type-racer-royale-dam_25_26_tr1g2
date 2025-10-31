@@ -3,22 +3,22 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const db = require('./config/db'); // mysql2/promise pool
+const db = require('./config/db'); // exporta pool mysql2/promise
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 
-// Ports i origen
 const API_PORT = process.env.API_PORT || 9000;
 const WS_PORT = process.env.WS_PORT || 8080;
-const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
-  .split(',').map(s => s.trim());
 
-// -------------------- CORS --------------------
+const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
+  .split(',')
+  .map(s => s.trim());
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && FRONTEND_ORIGINS.includes(origin)) {
+  if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -28,19 +28,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// -------------------- BODY PARSER --------------------
 app.use(bodyParser.json());
 
-// -------------------- RUTES API --------------------
+// -------------------- RUTAS API --------------------
 
-// Ruta arrel
+// Ruta raíz
 app.get('/', (req, res) => {
-  res.send('Servidor Express actiu! Rutes: /api/register, /api/login, /api/session/save, /api/boss/create, /api/boss/join, /api/boss/attack, /api/boss/:bossId');
+  res.send('Servidor Express activo! Rutas: /api/register, /api/login, /api/session/save, /api/boss/create, /api/boss/join, /api/boss/attack, /api/boss/:bossId');
 });
 
-// -------------------- AUTENTICACIÓ --------------------
-
-// Registrar usuari
+// Registrar usuario
 app.post('/api/register', async (req, res) => {
   const { usuari, correu, password } = req.body;
   try {
@@ -49,13 +46,10 @@ app.post('/api/register', async (req, res) => {
       'INSERT INTO Usuaris (usuari, correu, contrasenya) VALUES (?,?,?)',
       [usuari, correu, hashed]
     );
-    res.json({ success: true, message: 'Usuari registrat correctament' });
+    res.json({ success: true, message: 'Usuario registrado correctamente' });
   } catch (err) {
-    console.error('[REGISTER ERROR]', err);
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ success: false, error: 'El correu o usuari ja existeix' });
-    }
-    return res.status(500).json({ success: false, error: 'Error al registrar usuari' });
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ success: false, error: 'El correo o usuario ya está registrado' });
+    res.status(500).json({ success: false, error: 'Error al registrar usuario' });
   }
 });
 
@@ -64,25 +58,27 @@ app.post('/api/login', async (req, res) => {
   const { correu, password } = req.body;
   try {
     const [rows] = await db.pool.query('SELECT * FROM Usuaris WHERE correu=?', [correu]);
-    if (rows.length === 0) return res.status(401).json({ success: false, error: 'Usuari no trobat' });
+    if (rows.length === 0) return res.status(401).json({ success: false, error: 'Usuario no encontrado' });
 
     const user = rows[0];
     const match = await bcrypt.compare(password, user.contrasenya);
-    if (!match) return res.status(401).json({ success: false, error: 'Contrasenya incorrecta' });
+    if (!match) return res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
 
     res.json({ success: true, userId: user.id, usuari: user.usuari });
   } catch (err) {
-    console.error('[LOGIN ERROR]', err);
     res.status(500).json({ success: false, error: 'Error del servidor' });
   }
 });
 
-// -------------------- SESSIONS 2v2 --------------------
+// -------------------- SESIONES 2vs2 --------------------
 
-// Crear sessió 2v2
+// Crear sesión Versus
 app.post('/api/session/save', async (req, res) => {
   const { creadorId } = req.body;
+  if (!creadorId) return res.status(400).json({ success: false, error: 'Falta el creadorId' });
+
   const sessionId = uuidv4().slice(0, 8);
+
   try {
     await db.pool.query(
       'INSERT INTO SessionsVersus (codi_acces, estat, creador_id) VALUES (?,?,?)',
@@ -90,8 +86,7 @@ app.post('/api/session/save', async (req, res) => {
     );
     res.json({ success: true, sessionId });
   } catch (err) {
-    console.error('[SESSION SAVE ERROR]', err);
-    res.status(500).json({ success: false, error: 'Error al crear sessió' });
+    res.status(500).json({ success: false, error: 'Error al crear sessió 2vs2' });
   }
 });
 
@@ -107,12 +102,11 @@ app.post('/api/boss/create', async (req, res) => {
     );
     res.json({ success: true, bossId: result.insertId });
   } catch (err) {
-    console.error('[BOSS CREATE ERROR]', err);
     res.status(500).json({ success: false, error: 'Error al crear boss' });
   }
 });
 
-// Unir-se a Boss
+// Unirse al Boss
 app.post('/api/boss/join', async (req, res) => {
   const { bossId, usuariId } = req.body;
   try {
@@ -120,24 +114,20 @@ app.post('/api/boss/join', async (req, res) => {
       'SELECT * FROM Boss_Participants WHERE id_boss_sessio=? AND id_usuari=?',
       [bossId, usuariId]
     );
-    if (exists.length > 0) return res.status(400).json({ error: 'Ja estàs inscrit' });
+    if (exists.length > 0) return res.status(400).json({ error: 'Ya estás inscrito a esta sesión' });
 
     await db.pool.query(
       'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
       [bossId, usuariId]
     );
-    res.json({ success: true, message: 'Participant afegit' });
+    res.json({ success: true, message: 'Participante agregado' });
   } catch (err) {
-    console.error('[BOSS JOIN ERROR]', err);
-    res.status(500).json({ error: 'Error al unir-se a boss' });
+    res.status(500).json({ error: 'Error al unirse a la sesión de boss' });
   }
 });
 
 // -------------------- WEBSOCKET --------------------
-const wss = new WebSocket.Server({ port: WS_PORT }, () => {
-  console.log(`Servidor WebSocket en marxa al port ${WS_PORT}`);
-});
-
+const wss = new WebSocket.Server({ port: WS_PORT });
 const clients = new Map();
 const sessions = new Map();
 const userSessions = new Map();
@@ -198,17 +188,16 @@ wss.on('connection', ws => {
 });
 
 // -------------------- INICIAR SERVIDOR --------------------
-const httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en port ${API_PORT}`));
+const httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
 
-// Graceful shutdown
 async function shutdown() {
-  console.log('Cerrant servidors...');
+  console.log('Cerrando servidores...');
   try {
-    wss.close(() => console.log('WebSocket tancat.'));
-    httpServer.close(() => console.log('HTTP server tancat.'));
+    wss.close(() => console.log('WebSocket cerrado.'));
+    httpServer.close(() => console.log('HTTP server cerrado.'));
     if (db && db.pool && typeof db.pool.end === 'function') {
       await db.pool.end();
-      console.log('Pool MySQL tancat.');
+      console.log('Pool MySQL cerrado.');
     }
     process.exit(0);
   } catch (err) {
