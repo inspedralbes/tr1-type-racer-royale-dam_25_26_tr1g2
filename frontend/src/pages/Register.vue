@@ -1,4 +1,3 @@
-// ...existing code...
 <template>
   <v-container class="fill-height">
     <v-row justify="center" align="center">
@@ -121,4 +120,3 @@ const handleRegister = async () => {
 <style scoped>
 .v-container { background-color: rgba(245,245,245,0.13); }
 </style>
-// ...existing code...
