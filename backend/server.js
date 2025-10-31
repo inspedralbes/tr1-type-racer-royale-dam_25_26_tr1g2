@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 
 const API_PORT = process.env.API_PORT || 9000;
-const WS_PORT = process.env.WS_PORT || 8080;
+const WS_PORT = process.env.WS_PORT || 8081;
 
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
   .split(',')
@@ -72,24 +72,51 @@ app.post('/api/login', async (req, res) => {
 
 // -------------------- SESIONES 2vs2 --------------------
 
+// ...existing code...
 // Crear sesión Versus
 app.post('/api/session/save', async (req, res) => {
-  const { creadorId } = req.body;
-  if (!creadorId) return res.status(400).json({ success: false, error: 'Falta el creadorId' });
+  // acepta { creadorId, codigo } desde el frontend
+  const { creadorId, codigo } = req.body;
 
-  const sessionId = uuidv4().slice(0, 8);
+  // Si no viene creadorId o viene "invitado" lo tratamos como NULL en la BD
+  const creadorDb = (!creadorId || creadorId === 'invitado') ? null : creadorId;
+
+  // si el frontend pasa un código, lo usamos; si no, generamos uno nuevo
+  const sessionId = codigo && String(codigo).trim() ? String(codigo).trim() : uuidv4().slice(0, 8);
 
   try {
     await db.pool.query(
       'INSERT INTO SessionsVersus (codi_acces, estat, creador_id) VALUES (?,?,?)',
-      [sessionId, 'oberta', creadorId]
+      [sessionId, 'oberta', creadorDb]
     );
     res.json({ success: true, sessionId });
   } catch (err) {
+    console.error('Error al crear sessió 2vs2:', err);
     res.status(500).json({ success: false, error: 'Error al crear sessió 2vs2' });
   }
 });
+// Nuevo endpoint para iniciar sesión
+app.post('/api/session/start', async (req, res) => {
+  const { codigo, iniciadorId } = req.body;
+  if (!codigo) return res.status(400).json({ success: false, error: 'Falta el código de sesión' });
 
+  try {
+    // Actualiza el estado a 'iniciada'. Si necesitas guardar iniciador, añade columna y query.
+    const [result] = await db.pool.query(
+      'UPDATE SessionsVersus SET estat = ? WHERE codi_acces = ?',
+      ['iniciada', String(codigo).trim()]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'Sesión no encontrada' });
+    }
+
+    res.json({ success: true, message: 'Sesión iniciada' });
+  } catch (err) {
+    console.error('Error al iniciar sessió:', err);
+    res.status(500).json({ success: false, error: 'Error al iniciar sessió' });
+  }
+});
 // -------------------- BOSS --------------------
 
 // Crear Boss
