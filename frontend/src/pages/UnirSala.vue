@@ -6,7 +6,7 @@
             color="red"
             class="volver-btn"
             elevation="2"
-            to="/"
+            to="/inicial"
             rounded
           >
             <v-icon left>mdi-arrow-left</v-icon>
