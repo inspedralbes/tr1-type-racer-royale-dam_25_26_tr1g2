@@ -22,9 +22,13 @@ declare module 'vue-router/auto-routes' {
     '/Ayuda': RouteRecordInfo<'/Ayuda', '/Ayuda', Record<never, never>, Record<never, never>>,
     '/CrearSala': RouteRecordInfo<'/CrearSala', '/CrearSala', Record<never, never>, Record<never, never>>,
 <<<<<<< HEAD
+<<<<<<< HEAD
     '/Incursion': RouteRecordInfo<'/Incursion', '/Incursion', Record<never, never>, Record<never, never>>,
 =======
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
+=======
+    '/Incursion': RouteRecordInfo<'/Incursion', '/Incursion', Record<never, never>, Record<never, never>>,
+>>>>>>> 172f3db (incursió afegida)
     '/Individual': RouteRecordInfo<'/Individual', '/Individual', Record<never, never>, Record<never, never>>,
     '/Inicial': RouteRecordInfo<'/Inicial', '/Inicial', Record<never, never>, Record<never, never>>,
     '/Login': RouteRecordInfo<'/Login', '/Login', Record<never, never>, Record<never, never>>,
@@ -57,12 +61,18 @@ declare module 'vue-router/auto-routes' {
       views: never
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 172f3db (incursió afegida)
     'src/pages/Incursion.vue': {
       routes: '/Incursion'
       views: never
     }
+<<<<<<< HEAD
 =======
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
+=======
+>>>>>>> 172f3db (incursió afegida)
     'src/pages/Individual.vue': {
       routes: '/Individual'
       views: never

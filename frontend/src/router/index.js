@@ -13,6 +13,8 @@ import Profile from '@/pages/Profile.vue'
 =======
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 
+import Incursion from '@/pages/Incursion.vue'
+
 const routes = [
   { path: '/', component: Welcome },
   { path: '/inicial', component: Inicial },  // <-- nueva ruta
@@ -23,10 +25,14 @@ const routes = [
   { path: '/unirsala', component: UnirSala, name: 'unirsala' },
   { path: '/individual', component: Individual, name: 'individual' },
 <<<<<<< HEAD
+<<<<<<< HEAD
   { path: '/incursion', component: Incursion, name: 'incursion' },
   { path: '/profile', component: Profile, name: 'profile' },
 =======
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
+=======
+  { path: '/incursion', component: Incursion, name: 'incursion' },
+>>>>>>> 172f3db (incursió afegida)
 ]
 
 const router = createRouter({
