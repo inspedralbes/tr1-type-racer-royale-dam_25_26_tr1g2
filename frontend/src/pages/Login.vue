@@ -86,25 +86,28 @@ const passwordRules = [
   v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
 ]
 
+// Importar useAuth
+import { useAuth } from '@/composables/useAuth'
+const { login } = useAuth()
+
 // Función de login
 const handleLogin = async () => {
   try {
     loading.value = true
     error.value = null
 
-    // Aquí deberías implementar la lógica de login con tu backend
-    // Por ejemplo:
-    // await fetch('/api/login', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     email: email.value,
-    //     password: password.value
-    //   })
-    // })
+    // Aquí implementarías la lógica de login con tu backend
+    // Por ahora, simulamos un login exitoso
+    await new Promise(resolve => setTimeout(resolve, 1000)) // Simular delay de red
+    
+    // Login exitoso: establecer estado de autenticación
+    login({
+      email: email.value,
+      // Aquí puedes incluir más datos del usuario si es necesario
+    })
 
-    // Si el login es exitoso, redirigir a la página principal
-    router.push('/')
+    // Redirigir a la página principal
+    router.push('/inicial')
   } catch (err) {
     error.value = 'Error al iniciar sesión. Por favor, verifica tus credenciales.'
     console.error('Error de login:', err)
