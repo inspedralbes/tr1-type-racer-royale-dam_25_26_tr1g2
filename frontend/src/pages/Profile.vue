@@ -110,28 +110,40 @@
           </v-col>
         </v-row>
 
-        <!-- Diálogo para seleccionar avatar -->
-        <v-dialog v-model="showAvatarDialog" max-width="500px">
+        <!-- Diálogo para seleccionar avatar (con upload) -->
+        <v-dialog v-model="showAvatarDialog" max-width="640px">
           <v-card>
-            <v-card-title>Seleccionar Avatar</v-card-title>
+            <v-card-title class="d-flex flex-column">
+              <div class="d-flex align-center justify-space-between w-100">
+                <span class="text-h6">Seleccionar Avatar</span>
+                <v-btn color="primary" small @click="$refs.fileInput.click()">
+                  <v-icon left>mdi-upload</v-icon>
+                  Subir Imagen
+                </v-btn>
+              </div>
+              <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="handleFileUpload" />
+            </v-card-title>
             <v-card-text>
               <v-row>
                 <v-col v-for="avatar in avatars" :key="avatar.id" cols="4" sm="3">
-                  <v-avatar
-                    size="80"
-                    @click="selectAvatar(avatar.url)"
-                    :class="{'selected-avatar': selectedAvatar === avatar.url}"
-                  >
-                    <v-img :src="avatar.url" />
-                  </v-avatar>
+                  <v-hover v-slot="{ isHovering, props }">
+                    <v-card v-bind="props" :elevation="isHovering ? 8 : 2" class="pa-2 avatar-card">
+                      <v-avatar size="80" @click="selectAvatar(avatar.url)" :class="{'selected-avatar': selectedAvatar === avatar.url}">
+                        <v-img :src="avatar.url" />
+                      </v-avatar>
+                      <v-overlay v-if="isHovering && avatar.isCustom" absolute contained class="align-center justify-center">
+                        <v-btn icon color="error" @click.stop="deleteAvatar(avatar.id)">
+                          <v-icon>mdi-delete</v-icon>
+                        </v-btn>
+                      </v-overlay>
+                    </v-card>
+                  </v-hover>
                 </v-col>
               </v-row>
             </v-card-text>
             <v-card-actions>
-              <v-spacer></v-spacer>
-              <v-btn color="primary" text @click="showAvatarDialog = false">
-                Cerrar
-              </v-btn>
+              <v-spacer />
+              <v-btn color="primary" text @click="showAvatarDialog = false">Cerrar</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
@@ -141,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 
 // Usuario y nivel
 const username = ref('Usuario')
@@ -155,14 +167,40 @@ const stats = reactive({
   defense: 45
 })
 
-// Avatar
+// Avatar y persistencia de uploads
+import { useAuth } from '@/composables/useAuth'
+const { user, login } = useAuth()
+
 const showAvatarDialog = ref(false)
-const selectedAvatar = ref('https://cdn.vuetifyjs.com/images/john.jpg')
-const avatars = [
+// iniciar con la foto guardada en el usuario (si existe)
+const selectedAvatar = ref(user.value?.profilePicture || 'https://cdn.vuetifyjs.com/images/john.jpg')
+
+// Avatares por defecto + los custom del usuario
+const defaultAvatars = [
   { id: 1, url: 'https://cdn.vuetifyjs.com/images/john.jpg' },
-  { id: 2, url: 'https://cdn.vuetifyjs.com/images/jane.jpg' },
-  // Agregar más avatares aquí
+  { id: 2, url: 'https://cdn.vuetifyjs.com/images/jane.jpg' }
 ]
+
+const userAvatars = ref([])
+
+// key en localStorage por usuario (si tenemos userId) para evitar mezclar usuarios
+const avatarsStorageKey = computed(() => {
+  const uid = user.value?.userId || user.value?.id || 'guest'
+  return `user_avatars_${uid}`
+})
+
+// cargar avatares del storage al inicio
+try {
+  const raw = localStorage.getItem(avatarsStorageKey.value)
+  if (raw) userAvatars.value = JSON.parse(raw)
+} catch (e) {
+  console.error('Error reading user avatars from storage', e)
+}
+
+const avatars = computed(() => {
+  // combinar default + custom (cada custom almacena solo {url})
+  return [...defaultAvatars, ...userAvatars.value.map((a, i) => ({ id: `custom_${i}`, url: a.url, isCustom: true }))]
+})
 
 // Rutinas
 const routineHeaders = [
@@ -190,7 +228,69 @@ const openAvatarDialog = () => {
 
 const selectAvatar = (url) => {
   selectedAvatar.value = url
+  // Persistir la selección en el objeto user (useAuth guarda en localStorage)
+  try {
+    const updated = { ...(user.value || {}), profilePicture: url }
+    login(updated)
+  } catch (e) {
+    console.error('Error updating user profile picture', e)
+  }
   showAvatarDialog.value = false
+}
+
+const handleFileUpload = (event) => {
+  const file = event.target.files && event.target.files[0]
+  if (!file) return
+
+  // tamaño máximo 5MB
+  if (file.size > 5 * 1024 * 1024) {
+    alert('La imagen es demasiado grande. Máx 5MB.')
+    event.target.value = ''
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const dataUrl = e.target.result
+    // push en userAvatars y persistir
+    userAvatars.value.push({ url: dataUrl })
+    try {
+      localStorage.setItem(avatarsStorageKey.value, JSON.stringify(userAvatars.value))
+    } catch (err) {
+      console.error('Error saving user avatars', err)
+    }
+    // forzar recompute by assigning to selectedAvatar and closing dialog
+    selectedAvatar.value = dataUrl
+    try { login({ ...(user.value || {}), profilePicture: dataUrl }) } catch (e) {}
+    event.target.value = ''
+    showAvatarDialog.value = false
+  }
+  reader.readAsDataURL(file)
+}
+
+const deleteAvatar = (avatarId) => {
+  // avatarId: 'custom_<index>' or default id
+  const idx = avatars.value.findIndex(a => a.id === avatarId)
+  if (idx === -1) return
+  const av = avatars.value[idx]
+  if (!av.isCustom) return // no borrar por defecto
+
+  // find in userAvatars by url
+  const userIdx = userAvatars.value.findIndex(u => u.url === av.url)
+  if (userIdx !== -1) userAvatars.value.splice(userIdx, 1)
+
+  try {
+    localStorage.setItem(avatarsStorageKey.value, JSON.stringify(userAvatars.value))
+  } catch (err) {
+    console.error('Error saving user avatars after delete', err)
+  }
+
+  // if deleted avatar was selected, reset to default
+  if (selectedAvatar.value === av.url) {
+    const defaultUrl = defaultAvatars[0].url
+    selectedAvatar.value = defaultUrl
+    try { login({ ...(user.value || {}), profilePicture: defaultUrl }) } catch (e) {}
+  }
 }
 
 const createRoutine = () => {
@@ -222,10 +322,27 @@ const deleteRoutine = (item) => {
   border: 3px solid #1976D2;
   cursor: pointer;
   transition: transform 0.2s;
+  position: relative;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.profile-avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.06); /* subtle overlay for dark mode */
+  opacity: 0;
+  transition: opacity 0.18s ease-in-out;
+  pointer-events: none;
 }
 
 .profile-avatar:hover {
   transform: scale(1.05);
+}
+
+.profile-avatar:hover::after {
+  opacity: 1;
 }
 
 .selected-avatar {
@@ -258,11 +375,11 @@ const deleteRoutine = (item) => {
   }
 
   .profile-avatar {
-    border: 3px solid #1976D2;
+    border: 5px solid #1976D2;
   }
 
   .selected-avatar {
-    border: 3px solid #1976D2;
+    border: 5px solid #1976D2;
   }
 
   .routine-table {
