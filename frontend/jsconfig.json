@@ -5,6 +5,8 @@
     "module": "esnext",
     "baseUrl": "./",
     "moduleResolution": "bundler",
+    "types": [],               // evita búsqueda automática de tipos implícitos
+    "skipLibCheck": true,      // opcional: ignora errores en d.ts de terceros
     "paths": {
       "@/*": [
         "src/*"

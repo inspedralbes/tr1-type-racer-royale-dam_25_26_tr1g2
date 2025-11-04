@@ -8,6 +8,10 @@
         <v-icon left>mdi-home</v-icon>
         Inicio
       </v-btn>
+       <v-btn text to="/crearrutina" class="hidden-sm-and-down">
+        <v-icon left>mdi-home</v-icon>
+        Rutina
+      </v-btn>
       <v-btn text to="/ayuda" class="hidden-sm-and-down">
         <v-icon left>mdi-help-circle-outline</v-icon>
         Ayuda
