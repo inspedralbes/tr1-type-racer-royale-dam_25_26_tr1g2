@@ -7,8 +7,8 @@ import Ayuda from '@/pages/Ayuda.vue'
 import CrearSala from '@/pages/CrearSala.vue'
 import UnirSala from '@/pages/UnirSala.vue'
 import Individual from '@/pages/Individual.vue'
-
 import Incursion from '@/pages/Incursion.vue'
+import Profile from '@/pages/Profile.vue'
 
 const routes = [
   { path: '/', component: Welcome },
@@ -20,6 +20,7 @@ const routes = [
   { path: '/unirsala', component: UnirSala, name: 'unirsala' },
   { path: '/individual', component: Individual, name: 'individual' },
   { path: '/incursion', component: Incursion, name: 'incursion' },
+  { path: '/profile', component: Profile, name: 'profile' },
 ]
 
 const router = createRouter({

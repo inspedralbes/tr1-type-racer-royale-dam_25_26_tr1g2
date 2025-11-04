@@ -2,19 +2,6 @@
     <v-app dark class="app-background">
       <v-main>
         <v-container class="fill-height d-flex align-center justify-center pa-4" fluid>
-<<<<<<< HEAD
-          <v-btn
-            color="red"
-            class="volver-btn"
-            elevation="2"
-            to="/inicial"
-            rounded
-          >
-            <v-icon left>mdi-arrow-left</v-icon>
-            Volver
-          </v-btn>
-=======
->>>>>>> origin/frontend-develop
           <v-card
             elevation="16"
             class="pa-6 rounded-xl text-center card-elevated"
