@@ -21,8 +21,11 @@ declare module 'vue-router/auto-routes' {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
     '/Ayuda': RouteRecordInfo<'/Ayuda', '/Ayuda', Record<never, never>, Record<never, never>>,
     '/CrearSala': RouteRecordInfo<'/CrearSala', '/CrearSala', Record<never, never>, Record<never, never>>,
+    '/Incursion': RouteRecordInfo<'/Incursion', '/Incursion', Record<never, never>, Record<never, never>>,
+    '/Individual': RouteRecordInfo<'/Individual', '/Individual', Record<never, never>, Record<never, never>>,
     '/Inicial': RouteRecordInfo<'/Inicial', '/Inicial', Record<never, never>, Record<never, never>>,
     '/Login': RouteRecordInfo<'/Login', '/Login', Record<never, never>, Record<never, never>>,
+    '/Profile': RouteRecordInfo<'/Profile', '/Profile', Record<never, never>, Record<never, never>>,
     '/Register': RouteRecordInfo<'/Register', '/Register', Record<never, never>, Record<never, never>>,
     '/UnirSala': RouteRecordInfo<'/UnirSala', '/UnirSala', Record<never, never>, Record<never, never>>,
   }
@@ -50,12 +53,24 @@ declare module 'vue-router/auto-routes' {
       routes: '/CrearSala'
       views: never
     }
+    'src/pages/Incursion.vue': {
+      routes: '/Incursion'
+      views: never
+    }
+    'src/pages/Individual.vue': {
+      routes: '/Individual'
+      views: never
+    }
     'src/pages/Inicial.vue': {
       routes: '/Inicial'
       views: never
     }
     'src/pages/Login.vue': {
       routes: '/Login'
+      views: never
+    }
+    'src/pages/Profile.vue': {
+      routes: '/Profile'
       views: never
     }
     'src/pages/Register.vue': {
