@@ -2,11 +2,11 @@
   <v-app dark class="app-background">
     <v-main>
       <v-container class="fill-height d-flex align-center justify-center pa-4" fluid>
-        <v-card elevation="20" class="pa-8 rounded-xl text-center start-card" max-width="600" dark>
+        <v-card elevation="20" class="pa-8 rounded-xl text-center start-card" max-width="700" dark>
           <v-card-title class="justify-center pb-6">
             <h1 class="text-h4 font-weight-black mb-2">Entrenador Virtual</h1>
             <p class="subtitle-1 grey--text text--lighten-1">
-              Escull una opció per començar la teva sessió d'entrenament:
+              Escull una opció per començar el teu entrenament:
             </p>
           </v-card-title>
 
@@ -30,6 +30,12 @@
                   Modo Individual
                 </v-btn>
               </v-col>
+                <v-col cols="12" sm="12" md="12" class="mt-2">
+                  <v-btn color="red darken-3" xx-large rounded block @click="goRaidMode" style="background: linear-gradient(90deg, #b71c1c 0%, #ff1744 100%); color: #fff;">
+                    <v-icon left large>mdi-fire</v-icon>
+                    Modo Incursión
+                  </v-btn>
+                </v-col>
             </v-row>
           </v-card-text>
         </v-card>
@@ -44,7 +50,8 @@ const router = useRouter()
 
 const goCreateRoom = () => router.push('/crearSala')
 const goJoinRoom = () => router.push('/unirsala')
-const goSoloMode = () => router.push('/modo-individual')
+const goSoloMode = () => router.push('/individual')
+const goRaidMode = () => router.push('/incursion')
 </script>
 
 <style>
