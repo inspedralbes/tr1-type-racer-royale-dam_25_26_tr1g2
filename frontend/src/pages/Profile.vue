@@ -302,7 +302,18 @@ const editRoutine = (item) => {
 }
 
 const deleteRoutine = (item) => {
-  // Implementar lógica para eliminar rutina
+  // Eliminar la rutina pasada (buscamos por referencia primero)
+  const idx = routines.value.indexOf(item)
+  if (idx !== -1) {
+    routines.value.splice(idx, 1)
+    return
+  }
+
+  // Si no se encuentra por referencia (por ejemplo objetos recreados), buscar por campos clave
+  const fallbackIdx = routines.value.findIndex(r => r.name === item.name && r.lastPlayed === item.lastPlayed && r.score === item.score)
+  if (fallbackIdx !== -1) {
+    routines.value.splice(fallbackIdx, 1)
+  }
 }
 </script>
 
