@@ -3,12 +3,12 @@
     <v-main>
       <v-container fluid class="pa-6">
         <v-row>
-          <!-- Columna Izquierda: Avatar y Estadísticas Principales -->
+          <!-- Columna Izquierda: Avatar y datos -->
           <v-col cols="12" md="4">
             <v-card class="profile-card mb-6" elevation="10">
               <v-card-title class="d-flex flex-column align-center">
                 <v-avatar size="150" class="mt-4 profile-avatar">
-                  <v-img :src="selectedAvatar" @click="openAvatarDialog"/>
+                  <v-img :src="selectedAvatar" @click="openAvatarDialog" />
                 </v-avatar>
                 <h2 class="mt-4">{{ username }}</h2>
                 <v-chip color="primary" small class="mt-2">Nivel {{ level }}</v-chip>
@@ -16,61 +16,50 @@
 
               <v-card-text>
                 <v-list dense>
-                  <v-list-item>
-                    <v-list-item-content>
-                      <v-list-item-title class="text-h6">
-                        Estadísticas Principales
-                      </v-list-item-title>
-                    </v-list-item-content>
-                  </v-list-item>
-
+                  <v-list-item-title class="text-h6 mb-2">
+                    Estadísticas principales
+                  </v-list-item-title>
                   <v-divider></v-divider>
 
-                  <!-- Barra de HP -->
                   <v-list-item>
                     <v-list-item-content>
                       <v-list-item-title class="d-flex justify-space-between">
-                        <span>HP</span>
-                        <span>{{ stats.hp }}/{{ stats.maxHp }}</span>
+                        <span>HP</span><span>{{ stats.hp }}/{{ stats.maxHp }}</span>
                       </v-list-item-title>
                       <v-progress-linear
                         color="red"
                         :value="(stats.hp / stats.maxHp) * 100"
                         height="15"
                         rounded
-                      ></v-progress-linear>
+                      />
                     </v-list-item-content>
                   </v-list-item>
 
-                  <!-- Barra de Daño -->
                   <v-list-item>
                     <v-list-item-content>
                       <v-list-item-title class="d-flex justify-space-between">
-                        <span>Daño</span>
-                        <span>{{ stats.damage }}</span>
+                        <span>Daño</span><span>{{ stats.damage }}</span>
                       </v-list-item-title>
                       <v-progress-linear
                         color="orange"
                         :value="(stats.damage / 100) * 100"
                         height="15"
                         rounded
-                      ></v-progress-linear>
+                      />
                     </v-list-item-content>
                   </v-list-item>
 
-                  <!-- Barra de Defensa -->
                   <v-list-item>
                     <v-list-item-content>
                       <v-list-item-title class="d-flex justify-space-between">
-                        <span>Defensa</span>
-                        <span>{{ stats.defense }}</span>
+                        <span>Defensa</span><span>{{ stats.defense }}</span>
                       </v-list-item-title>
                       <v-progress-linear
                         color="blue"
                         :value="(stats.defense / 100) * 100"
                         height="15"
                         rounded
-                      ></v-progress-linear>
+                      />
                     </v-list-item-content>
                   </v-list-item>
                 </v-list>
@@ -78,15 +67,11 @@
             </v-card>
           </v-col>
 
-          <!-- Columna Derecha: Rutinas Creadas -->
+          <!-- Columna Derecha: Rutinas -->
           <v-col cols="12" md="8">
             <v-card class="profile-card" elevation="10">
               <v-card-title class="d-flex justify-space-between align-center">
                 <span>Mis Rutinas</span>
-                <v-btn color="primary" @click="createRoutine" rounded>
-                  <v-icon left>mdi-plus</v-icon>
-                  Nueva Rutina
-                </v-btn>
               </v-card-title>
 
               <v-card-text>
@@ -96,21 +81,22 @@
                   :items-per-page="5"
                   class="routine-table"
                 >
-                  <template v-slot:item.actions="{ item }">
-                    <v-icon small class="mr-2" @click="editRoutine(item)">
-                      mdi-pencil
-                    </v-icon>
-                    <v-icon small @click="deleteRoutine(item)">
-                      mdi-delete
-                    </v-icon>
+                  <template v-slot:item.exercicis="{ item }">
+                    <ul>
+                      <li v-for="ex in item.exercicis" :key="ex.id">
+                        {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} reps
+                      </li>
+                    </ul>
                   </template>
+                        
+
                 </v-data-table>
               </v-card-text>
             </v-card>
           </v-col>
         </v-row>
 
-        <!-- Diálogo para seleccionar avatar -->
+        <!-- Diálogo Avatares -->
         <v-dialog v-model="showAvatarDialog" max-width="500px">
           <v-card>
             <v-card-title>Seleccionar Avatar</v-card-title>
@@ -128,7 +114,7 @@
               </v-row>
             </v-card-text>
             <v-card-actions>
-              <v-spacer></v-spacer>
+              <v-spacer />
               <v-btn color="primary" text @click="showAvatarDialog = false">
                 Cerrar
               </v-btn>
@@ -139,72 +125,66 @@
     </v-main>
   </v-app>
 </template>
-
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import axios from 'axios'
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000'
 
-// Usuario y nivel
-const username = ref('Usuario')
-const level = ref(1)
+// 🔹 Obtener usuario logueado desde localStorage
+const user = JSON.parse(localStorage.getItem('user')) || {}
+const userId = user?.id || user?.userId || null  // ← FIX: acepta 'id' o 'userId'
+const username = user?.usuari || 'Invitado'
 
-// Estadísticas
-const stats = reactive({
-  hp: 80,
-  maxHp: 100,
-  damage: 65,
-  defense: 45
-})
-
-// Avatar
-const showAvatarDialog = ref(false)
+// Avatar y stats
 const selectedAvatar = ref('https://cdn.vuetifyjs.com/images/john.jpg')
+const showAvatarDialog = ref(false)
 const avatars = [
   { id: 1, url: 'https://cdn.vuetifyjs.com/images/john.jpg' },
-  { id: 2, url: 'https://cdn.vuetifyjs.com/images/jane.jpg' },
-  // Agregar más avatares aquí
+  { id: 2, url: 'https://cdn.vuetifyjs.com/images/jane.jpg' }
 ]
 
-// Rutinas
+const level = ref(1)
+const stats = reactive({ hp: 80, maxHp: 100, damage: 65, defense: 45 })
+
+// Rutinas del usuario
+const routines = ref([])
+const deletingId = ref(null)
 const routineHeaders = [
-  { text: 'Nombre', align: 'start', value: 'name' },
-  { text: 'Dificultad', value: 'difficulty' },
-  { text: 'Última vez', value: 'lastPlayed' },
-  { text: 'Puntuación', value: 'score' },
+  { text: 'Nombre', align: 'start', value: 'nom' },
+  { text: 'Descripción', value: 'descripcio' },
+  { text: 'Ejercicios', value: 'exercicis' },
   { text: 'Acciones', value: 'actions', sortable: false }
 ]
 
-const routines = ref([
-  {
-    name: 'Rutina Diaria',
-    difficulty: 'Media',
-    lastPlayed: '2025-10-31',
-    score: 850
-  },
-  // Agregar más rutinas aquí
-])
+// 🔹 Cargar rutinas desde el backend
+const loadRoutines = async () => {
+  try {
+    if (!userId) {
+      console.warn('No hay usuario logueado, no se pueden cargar rutinas')
+      routines.value = []
+      return
+    }
 
-// Funciones
-const openAvatarDialog = () => {
-  showAvatarDialog.value = true
+    const res = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`)
+    routines.value = res.data.rutines || []
+  } catch (err) {
+    console.error('Error al obtener rutinas:', err)
+    routines.value = [] // fallback para evitar errores
+  }
 }
+onMounted(() => {
+  loadRoutines()
+})
 
+// Acciones botones
+const openAvatarDialog = () => (showAvatarDialog.value = true)
 const selectAvatar = (url) => {
   selectedAvatar.value = url
   showAvatarDialog.value = false
 }
-
-const createRoutine = () => {
-  // Implementar lógica para crear nueva rutina
-}
-
-const editRoutine = (item) => {
-  // Implementar lógica para editar rutina
-}
-
-const deleteRoutine = (item) => {
-  // Implementar lógica para eliminar rutina
-}
 </script>
+
+
 
 <style>
 .app-background {
@@ -212,26 +192,21 @@ const deleteRoutine = (item) => {
   color: #E0E0E0;
   min-height: 100vh;
 }
-
 .profile-card {
   background-color: #212121;
   border: 1px solid #333;
 }
-
 .profile-avatar {
   border: 3px solid #1976D2;
   cursor: pointer;
   transition: transform 0.2s;
 }
-
 .profile-avatar:hover {
   transform: scale(1.05);
 }
-
 .selected-avatar {
   border: 3px solid #1976D2;
 }
-
 .routine-table {
   background-color: transparent !important;
 }

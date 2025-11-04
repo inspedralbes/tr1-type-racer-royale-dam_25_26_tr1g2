@@ -85,7 +85,7 @@ const handleRegister = async () => {
     const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuari: username.value, correu: email.value, password: password.value })
+      body: JSON.stringify({ usuari: usuari.value, correu: email.value, password: password.value })
     })
 
     if (!res.ok) {

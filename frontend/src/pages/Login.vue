@@ -42,7 +42,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-
+import { useAuth } from '@/composables/useAuth'
+const { login } = useAuth()
 const router = useRouter()
 const isFormValid = ref(true)
 const loading = ref(false)
@@ -87,6 +88,21 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+  try {
+    loading.value = true
+    error.value = null
+await new Promise(resolve => setTimeout(resolve, 1000))
+login({
+      email: email.value,
+     })
+router.push('/inicial')
+  } catch (err) {
+    error.value = 'Error al iniciar sesión. Por favor, verifica tus credenciales.'
+    console.error('Error de login:', err)
+  } finally {
+    loading.value = false
+  }
+   
 }
 </script>
 
