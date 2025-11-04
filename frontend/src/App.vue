@@ -1,7 +1,8 @@
 <template>
   <v-app>
-    <!-- Header global -->
-    <AppHeader />
+    <!-- Header condicional basado en autenticación -->
+    <AppHeader v-if="!isAuthenticated" />
+    <AppHeader2 v-else />
 
     <!-- Contenido de cada página -->
     <v-main>
@@ -13,15 +14,11 @@
   </v-app>
 </template>
 
-<script>
+<script setup>
 import AppHeader from '@/components/AppHeader.vue'
+import AppHeader2 from '@/components/AppHeader2.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import { useAuth } from '@/composables/useAuth'
 
-export default {
-  name: 'App',
-  components: {
-    AppHeader,
-    AppFooter
-  }
-}
+const { isAuthenticated } = useAuth()
 </script>

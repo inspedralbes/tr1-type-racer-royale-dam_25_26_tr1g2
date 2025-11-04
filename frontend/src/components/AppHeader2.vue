@@ -19,14 +19,24 @@
         PROFILE
       </v-btn>
       
+      <v-btn text @click="handleLogout" color="error">
+        <v-icon left>mdi-logout</v-icon>
+        Cerrar Sesión
+      </v-btn>
     </v-app-bar>
   </template>
   
-  <script>
-  export default {
-    name: 'AppHeader2',
-    // Si usas Vue 3 con el Composition API, puedes usar <script setup> sin el export default
-  };
+  <script setup>
+  import { useAuth } from '@/composables/useAuth'
+  import { useRouter } from 'vue-router'
+  
+  const { logout } = useAuth()
+  const router = useRouter()
+  
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
   </script>
   
   <style scoped>
