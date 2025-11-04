@@ -235,4 +235,51 @@ const deleteRoutine = (item) => {
 .routine-table {
   background-color: transparent !important;
 }
+
+/* Ajustes para modo claro del sistema/buscador */
+@media (prefers-color-scheme: light) {
+  .app-background {
+    /* gradiente claro similar al resto de pantallas */
+    background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+    color: #1c1c1c;
+  }
+
+  /* Hacer ambos recuadros (avatar/estadísticas y rutinas) blancos con borde negro */
+  .profile-card {
+    background-color: #ffffff;
+    border: 1px solid #000000; /* borde negro solicitado */
+    color: #1c1c1c;
+    box-shadow: 0 6px 20px rgba(16,24,40,0.06);
+  }
+
+  .profile-card .v-card-title,
+  .profile-card .v-card-text {
+    color: #1c1c1c;
+  }
+
+  .profile-avatar {
+    border: 3px solid #1976D2;
+  }
+
+  .selected-avatar {
+    border: 3px solid #1976D2;
+  }
+
+  .routine-table {
+    background-color: #ffffff !important;
+    color: #1c1c1c !important;
+  }
+
+  /* Ajustes para los textos y chips dentro de la tarjeta */
+  .profile-card .v-chip {
+    background-color: #1976D2;
+    color: #fff;
+  }
+
+  /* Asegurar que los iconos y botones sean visibles */
+  .profile-card .v-icon,
+  .profile-card .v-btn {
+    color: inherit;
+  }
+}
 </style>
