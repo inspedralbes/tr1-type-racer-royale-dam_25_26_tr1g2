@@ -8,12 +8,16 @@ import CrearSala from '@/pages/CrearSala.vue'
 import UnirSala from '@/pages/UnirSala.vue'
 import Individual from '@/pages/Individual.vue'
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Incursion from '@/pages/Incursion.vue'
 import Profile from '@/pages/Profile.vue'
 =======
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 import Incursion from '@/pages/Incursion.vue'
+import Profile from '@/pages/Profile.vue'
 
 const routes = [
   { path: '/', component: Welcome },
@@ -28,11 +32,14 @@ const routes = [
 <<<<<<< HEAD
   { path: '/incursion', component: Incursion, name: 'incursion' },
   { path: '/profile', component: Profile, name: 'profile' },
+<<<<<<< HEAD
 =======
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
 =======
   { path: '/incursion', component: Incursion, name: 'incursion' },
 >>>>>>> 172f3db (incursió afegida)
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 ]
 
 const router = createRouter({

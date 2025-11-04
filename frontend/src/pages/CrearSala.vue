@@ -60,6 +60,9 @@
             </v-text-field>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 
             <div class="d-flex align-center justify-center mt-4" style="gap: 16px;">
               <v-select
@@ -83,6 +86,7 @@
                 {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
               </v-btn>
             </div>
+<<<<<<< HEAD
 =======
             <!-- Botón "Iniciar Sala" -->
             <v-btn
@@ -98,6 +102,8 @@
               {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
             </v-btn>
 >>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 
             <p class="caption mt-4 grey--text text--lighten-1">
               Projecte col·laboratiu.
@@ -112,6 +118,7 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
+
 
 
 

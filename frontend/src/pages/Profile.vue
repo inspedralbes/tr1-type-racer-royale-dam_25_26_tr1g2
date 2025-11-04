@@ -110,6 +110,7 @@
           </v-col>
         </v-row>
 
+<<<<<<< HEAD
         <!-- Diálogo para seleccionar avatar (con upload) -->
         <v-dialog v-model="showAvatarDialog" max-width="640px">
           <v-card>
@@ -138,12 +139,35 @@
                       </v-overlay>
                     </v-card>
                   </v-hover>
+=======
+        <!-- Diálogo para seleccionar avatar -->
+        <v-dialog v-model="showAvatarDialog" max-width="500px">
+          <v-card>
+            <v-card-title>Seleccionar Avatar</v-card-title>
+            <v-card-text>
+              <v-row>
+                <v-col v-for="avatar in avatars" :key="avatar.id" cols="4" sm="3">
+                  <v-avatar
+                    size="80"
+                    @click="selectAvatar(avatar.url)"
+                    :class="{'selected-avatar': selectedAvatar === avatar.url}"
+                  >
+                    <v-img :src="avatar.url" />
+                  </v-avatar>
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
                 </v-col>
               </v-row>
             </v-card-text>
             <v-card-actions>
+<<<<<<< HEAD
               <v-spacer />
               <v-btn color="primary" text @click="showAvatarDialog = false">Cerrar</v-btn>
+=======
+              <v-spacer></v-spacer>
+              <v-btn color="primary" text @click="showAvatarDialog = false">
+                Cerrar
+              </v-btn>
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
             </v-card-actions>
           </v-card>
         </v-dialog>
@@ -153,7 +177,11 @@
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, reactive, computed } from 'vue'
+=======
+import { ref, reactive } from 'vue'
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 
 // Usuario y nivel
 const username = ref('Usuario')
@@ -167,6 +195,7 @@ const stats = reactive({
   defense: 45
 })
 
+<<<<<<< HEAD
 // Avatar y persistencia de uploads
 import { useAuth } from '@/composables/useAuth'
 const { user, login } = useAuth()
@@ -202,6 +231,17 @@ const avatars = computed(() => {
   return [...defaultAvatars, ...userAvatars.value.map((a, i) => ({ id: `custom_${i}`, url: a.url, isCustom: true }))]
 })
 
+=======
+// Avatar
+const showAvatarDialog = ref(false)
+const selectedAvatar = ref('https://cdn.vuetifyjs.com/images/john.jpg')
+const avatars = [
+  { id: 1, url: 'https://cdn.vuetifyjs.com/images/john.jpg' },
+  { id: 2, url: 'https://cdn.vuetifyjs.com/images/jane.jpg' },
+  // Agregar más avatares aquí
+]
+
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 // Rutinas
 const routineHeaders = [
   { text: 'Nombre', align: 'start', value: 'name' },
@@ -228,6 +268,7 @@ const openAvatarDialog = () => {
 
 const selectAvatar = (url) => {
   selectedAvatar.value = url
+<<<<<<< HEAD
   // Persistir la selección en el objeto user (useAuth guarda en localStorage)
   try {
     const updated = { ...(user.value || {}), profilePicture: url }
@@ -293,6 +334,11 @@ const deleteAvatar = (avatarId) => {
   }
 }
 
+=======
+  showAvatarDialog.value = false
+}
+
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 const createRoutine = () => {
   // Implementar lógica para crear nueva rutina
 }
@@ -302,6 +348,7 @@ const editRoutine = (item) => {
 }
 
 const deleteRoutine = (item) => {
+<<<<<<< HEAD
   // Eliminar la rutina pasada (buscamos por referencia primero)
   const idx = routines.value.indexOf(item)
   if (idx !== -1) {
@@ -314,6 +361,9 @@ const deleteRoutine = (item) => {
   if (fallbackIdx !== -1) {
     routines.value.splice(fallbackIdx, 1)
   }
+=======
+  // Implementar lógica para eliminar rutina
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 }
 </script>
 
@@ -333,6 +383,7 @@ const deleteRoutine = (item) => {
   border: 3px solid #1976D2;
   cursor: pointer;
   transition: transform 0.2s;
+<<<<<<< HEAD
   position: relative;
   overflow: hidden;
   border-radius: 50%;
@@ -346,16 +397,21 @@ const deleteRoutine = (item) => {
   opacity: 0;
   transition: opacity 0.18s ease-in-out;
   pointer-events: none;
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 }
 
 .profile-avatar:hover {
   transform: scale(1.05);
 }
 
+<<<<<<< HEAD
 .profile-avatar:hover::after {
   opacity: 1;
 }
 
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 .selected-avatar {
   border: 3px solid #1976D2;
 }
@@ -363,6 +419,7 @@ const deleteRoutine = (item) => {
 .routine-table {
   background-color: transparent !important;
 }
+<<<<<<< HEAD
 
 /* Ajustes para modo claro del sistema/buscador */
 @media (prefers-color-scheme: light) {
@@ -410,4 +467,6 @@ const deleteRoutine = (item) => {
     color: inherit;
   }
 }
+=======
+>>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 </style>
