@@ -2,7 +2,7 @@
 // db.js
 =======
 require('dotenv').config();
->>>>>>> origin/backend-develop
+>>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
 const mysql = require('mysql2/promise');
 const DB_HOST = process.env.DB_HOST || 'db';
 const DB_PORT = process.env.DB_PORT || 3306;
@@ -52,4 +52,4 @@ pool.getConnection()
 
 module.exports = { pool };
 // ...existing code...
->>>>>>> origin/backend-develop
+>>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652
