@@ -24,6 +24,7 @@
         PROFILE
       </v-btn>
       
+
       <v-btn text @click="handleLogout" color="error">
         <v-icon left>mdi-logout</v-icon>
         Cerrar Sesión
@@ -50,6 +51,7 @@
       window.location.href = window.location.href
     }
   }
+  
   </script>
   
   <style scoped>
