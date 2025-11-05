@@ -9,7 +9,6 @@ import UnirSala from '@/pages/UnirSala.vue'
 import Individual from '@/pages/Individual.vue'
 import Incursion from '@/pages/Incursion.vue'
 import Profile from '@/pages/Profile.vue'
-import CrearRutina from '@/pages/CrearRutina.vue'
 
 const routes = [
   { path: '/', component: Welcome },
@@ -22,7 +21,6 @@ const routes = [
   { path: '/individual', component: Individual, name: 'individual' },
   { path: '/incursion', component: Incursion, name: 'incursion' },
   { path: '/profile', component: Profile, name: 'profile' },
-  { path: '/crearrutina', component: CrearRutina, name: 'crearrutina' },
 ]
 
 const router = createRouter({

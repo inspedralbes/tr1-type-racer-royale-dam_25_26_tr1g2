@@ -11,7 +11,19 @@
             <v-card-title class="justify-center pt-0 pb-4">
               <h2 class="text-h5 font-weight-black">Unirse a Sala</h2>
             </v-card-title>
-  
+            
+            <v-btn
+              color="error"
+              class="mb-4 button-shadow"
+              rounded
+              to="/inicial"
+              elevation="2"
+              block
+            >
+              <v-icon left>mdi-arrow-left</v-icon>
+              Volver
+            </v-btn>
+
             <v-card-text>
               <p class="text-body-1 mb-4 grey--text text--lighten-1">
                 Introduce el código de la sala que recibiste y únete al juego.
@@ -25,7 +37,7 @@
                 dense
                 class="mb-4"
               ></v-text-field>
-  
+
               <!-- Botón Unirse -->
               <v-btn
                 color="success"
@@ -34,13 +46,14 @@
                 @click="unirseSala"
                 elevation="10"
                 :disabled="!codigoSala"
+                block
               >
                 <v-icon left size="28">mdi-login-variant</v-icon>
                 Unirse a Sala
               </v-btn>
   
               <p class="caption mt-4 grey--text text--lighten-1">
-                Projecte col·laboratiu - Web i IA.
+                Projecte col·laboratiu.
               </p>
             </v-card-text>
           </v-card>
@@ -72,18 +85,6 @@
     background: linear-gradient(135deg, #121212 0%, #1c1c1c 100%);
     color: #E0E0E0;
     height: 100vh;
-  }
-
-  .volver-btn {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    opacity: 0.8;
-    transition: opacity 0.3s;
-  }
-
-  .volver-btn:hover {
-    opacity: 1;
   }
 
   .card-elevated {

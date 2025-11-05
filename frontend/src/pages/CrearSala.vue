@@ -13,6 +13,21 @@
           </v-card-title>
 
           <v-card-text>
+            <!-- Botón Volver -->
+            <v-btn
+              color="error"
+              class="mb-4 button-shadow"
+              rounded
+              to="/inicial"
+              elevation="2"
+              block
+            >
+              <v-icon left>mdi-arrow-left</v-icon>
+              Volver
+            </v-btn>
+
+            <v-divider class="my-4"></v-divider>
+
             <p class="text-body-1 mb-4 grey--text text--lighten-1">
               Genera un código único para tu sala, compártelo con tus amigos y empieza a jugar.
             </p>
@@ -44,21 +59,32 @@
               </template>
             </v-text-field>
 
-            <!-- Botón “Iniciar Sala” (solo activa un flag para mostrar que empezó) -->
-            <v-btn
-              color="success"
-              class="button-shadow px-10 py-5 d-flex align-center justify-center"
-              rounded
-              @click="iniciarSala"
-              elevation="10"
-              :disabled="!codigoSala || salaIniciada"
-            >
-              <v-icon left size="28">mdi-play-circle</v-icon>
-              {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
-            </v-btn>
+
+            <div class="d-flex align-center justify-center mt-4" style="gap: 16px;">
+              <v-select
+                v-model="maxPersonas"
+                :items="personasOptions"
+                label="Máx. personas"
+                dense
+                outlined
+                style="max-width: 140px;"
+                :disabled="salaIniciada"
+              />
+              <v-btn
+                color="success"
+                class="button-shadow px-10 py-5 d-flex align-center justify-center"
+                rounded
+                @click="iniciarSala"
+                elevation="10"
+                :disabled="!codigoSala || salaIniciada"
+              >
+                <v-icon left size="28">mdi-play-circle</v-icon>
+                {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
+              </v-btn>
+            </div>
 
             <p class="caption mt-4 grey--text text--lighten-1">
-              Projecte col·laboratiu - Web i IA.
+              Projecte col·laboratiu.
             </p>
           </v-card-text>
         </v-card>
@@ -71,8 +97,11 @@
 import { ref } from 'vue'
 import axios from 'axios'
 
+
 const codigoSala = ref('')
 const salaIniciada = ref(false)
+const maxPersonas = ref(2)
+const personasOptions = [2,3,4,5,6,7,8]
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const api = axios.create({ baseURL: API_BASE, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
@@ -155,17 +184,7 @@ async function iniciarSala() {
     height: 100vh;
   }
 
-  .volver-btn {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    opacity: 0.8;
-    transition: opacity 0.3s;
-  }
-
-  .volver-btn:hover {
-    opacity: 1;
-  }.card-elevated {
+.card-elevated {
   background-color: #212121;
   border: 1px solid #333;
 }
