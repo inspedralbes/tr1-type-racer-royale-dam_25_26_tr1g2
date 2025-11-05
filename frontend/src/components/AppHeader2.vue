@@ -15,10 +15,16 @@
   
       <v-spacer></v-spacer>
   
+      <!-- Refresh button -->
+      <v-btn icon title="Refrescar" class="mr-2" @click="refreshPage">
+        <v-icon>mdi-refresh</v-icon>
+      </v-btn>
+
       <v-btn text to="/profile" color="green" class="font-weight-bold mr-2">
         PROFILE
       </v-btn>
       
+
       <v-btn text @click="handleLogout" color="error">
         <v-icon left>mdi-logout</v-icon>
         Cerrar Sesión
@@ -37,6 +43,15 @@
     logout()
     router.push('/login')
   }
+
+  const refreshPage = () => {
+    try {
+      window.location.reload()
+    } catch (e) {
+      window.location.href = window.location.href
+    }
+  }
+  
   </script>
   
   <style scoped>
