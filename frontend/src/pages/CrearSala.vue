@@ -98,6 +98,7 @@ import { ref } from 'vue'
 import axios from 'axios'
 
 
+
 const codigoSala = ref('')
 const salaIniciada = ref(false)
 const maxPersonas = ref(2)
