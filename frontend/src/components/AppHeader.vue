@@ -14,12 +14,16 @@
       </v-btn>
   
       <v-spacer></v-spacer>
+<<<<<<< HEAD
 
       <!-- Refresh button -->
       <v-btn icon title="Refrescar" class="mr-2" @click="refreshPage">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
 
+=======
+  
+>>>>>>> backend-develop
       <v-btn text to="/login" color="white" class="font-weight-bold mr-2">
         LOGIN
       </v-btn>
@@ -33,6 +37,7 @@
   <script>
   export default {
     name: 'AppHeader',
+<<<<<<< HEAD
     methods: {
       refreshPage() {
         try {
@@ -43,6 +48,9 @@
         }
       }
     }
+=======
+    // Si usas Vue 3 con el Composition API, puedes usar <script setup> sin el export default
+>>>>>>> backend-develop
   };
   </script>
   
