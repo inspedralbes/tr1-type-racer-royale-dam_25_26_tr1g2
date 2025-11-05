@@ -14,7 +14,12 @@
       </v-btn>
   
       <v-spacer></v-spacer>
-  
+
+      <!-- Refresh button -->
+      <v-btn icon title="Refrescar" class="mr-2" @click="refreshPage">
+        <v-icon>mdi-refresh</v-icon>
+      </v-btn>
+
       <v-btn text to="/login" color="white" class="font-weight-bold mr-2">
         LOGIN
       </v-btn>
@@ -28,7 +33,16 @@
   <script>
   export default {
     name: 'AppHeader',
-    // Si usas Vue 3 con el Composition API, puedes usar <script setup> sin el export default
+    methods: {
+      refreshPage() {
+        try {
+          window.location.reload()
+        } catch (e) {
+          // fallback: navigate to current location
+          window.location.href = window.location.href
+        }
+      }
+    }
   };
   </script>
   
