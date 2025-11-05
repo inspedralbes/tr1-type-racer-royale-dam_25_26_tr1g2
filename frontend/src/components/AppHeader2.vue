@@ -15,27 +15,15 @@
   
       <v-spacer></v-spacer>
   
-<<<<<<< HEAD
       <!-- Refresh button -->
       <v-btn icon title="Refrescar" class="mr-2" @click="refreshPage">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
 
-=======
->>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
       <v-btn text to="/profile" color="green" class="font-weight-bold mr-2">
         PROFILE
       </v-btn>
       
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
-      <v-btn text @click="handleLogout" color="error">
-        <v-icon left>mdi-logout</v-icon>
-        Cerrar Sesión
-      </v-btn>
-<<<<<<< HEAD
     </v-app-bar>
   </template>
   
@@ -50,40 +38,6 @@
     logout()
     router.push('/login')
   }
-
-  const refreshPage = () => {
-    try {
-      window.location.reload()
-    } catch (e) {
-      window.location.href = window.location.href
-    }
-  }
-=======
-    </v-app-bar>
-  </template>
-  
-  <script>
-  export default {
-    name: 'AppHeader2',
-    // Si usas Vue 3 con el Composition API, puedes usar <script setup> sin el export default
-  };
->>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
-=======
-    </v-app-bar>
-  </template>
-  
-  <script setup>
-  import { useAuth } from '@/composables/useAuth'
-  import { useRouter } from 'vue-router'
-  
-  const { logout } = useAuth()
-  const router = useRouter()
-  
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
-  }
->>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
   </script>
   
   <style scoped>

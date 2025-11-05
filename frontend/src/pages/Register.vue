@@ -108,25 +108,11 @@ const handleRegister = async () => {
     loading.value = true
     error.value = null
 
-<<<<<<< HEAD
     const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usuari: usuari.value, correu: email.value, password: password.value })
     })
-=======
-    // Aquí deberías implementar la lógica de registro con tu backend
-    // Por ejemplo:
-    // await fetch('/api/register', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     username: username.value,
-    //     email: email.value,
-    //     password: password.value
-    //   })
-    // })
->>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 
     // Si el registro es exitoso, redirigir al login
     router.push('/login')

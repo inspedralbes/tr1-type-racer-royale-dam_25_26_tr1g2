@@ -73,16 +73,7 @@
               </v-btn>
             </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
             <p class="caption mt-4 text-muted">
-=======
-
-            <p class="caption mt-4 grey--text text--lighten-1">
->>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
-=======
-            <p class="caption mt-4 text-muted">
->>>>>>> c8af265 (canvi del index.vue)
               Projecte col·laboratiu.
             </p>
           </v-card-text>

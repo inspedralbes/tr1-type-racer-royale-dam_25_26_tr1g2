@@ -1,3 +1,4 @@
+// ...existing code...
 <template>
   <v-app dark class="app-background">
     <v-main>
@@ -13,7 +14,6 @@
           </v-card-title>
 
           <v-card-text>
-            <!-- Botón Volver -->
             <v-btn
               color="error"
               class="mb-4 button-shadow"
@@ -32,7 +32,6 @@
               Genera un código único para tu sala, compártelo con tus amigos y empieza a jugar.
             </p>
 
-            <!-- Botón generar código -->
             <v-btn
               color="primary"
               class="button-shadow mb-4 px-8 py-4 d-flex align-center justify-center"
@@ -43,7 +42,6 @@
               Generar Código
             </v-btn>
 
-            <!-- Campo de código -->
             <v-text-field
               v-model="codigoSala"
               label="Código de Sala"
@@ -58,11 +56,6 @@
                 </v-btn>
               </template>
             </v-text-field>
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 
             <div class="d-flex align-center justify-center mt-4" style="gap: 16px;">
               <v-select
@@ -86,24 +79,6 @@
                 {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
               </v-btn>
             </div>
-<<<<<<< HEAD
-=======
-            <!-- Botón "Iniciar Sala" -->
-            <v-btn
-              color="success"
-              class="button-shadow px-10 py-5 d-flex align-center justify-center"
-              rounded
-              @click="iniciarSala"
-              elevation="10"
-              :disabled="!codigoSala || salaIniciada"
-              block
-            >
-              <v-icon left size="28">mdi-play-circle</v-icon>
-              {{ salaIniciada ? 'Sala Iniciada' : 'Iniciar Sala' }}
-            </v-btn>
->>>>>>> 3aa0bca (Cambios en subpaginas de multijugador e individual)
-=======
->>>>>>> 59f4dc8 (Sync: Actualizar carpeta frontend desde frontend-develop)
 
             <p class="caption mt-4 grey--text text--lighten-1">
               Projecte col·laboratiu.
@@ -114,13 +89,10 @@
     </v-main>
   </v-app>
 </template>
-// ...existing code...
+
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
-
-
-
 
 const codigoSala = ref('')
 const salaIniciada = ref(false)
@@ -159,7 +131,6 @@ async function generarCodigo() {
 
   try {
     const resp = await api.post('/api/session/save', payload)
-    // prefer sessionId que devuelve el servidor
     const sid = resp.data?.sessionId ?? resp.data?.id ?? resp.data?.insertId ?? null
     if (sid) {
       codigoSala.value = sid
@@ -201,12 +172,13 @@ async function iniciarSala() {
   }
 }
 </script>
-0<style>
+
+<style scoped>
 .app-background {
   background: linear-gradient(135deg, #121212 0%, #1c1c1c 100%);
-    color: #E0E0E0;
-    height: 100vh;
-  }
+  color: #E0E0E0;
+  height: 100vh;
+}
 
 .card-elevated {
   background-color: #212121;
@@ -227,3 +199,4 @@ async function iniciarSala() {
   box-shadow: 0 10px 30px 0 rgba(33, 150, 243, 0.7);
 }
 </style>
+// ...existing code...
