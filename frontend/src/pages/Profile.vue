@@ -131,6 +131,20 @@
                       <v-avatar size="80" @click="selectAvatar(avatar.url)" :class="{'selected-avatar': selectedAvatar === avatar.url}">
                         <v-img :src="avatar.url" />
                       </v-avatar>
+
+                      <!-- mini delete button visible for custom avatars -->
+                      <v-btn
+                        v-if="avatar.isCustom"
+                        icon
+                        small
+                        class="mini-delete"
+                        color="error"
+                        @click.stop="deleteAvatar(avatar.id)"
+                        title="Eliminar avatar"
+                      >
+                        <v-icon small>mdi-delete</v-icon>
+                      </v-btn>
+
                       <v-overlay v-if="isHovering && avatar.isCustom" absolute contained class="align-center justify-center">
                         <v-btn icon color="error" @click.stop="deleteAvatar(avatar.id)">
                           <v-icon>mdi-delete</v-icon>
@@ -362,6 +376,19 @@ const deleteRoutine = (item) => {
 
 .routine-table {
   background-color: transparent !important;
+}
+
+.avatar-card {
+  position: relative;
+}
+
+.mini-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
 }
 
 /* Ajustes para modo claro del sistema/buscador */
