@@ -232,7 +232,6 @@ const sessions = new Map();
 const userSessions = new Map();
 const userStates = new Map(); // Guarda { sessionId: { clientId: reps } }
 
-<<<<<<< HEAD
 wss.on('connection', (ws) => {
     const clientId = uuidv4();
     clients.set(clientId, ws);
@@ -321,85 +320,3 @@ app.listen(process.env.API_PORT || 3000, () => {
     console.log(`Servidor Express en el puerto ${process.env.API_PORT || 3000}`);
     console.log('----------------------------------------------------');
 });
-=======
-wss.on('connection', ws => {
-  const clientId = uuidv4();
-  clients.set(clientId, ws);
-  ws.send(JSON.stringify({ type: 'welcome', clientId }));
-
-  ws.on('message', message => {
-    let data;
-    try { data = JSON.parse(message); } catch { data = { type: 'text', message }; }
-    const type = data.type;
-
-    if (type === 'JOIN_SESSION') {
-      const sessionId = data.sessionId;
-      if (!sessions.has(sessionId)) sessions.set(sessionId, new Set());
-      sessions.get(sessionId).add(clientId);
-      userSessions.set(clientId, sessionId);
-      if (!userStates.has(sessionId)) userStates.set(sessionId, {});
-      ws.send(JSON.stringify({ type: 'SESSION_STATE', state: userStates.get(sessionId) }));
-    } else if (type === 'REPS_UPDATE') {
-      const sessionId = data.sessionId;
-      if (!sessions.has(sessionId)) return;
-      const state = userStates.get(sessionId);
-      state[clientId] = data.reps;
-      for (const id of sessions.get(sessionId)) {
-        const client = clients.get(id);
-        if (client && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: 'SESSION_STATE', state }));
-        }
-      }
-    }
-  });
-
-  ws.on('close', () => {
-    const sessionId = userSessions.get(clientId);
-    if (sessionId && sessions.has(sessionId)) {
-      sessions.get(sessionId).delete(clientId);
-      const state = userStates.get(sessionId);
-      if (state) delete state[clientId];
-      if (sessions.get(sessionId).size === 0) {
-        sessions.delete(sessionId);
-        userStates.delete(sessionId);
-      } else {
-        for (const id of sessions.get(sessionId)) {
-          const client = clients.get(id);
-          if (client && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'SESSION_STATE', state: userStates.get(sessionId) }));
-          }
-        }
-      }
-    }
-    clients.delete(clientId);
-    userSessions.delete(clientId);
-  });
-});
-
-// -------------------- INICIAR SERVIDOR --------------------
-const httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
-
-// Graceful shutdown para evitar puertos ocupados tras CTRL+C
-async function shutdown() {
-  console.log('Cerrando servidores...');
-  try {
-    // cerrar WebSocket
-    wss.close(() => console.log('WebSocket cerrado.'));
-    // cerrar HTTP
-    httpServer.close(() => console.log('HTTP server cerrado.'));
-    // cerrar pool mysql
-    if (db && db.pool && typeof db.pool.end === 'function') {
-      await db.pool.end();
-      console.log('Pool MySQL cerrado.');
-    }
-    process.exit(0);
-  } catch (err) {
-    console.error('Error en shutdown', err);
-    process.exit(1);
-  }
-}
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-//
->>>>>>> 33ccb00d990a446f1ec4425022e77456edeaa652

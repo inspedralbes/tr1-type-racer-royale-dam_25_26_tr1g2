@@ -9,10 +9,12 @@ import UnirSala from '@/pages/UnirSala.vue'
 import Individual from '@/pages/Individual.vue'
 import Incursion from '@/pages/Incursion.vue'
 import Profile from '@/pages/Profile.vue'
+// 🚀 NUEVA IMPORTACIÓN: Componente de juego multijugador
+import MultiplayerMode from '@/pages/Multijugador.vue' 
 
 const routes = [
   { path: '/', component: Welcome },
-  { path: '/inicial', component: Inicial },  // <-- nueva ruta
+  { path: '/inicial', component: Inicial },
   { path: '/register', component: Register, name: 'register' },
   { path: '/login', component: Login, name: 'login' },
   { path: '/ayuda', component: Ayuda, name: 'ayuda' },
@@ -21,6 +23,16 @@ const routes = [
   { path: '/individual', component: Individual, name: 'individual' },
   { path: '/incursion', component: Incursion, name: 'incursion' },
   { path: '/profile', component: Profile, name: 'profile' },
+
+  // 🎮 NUEVA RUTA: Modo Multijugador
+  { 
+    // La URL esperará un código de sala después de /multijugador/
+    path: '/multijugador/:id', 
+    name: 'MultiplayerMode', 
+    component: MultiplayerMode,
+    // Permite que el componente reciba ':id' como una prop
+    props: true 
+  },
 ]
 
 const router = createRouter({

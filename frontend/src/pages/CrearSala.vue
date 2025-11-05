@@ -95,33 +95,61 @@
 
 <script setup>
 import { ref } from 'vue'
-
-
+import { useRouter } from 'vue-router'
+// Asegúrate de tener una forma de hacer llamadas HTTP (ej. axios, fetch)
+import axios from 'axios' // Asumiendo que usas axios
+import { getUserId } from '@/utils/auth' // Asumiendo que tienes una función para obtener el ID de usuario
+ 
+const router = useRouter()
+const API_BASE_URL = 'http://localhost:3000/api' // Ajusta si tu puerto de API es diferente
+ 
 const codigoSala = ref('')
 const salaIniciada = ref(false)
 const maxPersonas = ref(2)
 const personasOptions = [2,3,4,5,6,7,8]
-
-// Generar un código aleatorio de 6 caracteres
-function generarCodigo() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let codigo = ''
-  for (let i = 0; i < 6; i++) {
-    codigo += chars.charAt(Math.floor(Math.random() * chars.length))
+ 
+// Generar código llamando a la API
+async function generarCodigo() {
+  const creadorId = getUserId() // Obtener el ID del usuario loggeado
+  if (!creadorId) {
+    alert('Debes iniciar sesión para crear una sala.')
+    return
   }
-  codigoSala.value = codigo
-  salaIniciada.value = false
-}
 
+  salaIniciada.value = false
+  codigoSala.value = 'Generando...'
+  
+  try {
+    const response = await axios.post(`${API_BASE_URL}/session/save`, {
+      creadorId: creadorId // El backend generará el código (sessionId)
+    })
+
+    if (response.data.success) {
+      codigoSala.value = response.data.sessionId
+      alert(`Sala creada con código: ${codigoSala.value}`)
+    } else {
+      alert('Error al crear la sala: ' + response.data.error)
+      codigoSala.value = ''
+    }
+  } catch (error) {
+    console.error('Error al generar código:', error)
+    alert('Error de conexión al crear la sala.')
+    codigoSala.value = ''
+  }
+}
+ 
 // Copiar al portapapeles
 function copiarCodigo() {
   navigator.clipboard.writeText(codigoSala.value)
     .then(() => alert(`Código copiado: ${codigoSala.value}`))
 }
-
-// Iniciar sala (solo cambia el estado)
+ 
+// Iniciar sala y redirigir al componente de multijugador
 function iniciarSala() {
+  if (!codigoSala.value) return
   salaIniciada.value = true
+  // Redirigir al componente Multijugador.vue, pasando el código de sala como query param
+  router.push({ name: 'multijugador', query: { sala: codigoSala.value } })
 }
 </script>
 
