@@ -336,7 +336,7 @@ async function loop() {
   const scores = keypoints.map(k => k?.score ?? 0).filter(Number.isFinite)
   const meanScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0
 
-  // ✅ EMET SEMPRE un objecte complet de features (mai “res”)
+  // EMET SEMPRE un objecte complet de features (mai “res”)
   const features = {
     fps: fpsNow,
     fpsSmooth,                 // NEW
