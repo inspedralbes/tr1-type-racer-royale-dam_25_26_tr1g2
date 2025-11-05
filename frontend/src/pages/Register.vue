@@ -108,25 +108,11 @@ const handleRegister = async () => {
     loading.value = true
     error.value = null
 
-<<<<<<< HEAD
     const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usuari: usuari.value, correu: email.value, password: password.value })
     })
-=======
-    // Aquí deberías implementar la lógica de registro con tu backend
-    // Por ejemplo:
-    // await fetch('/api/register', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     username: username.value,
-    //     email: email.value,
-    //     password: password.value
-    //   })
-    // })
->>>>>>> backend-develop
 
     // Si el registro es exitoso, redirigir al login
     router.push('/login')
@@ -140,12 +126,5 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-<<<<<<< HEAD
 .v-container { background-color: rgba(245,245,245,0.13); }
 </style>
-=======
-.v-container {
-  background-color:rgba(245, 245, 245, 0.13);
-}
-</style>
->>>>>>> backend-develop

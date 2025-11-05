@@ -37,7 +37,6 @@
   <script>
   export default {
     name: 'AppHeader',
-<<<<<<< HEAD
     methods: {
       refreshPage() {
         try {
@@ -48,9 +47,6 @@
         }
       }
     }
-=======
-    // Si usas Vue 3 con el Composition API, puedes usar <script setup> sin el export default
->>>>>>> backend-develop
   };
   </script>
   
