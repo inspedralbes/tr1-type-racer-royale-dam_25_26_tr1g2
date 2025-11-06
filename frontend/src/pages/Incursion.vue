@@ -4,8 +4,15 @@
     <v-row class="mb-4 align-center">
       <v-col cols="12">
         <h1 class="text-h3 font-weight-black text-center battle-title">
-            BATALLA CONTRA EL JEFE DE GIMNASIO
+            INCURSIÓN CONTRA EL JEFE
         </h1>
+        <!-- CONTADOR DE JUGADORES -->
+        <div v-if="bossSessionId" class="text-center mt-2">
+          <v-chip color="primary" large>
+            <v-icon left>mdi-account-group</v-icon>
+            Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
+          </v-chip>
+        </div>
       </v-col>
     </v-row>
     
@@ -43,26 +50,39 @@
           
           <v-row align="center" class="mt-4">
             <v-col cols="6">
-              <div class="d-flex justify-center gap-2">
+              <div class="d-flex justify-center gap-2" v-if="!bossSessionId">
                 <v-btn
                     color="success"
                     large
-                    @click="iniciarPartida"
-                    :disabled="isPartidaActiva || !isPoseDetectorReady"
+                    @click="mostrarDialogoUnirse = true"
+                    :disabled="!isPoseDetectorReady"
                     class="action-btn"
                 >
-                    <v-icon left>mdi-sword</v-icon>
-                    INICIAR
+                    <v-icon left>mdi-magnify</v-icon>
+                    BUSCAR INCURSIÓN
+                </v-btn>
+              </div>
+              <div class="d-flex justify-center gap-2" v-else>
+                <v-btn
+                  v-if="esCreador"
+                  color="success"
+                  large
+                  @click="iniciarPartida"
+                  :disabled="isPartidaActiva || !isPoseDetectorReady"
+                  class="action-btn"
+                >
+                  <v-icon left>mdi-sword</v-icon>
+                  INICIAR
                 </v-btn>
                 <v-btn
-                    color="error"
-                    large
-                    @click="detenerPartida"
-                    :disabled="!isPartidaActiva"
-                    class="action-btn"
+                  color="error"
+                  large
+                  @click="isPartidaActiva ? detenerPartida() : salirDeLaIncursion()"
+                  :disabled="!bossSessionId"
+                  class="action-btn"
                 >
-                    <v-icon left>mdi-shield-off</v-icon>
-                    DETENER
+                  <v-icon left>{{ isPartidaActiva ? 'mdi-shield-off' : 'mdi-exit-run' }}</v-icon>
+                  {{ isPartidaActiva ? 'DETENER' : 'SALIR' }}
                 </v-btn>
               </div>
             </v-col>
@@ -144,6 +164,30 @@
       </v-col>
     </v-row>
 
+    <!-- DIÁLOGO DE CONFIRMACIÓN -->
+    <v-dialog v-model="mostrarDialogoUnirse" persistent max-width="400">
+      <v-card class="game-card">
+        <v-card-title class="text-h5 player-title">¿Unirte a la Incursión?</v-card-title>
+        <v-card-text>
+          Se buscará una sala de incursión abierta. Si no hay ninguna disponible, se creará una nueva para ti y otros jugadores.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" text @click="mostrarDialogoUnirse = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            color="success"
+            text
+            @click="unirseAIncursion"
+            :loading="buscandoPartida"
+          >
+            Confirmar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
   </v-container>
 </template>
 
@@ -161,18 +205,23 @@ import {
 const jefeVidaMaxima = 100 // Usada como referencia visual, la real viene del servidor
 const jugadorVidaMaxima = 100 
 const DURACION_RULETA = 180 // 3 minutos
+const MAX_PARTICIPANTS = 10;
 const DAÑO_AL_JEFE_BASE = 8;
 const DAÑO_AL_JUGADOR_POR_FALLO = 5;
 const UMBRAL_POBRE_SCORE = 0.65; // Calidad mínima de la pose para no recibir daño
-
-// **IMPORTANTE**: Simulación de ID de la sesión del Jefe (Boss)
-// Debes reemplazar esto con el ID real obtenido al crear o unirte a una sesión.
-const BOSS_ID_SIMULADO = 1; 
 
 // --- ESTADO GENERAL Y SENSORES ---
 const features = ref(null)
 const isPoseDetectorReady = ref(false)
 const isPartidaActiva = ref(false)
+const user = ref(JSON.parse(localStorage.getItem('user')) || {});
+
+// --- LÓGICA MULTIJUGADOR ---
+const bossSessionId = ref(null);
+const esCreador = ref(false);
+const mostrarDialogoUnirse = ref(false);
+const buscandoPartida = ref(false);
+const participantes = ref([]);
 
 // --- ESTADO DEL COMBATE ---
 const jefeVidaActual = ref(jefeVidaMaxima)
@@ -256,28 +305,28 @@ async function aplicarDanoJefe(dano, ataque) {
     if (!isPartidaActiva.value) return
     
     // 1. Llamada a la API para aplicar daño y obtener la nueva vida (requiere que el endpoint POST /api/boss/attack esté activo)
-    try {
-        const response = await fetch('/api/boss/attack', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bossId: BOSS_ID_SIMULADO, danoAplicado: dano }),
-        });
-        const data = await response.json();
+    // try {
+    //     const response = await fetch('/api/boss/attack', {
+    //         method: 'POST',
+    //         headers: { 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({ bossId: bossSessionId.value, danoAplicado: dano }),
+    //     });
+    //     const data = await response.json();
 
-        if (!response.ok || !data.success) {
-            console.error("Error al atacar al boss:", data.error || response.statusText);
-            añadirMensaje(`ERROR: Falló la comunicación con el Jefe.`, 'error--text');
-            return;
-        }
+    //     if (!response.ok || !data.success) {
+    //         console.error("Error al atacar al boss:", data.error || response.statusText);
+    //         añadirMensaje(`ERROR: Falló la comunicación con el Jefe.`, 'error--text');
+    //         return;
+    //     }
 
-        // 2. Actualizar vida local con el valor devuelto por el servidor
-        jefeVidaActual.value = data.nuevaVida;
+    //     // 2. Actualizar vida local con el valor devuelto por el servidor
+    //     jefeVidaActual.value = data.nuevaVida;
 
-    } catch (error) {
-        console.error("Error de red al atacar al boss:", error);
-        añadirMensaje(`ERROR DE RED: No se pudo contactar con el Jefe.`, 'error--text');
-        return;
-    }
+    // } catch (error) {
+    //     console.error("Error de red al atacar al boss:", error);
+    //     añadirMensaje(`ERROR DE RED: No se pudo contactar con el Jefe.`, 'error--text');
+    //     return;
+    // }
     
     // 3. Animación de golpe
     isJefeGolpeado.value = true
@@ -406,61 +455,104 @@ function onFeatures(payload) {
 }
 
 
+// --- LÓGICA DE UNIÓN Y PARTIDA ---
+async function unirseAIncursion() {
+  buscandoPartida.value = true;
+  mostrarDialogoUnirse.value = false;
+  añadirMensaje('Buscando una incursión abierta...', 'info--text');
+
+  // Simulación de llamada a un backend que busca o crea una sala
+  // En un caso real, aquí harías:
+  // const response = await axios.post('/api/boss/join', { userId: user.value.id });
+  // const { sessionId, isCreator, participants } = response.data;
+  
+  // --- SIMULACIÓN ---
+  await new Promise(resolve => setTimeout(resolve, 1500)); // Simula espera de red
+  const sessionId = 1; // ID de sesión simulado
+  const isCreator = true; // Simula que este usuario es el creador
+  const initialParticipants = [user.value]; // Añadir al usuario actual a la lista
+  // --- FIN SIMULACIÓN ---
+
+  bossSessionId.value = sessionId;
+  esCreador.value = isCreator;
+  buscandoPartida.value = false;
+  participantes.value = initialParticipants;
+
+  if (isCreator) {
+    añadirMensaje('¡Has creado una nueva sala de incursión! Esperando a otros jugadores...', 'success--text');
+  } else {
+    añadirMensaje('¡Te has unido a una incursión! Esperando al líder para iniciar.', 'success--text');
+  }
+  
+  // Aquí conectarías al WebSocket con el ID de la sesión
+  // conectarWebSocket(sessionId);
+  
+  await cargarEstadoJefe();
+}
+
+function salirDeLaIncursion() {
+  // Aquí harías una llamada a la API para salir de la sala
+  // y desconectarías el WebSocket
+  bossSessionId.value = null;
+  esCreador.value = false;
+  isPartidaActiva.value = false;
+  participantes.value = [];
+  logMensajes.value = [{ time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
+  detenerRuleta();
+}
+
 // --- LÓGICA DE INICIO/FIN DE PARTIDA ---
 function iniciarPartida() {
-    if (isPartidaActiva.value || !isPoseDetectorReady.value) return
-    
-    // Resetear
-    jugadorVidaActual.value = jugadorVidaMaxima
-    repeticiones.value = 0
-    squatState.value = 'up'
-    pushupState.value = 'up'
-    situpState.value = 'up'
-    lungeState.value = 'up'
-    logMensajes.value = []
-
-    // Nota: La vida del jefe se resetea al cargar desde el servidor
-
-    seleccionarEjercicioRandom(); 
-    tiempoRestante.value = DURACION_RULETA;
-
-    isPartidaActiva.value = true
-    añadirMensaje(`¡Comienza el combate! El primer ataque es: ${ejercicioSeleccionado.value}.`, 'success--text')
-    
-    iniciarRuleta(); 
+  if (isPartidaActiva.value || !isPoseDetectorReady.value || !bossSessionId.value) return;
+  
+  // El creador envía un mensaje por WebSocket para que todos inicien
+  // En esta simulación, lo iniciamos localmente
+  
+  jugadorVidaActual.value = jugadorVidaMaxima;
+  repeticiones.value = 0;
+  squatState.value = 'up';
+  pushupState.value = 'up';
+  situpState.value = 'up';
+  lungeState.value = 'up';
+  
+  seleccionarEjercicioRandom();
+  tiempoRestante.value = DURACION_RULETA;
+  
+  isPartidaActiva.value = true;
+  añadirMensaje(`¡Comienza el combate! El primer ataque es: ${ejercicioSeleccionado.value}.`, 'critical--text');
+  
+  iniciarRuleta();
 }
 
 function detenerPartida() {
-    if (!isPartidaActiva.value) return
-    isPartidaActiva.value = false
-    detenerRuleta(); 
-    if (dañoJugadorTimeout) clearTimeout(dañoJugadorTimeout);
-    añadirMensaje('Combate detenido por el usuario.', 'warning--text')
+  if (!isPartidaActiva.value) return;
+  isPartidaActiva.value = false;
+  detenerRuleta();
+  if (dañoJugadorTimeout) clearTimeout(dañoJugadorTimeout);
+  añadirMensaje('Combate detenido.', 'warning--text');
 }
 
 // --- LLAMADA INICIAL AL MONTAR ---
 // Función para cargar la vida inicial del jefe desde el servidor
 async function cargarEstadoJefe() {
-    try {
-        const response = await fetch(`/api/boss/${BOSS_ID_SIMULADO}`);
-        const data = await response.json();
+  if (!bossSessionId.value) return;
+  try {
+    // const response = await fetch(`/api/boss/${bossSessionId.value}`);
+    // const data = await response.json();
+    // jefeVidaActual.value = data.boss.jefe_vida_actual;
+    
+    // Simulación
+    jefeVidaActual.value = jefeVidaMaxima;
+    añadirMensaje(`Estado del Jefe cargado: ${jefeVidaActual.value} HP.`, 'info--text');
 
-        if (response.ok && data.success) {
-            jefeVidaActual.value = data.boss.jefe_vida_actual;
-            // Opcional: Si el jefeVidaMaxima en el servidor es diferente, se actualizaría aquí.
-            // jefeVidaMaxima = data.boss.jefe_vida_max; 
-            añadirMensaje(`Estado del Jefe cargado: ${jefeVidaActual.value} HP.`, 'info--text');
-        } else if (response.status === 404) {
-            añadirMensaje('ERROR: Jefe no encontrado en la base de datos.', 'error--text');
-        }
-    } catch (error) {
-        console.error("Error de red al cargar el estado del jefe:", error);
-        añadirMensaje('ERROR DE RED: No se pudo cargar el estado inicial del Jefe.', 'error--text');
-    }
+  } catch (error) {
+    console.error("Error de red al cargar el estado del jefe:", error);
+    añadirMensaje('ERROR DE RED: No se pudo cargar el estado inicial del Jefe.', 'error--text');
+  }
 }
 
 onMounted(() => {
-    cargarEstadoJefe();
+    // Ya no cargamos el jefe al montar, sino al unirnos a una sesión.
 })
 
 onBeforeUnmount(() => {
