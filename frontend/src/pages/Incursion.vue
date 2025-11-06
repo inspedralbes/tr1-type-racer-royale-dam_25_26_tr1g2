@@ -151,11 +151,7 @@ import {
     checkSquatRep, 
     checkPushupRep, 
     checkSitupRep,    
-    checkLungeRep,    
-    MIN_SQUAT_ANGLE, 
-    MAX_SQUAT_ANGLE, 
-    MIN_PUSHUP_ANGLE, 
-    MAX_PUSHUP_ANGLE 
+    checkLungeRep
 } from '../utils/exercise-detection.js' 
 
 // --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---

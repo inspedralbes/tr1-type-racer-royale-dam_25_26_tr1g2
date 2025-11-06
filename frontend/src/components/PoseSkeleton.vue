@@ -469,6 +469,17 @@ watch(sourceMode, async (mode) => {
 watch(selectedId, (id) => {
   if (id && sourceMode.value === 'camera') startCamera(id)
 })
+import { checkPushupRep } from '@/utils/exercise-detection.js'
+
+let state = 'up'
+let reps = 0
+
+function updateReps(angles) {
+  const { newState, repCompleted } = checkPushupRep(angles, state)
+  state = newState
+  if (repCompleted) reps++
+}
+
 
 </script>
 
