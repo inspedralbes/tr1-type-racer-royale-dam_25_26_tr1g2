@@ -63,42 +63,37 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue'
-  import { useRouter } from 'vue-router'
-  // Asegúrate de tener una forma de hacer llamadas HTTP (ej. axios, fetch)
-  import axios from 'axios' // Asumiendo que usas axios
-   
-  const router = useRouter()
-  const API_BASE_URL = 'http://localhost:3000/api' // Ajusta si tu puerto de API es diferente
-  const codigoSala = ref('')
-   
-  // Función para unirse a la sala
+import { ref } from 'vue'
+import axios from 'axios'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const codigoSala = ref('')  // 👈 ESTA LÍNEA ES CLAVE
+
+const API_BASE_URL = 'http://localhost:9000/api' // o el que uses
+  
   async function unirseSala() {
-    const code = codigoSala.value.trim().toUpperCase()
-    if (!code) return
-    
+    if (!codigoSala.value.trim()) return
+  
     try {
-      // 1. Verificar si la sala existe
-      const response = await axios.get(`${API_BASE_URL}/session/${code}`)
-      
-      // Si la respuesta es exitosa (código 200), la sala existe
-      if (response.data.session) {
-        alert(`Te has unido a la sala: ${code}`)
-        // 2. Redirigir a la página de juego, pasando el código de sala como query param
-        router.push({ name: 'multijugador', query: { sala: code } })
-      }
-    } catch (error) {
-      // Manejar errores como 404 (Sala no encontrada)
-      if (error.response && error.response.status === 404) {
-        alert(`La sala con código ${code} no fue encontrada.`)
+      const userId = 2 // simulado, reemplaza por el usuario real
+      const res = await axios.post(`${API_BASE_URL}/multiplayer/join`, {
+        sessionId: codigoSala.value.trim(),
+        userId,
+      })
+  
+      if (res.data.success) {
+        router.push({ name: 'MultiplayerMode', params: { id: codigoSala.value } })
       } else {
-        console.error('Error al unirse a la sala:', error)
-        alert('Error de conexión al verificar la sala.')
+        alert(res.data.error || 'Error al unirse a la sala.')
       }
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo conectar al servidor.')
     }
   }
   </script>
-
+  
   
   <style>
   .app-background {

@@ -10,7 +10,18 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 
 const API_PORT = process.env.API_PORT || 9000;
-const WS_PORT = process.env.WS_PORT || 8081;
+const WS_PORT = process.env.WS_PORT || 8080;
+
+function broadcast(sessionId, msg) {
+    const data = JSON.stringify(msg);
+    if (!sessions.has(sessionId)) return;
+    for (const id of sessions.get(sessionId)) {
+      const client = clients.get(id);
+      if (client && client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    }
+  }
 
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
   .split(',')
@@ -55,8 +66,7 @@ app.post('/api/register', async (req, res) => {
     res.status(500).json({ success: false, error: 'Error al registrar usuario' });
   }
 });
-
-
+  
 // Login
 app.post('/api/login', async (req, res) => {
   const { correu, password } = req.body;
@@ -96,6 +106,65 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ success: false, error: 'Error del servidor' });
   }
 });
+
+// -------------------- MEMORIA TEMPORAL DE SALAS --------------------
+const salas = {}; 
+// Estructura ejemplo:
+// salas = {
+//   "ABC123": { creatorId: 1, players: [1], maxPlayers: 4 }
+// };
+
+// -------------------- FUNCIÓN PARA GENERAR CÓDIGO CORTO --------------------
+function generarCodigoCorto(longitud = 6) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let codigo = '';
+  for (let i = 0; i < longitud; i++) {
+    codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return codigo;
+}
+
+// -------------------- RUTA PARA CREAR SALA --------------------
+app.post('/api/multiplayer/create', (req, res) => {
+  const { creatorId, maxPlayers } = req.body;
+  const sessionId = generarCodigoCorto(); // 👈 aquí usamos la función
+
+  salas[sessionId] = {
+    creatorId,
+    players: [creatorId],
+    maxPlayers: maxPlayers || 2,
+  };
+
+  console.log('Sala creada:', sessionId);
+  res.json({ success: true, sessionId });
+});
+
+// -------------------- RUTA PARA UNIRSE A UNA SALA --------------------
+app.post('/api/multiplayer/join', (req, res) => {
+    const { sessionId, userId } = req.body;
+  
+    const sala = salas[sessionId];
+    if (!sala) {
+      return res.status(404).json({ success: false, error: 'La sala no existe.' });
+    }
+  
+    // Si ya está lleno
+    if (sala.players.length >= sala.maxPlayers) {
+      return res.status(403).json({ success: false, error: 'La sala está llena.' });
+    }
+  
+    // Si el usuario ya está dentro
+    if (sala.players.includes(userId)) {
+      return res.json({ success: true, message: 'Ya estás en la sala.' });
+    }
+  
+    // Agregar usuario
+    sala.players.push(userId);
+    console.log(`Usuario ${userId} se unió a la sala ${sessionId}`);
+  
+    res.json({ success: true, sessionId });
+  });
+  
 // -------------------- SESIONES 2vs2 --------------------
 
 // ...existing code...
@@ -119,6 +188,37 @@ app.post('/api/session/save', async (req, res) => {
         finalUserId = createRes.insertId;
       }
     }
+
+// -------------------- SALAS MULTIJUGADOR --------------------
+const activeRooms = new Map(); // { sessionId: { creatorId, maxPlayers, players: [] } }
+
+app.post('/api/multiplayer/create', (req, res) => {
+  const { creatorId, maxPlayers = 2 } = req.body;
+  const sessionId = uuidv4();
+
+  activeRooms.set(sessionId, {
+    creatorId,
+    maxPlayers,
+    players: [creatorId],
+  });
+
+  res.json({ success: true, sessionId });
+});
+
+app.post('/api/multiplayer/join', (req, res) => {
+  const { sessionId, userId } = req.body;
+  if (!activeRooms.has(sessionId))
+    return res.status(404).json({ success: false, error: 'Sala no encontrada' });
+
+  const room = activeRooms.get(sessionId);
+  if (room.players.length >= room.maxPlayers)
+    return res.status(400).json({ success: false, error: 'Sala llena' });
+
+  if (!room.players.includes(userId)) room.players.push(userId);
+
+  res.json({ success: true, message: 'Unido correctamente', sessionId });
+});
+
 
     // Crear rutina
     const [result] = await db.pool.query(
@@ -363,27 +463,71 @@ wss.on('connection', ws => {
     let data;
     try { data = JSON.parse(message); } catch { data = { type: 'text', message }; }
     const type = data.type;
-
+  
     if (type === 'JOIN_SESSION') {
-      const sessionId = data.sessionId;
+      const { sessionId } = data;
       if (!sessions.has(sessionId)) sessions.set(sessionId, new Set());
       sessions.get(sessionId).add(clientId);
       userSessions.set(clientId, sessionId);
+  
+      // init state map for session
       if (!userStates.has(sessionId)) userStates.set(sessionId, {});
-      ws.send(JSON.stringify({ type: 'SESSION_STATE', state: userStates.get(sessionId) }));
-    } else if (type === 'REPS_UPDATE') {
-      const sessionId = data.sessionId;
-      if (!sessions.has(sessionId)) return;
       const state = userStates.get(sessionId);
-      state[clientId] = data.reps;
-      for (const id of sessions.get(sessionId)) {
-        const client = clients.get(id);
-        if (client && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: 'SESSION_STATE', state }));
-        }
-      }
+      // register this client with default values (if no existing)
+      state[clientId] = state[clientId] || { reps: 0, ready: false, clientId };
+  
+      // confirm join
+      ws.send(JSON.stringify({ type: 'SESSION_JOINED', sessionId, clientId }));
+  
+      // broadcast current session state
+      broadcast(sessionId, { type: 'SESSION_STATE', state });
+  
+      return;
     }
+  
+    // Toggle ready state for this client
+    if (type === 'READY_TOGGLE') {
+      const sessionId = userSessions.get(clientId);
+      if (!sessionId) return;
+      const state = userStates.get(sessionId) || {};
+      if (!state[clientId]) state[clientId] = { reps: 0, ready: false, clientId };
+      state[clientId].ready = !!data.ready;
+      // broadcast new state
+      broadcast(sessionId, { type: 'SESSION_STATE', state });
+      return;
+    }
+  
+    // Update reps for this client
+    if (type === 'UPDATE_REPS') {
+      const sessionId = userSessions.get(clientId);
+      if (!sessionId) return;
+      const state = userStates.get(sessionId) || {};
+      if (!state[clientId]) state[clientId] = { reps: 0, ready: false, clientId };
+      state[clientId].reps = Number(data.reps) || state[clientId].reps || 0;
+      broadcast(sessionId, { type: 'SESSION_STATE', state });
+      return;
+    }
+  
+    // Start session requested by some client (typically the creator)
+    if (type === 'START_SESSION') {
+      const sessionId = userSessions.get(clientId);
+      if (!sessionId) return;
+      const state = userStates.get(sessionId) || {};
+      // check everybody ready
+      const allReady = Object.values(state).length > 0 && Object.values(state).every(p => p.ready === true);
+      if (!allReady) {
+        // inform requester that not all ready
+        ws.send(JSON.stringify({ type: 'START_DENIED', reason: 'Not all players ready' }));
+        return;
+      }
+      // Broadcast start
+      broadcast(sessionId, { type: 'SESSION_STARTED', startedBy: clientId, timestamp: Date.now() });
+      return;
+    }
+  
+    // (opcional) OTHER message types...
   });
+  
 
   ws.on('close', () => {
     const sessionId = userSessions.get(clientId);

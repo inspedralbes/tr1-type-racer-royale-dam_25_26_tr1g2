@@ -480,37 +480,6 @@ watch(selectedId, (id) => {
       <video ref="videoEl" playsinline muted autoplay class="video"></video>
       <canvas ref="canvasRef" class="overlay"></canvas>
     </div>
-
-    <!-- Selector de càmera sota el vídeo -->
-    <div class="camera-select">
-      <select v-model="selectedId" class="select">
-        <option v-for="d in devices" :key="d.deviceId" :value="d.deviceId">
-          {{ d.label }}
-        </option>
-      </select>
-    </div>
- 
-
-<!-- NEW: selector d'origen i entrada de fitxer -->
-<div class="source-select" style="width: min(100%, 720px); display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="camera" v-model="sourceMode">
-    Càmera
-  </label>
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="file" v-model="sourceMode">
-    Vídeo local
-  </label>
-
-  <!-- Input de fitxer activat només en mode 'file' -->
-  <input
-    v-if="sourceMode === 'file'"
-    type="file"
-    accept="video/*"
-    @change="e => e.target.files?.[0] && startFileVideo(e.target.files[0])"
-    style="grid-column: 1 / -1;"
-  />
-</div>
   </div>
 </template>
 

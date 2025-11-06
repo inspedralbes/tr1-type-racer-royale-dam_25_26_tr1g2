@@ -1,3 +1,64 @@
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+// Mantengo solo un import de axios
+import axios from 'axios' 
+// Reemplaza esto con tu forma real de obtener el ID del usuario
+// Asumiendo que getUserId devuelve el ID del usuario loggeado.
+// Si no tienes esta función, debes simularla o implementarla.
+const getUserId = () => 1; // EJEMPLO: Asumo ID 1. ¡AJUSTA ESTO!
+
+const router = useRouter()
+const API_BASE_URL = 'http://localhost:9000/api' // Ajusta si tu puerto de API es diferente
+
+const codigoSala = ref('')
+const salaIniciada = ref(false)
+const maxPersonas = ref(2)
+const personasOptions = [2,3,4,5,6,7,8]
+
+// Generar código llamando a la API y guardándolo en la DB
+async function generarCodigo() {
+  const creadorId = getUserId();
+  if (!creadorId) return alert('Debes iniciar sesión.');
+  console.log('Intentando conectar con:', `${API_BASE_URL}/multiplayer/create`);
+  try {
+    const response = await axios.post(`${API_BASE_URL}/multiplayer/create`, {
+      creatorId: creadorId,
+      maxPlayers: maxPersonas.value,
+    });
+
+    // ✅ No hace falta comprobar .success, solo sessionId
+    if (response.data.sessionId) {
+      codigoSala.value = response.data.sessionId;
+      alert(`Sala creada con código: ${codigoSala.value}`);
+    } else {
+      alert('Error al crear sala (respuesta inválida).');
+      console.error('Respuesta del servidor:', response.data);
+    }
+  } catch (err) {
+    console.error('Error al conectar con el servidor:', err);
+    alert('Error al conectar con el servidor.');
+  }
+}
+
+
+// Copiar al portapapeles
+function copiarCodigo() {
+  // Uso de navigator.clipboard.writeText es correcto
+  navigator.clipboard.writeText(codigoSala.value)
+    .then(() => alert(`Código copiado: ${codigoSala.value}`))
+}
+
+// Iniciar sala y redirigir al componente de multijugador
+function iniciarSala() {
+  if (!codigoSala.value) return
+  salaIniciada.value = true
+  console.log('Redirigiendo a sala:', codigoSala.value)
+  router.push({ name: 'MultiplayerMode', params: { id: codigoSala.value } })
+}
+
+</script>
+
 <template>
   <v-app dark class="app-background">
     <v-main>
@@ -92,150 +153,8 @@
     </v-main>
   </v-app>
 </template>
-// ...existing code...
-<script setup>
-import { ref } from 'vue'
-<<<<<<< HEAD
-import { useRouter } from 'vue-router'
-// Asegúrate de tener una forma de hacer llamadas HTTP (ej. axios, fetch)
-import axios from 'axios' // Asumiendo que usas axios
-import { getUserId } from '@/utils/auth' // Asumiendo que tienes una función para obtener el ID de usuario
- 
-const router = useRouter()
-const API_BASE_URL = 'http://localhost:3000/api' // Ajusta si tu puerto de API es diferente
- 
-=======
-import axios from 'axios'
 
-
-
->>>>>>> 09f49573a615d74d856120620dd233c60efa9699
-const codigoSala = ref('')
-const salaIniciada = ref(false)
-const maxPersonas = ref(2)
-const personasOptions = [2,3,4,5,6,7,8]
-<<<<<<< HEAD
- 
-// Generar código llamando a la API
-async function generarCodigo() {
-  const creadorId = getUserId() // Obtener el ID del usuario loggeado
-  if (!creadorId) {
-    alert('Debes iniciar sesión para crear una sala.')
-    return
-  }
-
-  salaIniciada.value = false
-  codigoSala.value = 'Generando...'
-  
-  try {
-    const response = await axios.post(`${API_BASE_URL}/session/save`, {
-      creadorId: creadorId // El backend generará el código (sessionId)
-    })
-
-    if (response.data.success) {
-      codigoSala.value = response.data.sessionId
-      alert(`Sala creada con código: ${codigoSala.value}`)
-    } else {
-      alert('Error al crear la sala: ' + response.data.error)
-      codigoSala.value = ''
-    }
-  } catch (error) {
-    console.error('Error al generar código:', error)
-    alert('Error de conexión al crear la sala.')
-    codigoSala.value = ''
-  }
-}
- 
-// Copiar al portapapeles
-function copiarCodigo() {
-  navigator.clipboard.writeText(codigoSala.value)
-    .then(() => alert(`Código copiado: ${codigoSala.value}`))
-}
- 
-// Iniciar sala y redirigir al componente de multijugador
-function iniciarSala() {
-  if (!codigoSala.value) return
-  salaIniciada.value = true
-  // Redirigir al componente Multijugador.vue, pasando el código de sala como query param
-  router.push({ name: 'multijugador', query: { sala: codigoSala.value } })
-=======
-
-const API_BASE = import.meta.env.VITE_API_URL || ''
-const api = axios.create({ baseURL: API_BASE, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
-
-function obtenerCreadorId() {
-  return localStorage.getItem('userId') || localStorage.getItem('creadorId') || null
-}
-function obtenerNombreUsuario() {
-  return localStorage.getItem('username') || 'Invitado'
-}
-
-async function generarCodigo() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  let codigo = ''
-  for (let i = 0; i < 6; i++) {
-    codigo += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-
-  const creadorId = obtenerCreadorId() || 'invitado'
-  const nombre = obtenerNombreUsuario()
-
-  const payload = {
-    codigo,
-    creadorId,
-    nombreCreador: nombre,
-    tipo: 'public',
-    modo: '2vs2',
-    jugadores: [{ id: creadorId, nombre, rol: 'host', conectado: true }],
-    opciones: {}
-  }
-
-  try {
-    const resp = await api.post('/api/session/save', payload)
-    // prefer sessionId que devuelve el servidor
-    const sid = resp.data?.sessionId ?? resp.data?.id ?? resp.data?.insertId ?? null
-    if (sid) {
-      codigoSala.value = sid
-      alert(`Sala creada en servidor (id: ${sid})`)
-    } else {
-      alert('Sala creada en servidor (id no devuelto por el API)')
-    }
-  } catch (err) {
-    console.error('Error guardando sala -', err?.response?.status, err?.response?.data ?? err.message)
-    const servidorMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message
-    alert(`No se pudo guardar la sala. (${err?.response?.status ?? 'sin respuesta'})\nDetalle: ${servidorMsg}`)
-  }
-}
-
-async function copiarCodigo() {
-  if (!codigoSala.value) return
-  try {
-    await navigator.clipboard.writeText(codigoSala.value)
-    alert('Código copiado al portapapeles.')
-  } catch (err) {
-    console.error('No se pudo copiar:', err)
-    alert('No se pudo copiar el código.')
-  }
-}
-
-async function iniciarSala() {
-  if (!codigoSala.value) return alert('Genera la sala antes de iniciar.')
-  salaIniciada.value = true
-  try {
-    await api.post('/api/session/start', {
-      codigo: codigoSala.value,
-      iniciadorId: obtenerCreadorId() || 'invitado'
-    })
-    alert('Sala iniciada.')
-  } catch (err) {
-    console.warn('No se pudo notificar inicio de sala:', err)
-    const servidorMsg = err?.response?.data?.error || err?.message
-    alert(`No se pudo iniciar la sala. (${err?.response?.status ?? 'sin respuesta'})\nDetalle: ${servidorMsg}`)
-  }
->>>>>>> 09f49573a615d74d856120620dd233c60efa9699
-}
-</script>
-0<style>
+<style>
 .app-background {
   background: linear-gradient(135deg, #121212 0%, #1c1c1c 100%);
     color: #E0E0E0;

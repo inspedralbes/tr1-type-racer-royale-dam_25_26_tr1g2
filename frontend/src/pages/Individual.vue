@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
 <template>
   <v-app class="app-background">
     <v-main>
-      <v-container fluid class="fill-height pa-4 custom-container">
+      <v-container fluid class="pa-4 custom-container">
         <v-card elevation="16" class="pa-6 rounded-xl card-elevated card-full-width" dark>
           <v-card-title class="justify-center pb-4">
             <h2 class="text-h5 font-weight-black">Modo Individual - {{ ejercicioSeleccionado }}</h2>
@@ -329,8 +329,9 @@ onBeforeUnmount(() => {
 
 .webcam-container {
   position: relative;
-  width: 100%;
-  padding-top: 65%; 
+  width: 80%;
+/* padding-top: 65%; <--- COMENTADO / ELIMINADO */
+  min-height: 400px;
   background-color: #1c1c1c;
   border: 2px dashed #555;
   border-radius: 12px;
