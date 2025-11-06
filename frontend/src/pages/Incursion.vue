@@ -1,9 +1,9 @@
 <template>
-  <v-container fluid class="pa-4 custom-background">
+  <v-container fluid class="pa-4 incursion-background">
     
     <v-row class="mb-4 align-center">
       <v-col cols="12">
-        <h1 class="text-h4 font-weight-black pokemon-title">
+        <h1 class="text-h3 font-weight-black text-center battle-title">
             BATALLA CONTRA EL JEFE DE GIMNASIO
         </h1>
       </v-col>
@@ -12,8 +12,8 @@
     <v-row>
       
       <v-col cols="12" md="6" order-md="1">
-        <v-card class="pa-3 pokemon-card player-card fill-height">
-          <h2 class="text-h5 font-weight-bold mb-3"> TU ENTRENADOR</h2>
+        <v-card class="pa-4 game-card player-card fill-height">
+          <h2 class="text-h5 font-weight-bold mb-4 text-center player-title">TU ENTRENADOR</h2>
 
           <div class="mb-4">
             <div class="d-flex align-center justify-space-between mb-1">
@@ -26,9 +26,11 @@
                 :value="jugadorVidaPorcentaje"
                 height="20"
                 rounded
-                :color="calcularColorVida(jugadorVidaPorcentaje)"
-                class="health-bar"
-            ></v-progress-linear>
+                :color="calcularColorVida(jugadorVidaPorcentaje)" >
+                 <template v-slot:default="{ value }">
+                  <strong class="health-text">{{ Math.ceil(value) }}%</strong>
+                </template>
+            </v-progress-linear>
           </div>
           
           <div class="webcam-stage mb-4">
@@ -39,35 +41,41 @@
             </div>
           </div>
           
-          <div class="d-flex justify-center mt-4 gap-4">
-              <v-btn
-                  color="success"
-                  large
-                  @click="iniciarPartida"
-                  :disabled="isPartidaActiva || !isPoseDetectorReady"
-              >
-                  <v-icon left>mdi-sword</v-icon>
-                  INICIAR
-              </v-btn>
-              <v-btn
-                  color="error"
-                  large
-                  @click="detenerPartida"
-                  :disabled="!isPartidaActiva"
-              >
-                  <v-icon left>mdi-hand-right</v-icon>
-                  DETENER
-              </v-btn>
-          </div>
-          <p class="text-center mt-3 text-subtitle-1 font-weight-black">
-             REPETICIONES: {{ repeticiones }}
-          </p>
+          <v-row align="center" class="mt-4">
+            <v-col cols="6">
+              <div class="d-flex justify-center gap-2">
+                <v-btn
+                    color="success"
+                    large
+                    @click="iniciarPartida"
+                    :disabled="isPartidaActiva || !isPoseDetectorReady"
+                    class="action-btn"
+                >
+                    <v-icon left>mdi-sword</v-icon>
+                    INICIAR
+                </v-btn>
+                <v-btn
+                    color="error"
+                    large
+                    @click="detenerPartida"
+                    :disabled="!isPartidaActiva"
+                    class="action-btn"
+                >
+                    <v-icon left>mdi-shield-off</v-icon>
+                    DETENER
+                </v-btn>
+              </div>
+            </v-col>
+            <v-col cols="6" class="text-center">
+              <div class="reps-display">REPETICIONES: <span>{{ repeticiones }}</span></div>
+            </v-col>
+          </v-row>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="6" order-md="2">
         
-        <v-card class="pa-3 pokemon-card mb-4 ruleta-card" dark>
+        <v-card class="pa-4 game-card mb-4 ruleta-card" dark>
             <div class="d-flex align-center justify-space-between">
                 <h3 class="text-h6 font-weight-bold">PRÓXIMO ATAQUE EN:</h3>
                 <div class="text-h4 font-weight-black" :class="{'error--text': tiempoRestante < 15}">
@@ -79,7 +87,7 @@
             
             <div class="text-center">
                 <p class="mb-1 text-subtitle-1">¡El Jefe exige!</p>
-                <h2 class="text-h3 font-weight-black text-warning">
+                <h2 class="text-h3 font-weight-black exercise-demand">
                     {{ ejercicioSeleccionado.toUpperCase() }}
                 </h2>
                 <v-progress-linear
@@ -93,11 +101,11 @@
         </v-card>
         
         <v-card 
-            class="pa-3 pokemon-card enemy-card mb-4"
+            class="pa-4 game-card enemy-card mb-4"
             :class="{'hit-animation': isJefeGolpeado}"
         >
           <div class="d-flex align-center justify-space-between mb-3">
-            <h2 class="text-h5 font-weight-bold"> JEFE DE GIMNASIO</h2>
+            <h2 class="text-h5 font-weight-bold enemy-title">JEFE DE GIMNASIO</h2>
             <div class="text-subtitle-1 font-weight-bold">
               HP: {{ jefeVidaActual }} / {{ jefeVidaMaxima }}
             </div>
@@ -109,28 +117,23 @@
               height="25"
               rounded
               :color="calcularColorVida(jefeVidaPorcentaje)"
-              class="health-bar"
             >
               <template v-slot:default="{ value }">
-                <strong>{{ Math.ceil(value) }}%</strong>
+                <strong class="health-text">{{ Math.ceil(value) }}%</strong>
               </template>
             </v-progress-linear>
           </div>
           
           <div class="text-center boss-image-area">
-             <v-icon 
-                v-if="isJefeGolpeado" 
-                size="100" 
-                color="yellow lighten-2" 
-                class="hit-indicator"
-            >
-                mdi-flash-alert
-            </v-icon>
+             <v-icon size="120" class="boss-icon">mdi-robot-angry</v-icon>
+             <div v-if="isJefeGolpeado" class="hit-indicator">
+               <v-icon size="100" color="yellow lighten-1">mdi-flash</v-icon>
+             </div>
           </div>
         </v-card>
         
-        <v-card class="pa-4 message-console">
-          <h3 class="text-h6 mb-2 text-primary"> REGISTRO DE COMBATE</h3>
+        <v-card class="pa-4 game-card message-console">
+          <h3 class="text-h6 mb-2 console-title">REGISTRO DE COMBATE</h3>
           <div class="message-log" ref="messageLogRef">
             <p v-for="(msg, index) in logMensajes" :key="index" :class="msg.type">
                 <strong>[{{ msg.time }}]</strong> {{ msg.text }}
@@ -467,38 +470,47 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Estilos del Esqueleto de la Batalla (Adaptados de tu código anterior) */
-.custom-background {
-  background: linear-gradient(to bottom, #2c3e50, #34495e); 
+.incursion-background {
+  background: linear-gradient(135deg, #1d2630 0%, #313c4a 100%);
   min-height: 100vh;
+  color: #f5f5f5;
 }
 
-.pokemon-title {
-    color: #f1c40f; 
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+.battle-title {
+    color: #FFD700; /* Oro */
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+    letter-spacing: 1.5px;
 }
 
-.pokemon-card {
-  border: 4px solid #333;
+.game-card {
+  border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  box-shadow: 5px 5px 0px 0px #1a1a1a; 
-  background-color: #3f51b5 !important; 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+  background-color: rgba(40, 50, 60, 0.8) !important; 
   color: white;
   position: relative; /* Necesario para la animación */
+  backdrop-filter: blur(5px);
 }
 
 .enemy-card {
-  background-color: #e57373 !important; 
-  border-color: #c62828;
+  border-color: rgba(255, 82, 82, 0.5);
+}
+
+.enemy-title {
+  color: #FF5252; /* Rojo brillante */
 }
 
 .player-card {
-  background-color: #64b5f6 !important; 
-  border-color: #1565c0;
+  border-color: rgba(66, 165, 245, 0.5);
 }
 
-/* 💥 CORRECCIÓN DE LA SINTAXIS CSS DEPRECADA */
-.health-bar :deep(.v-progress-linear__background) {
-  background-color: #444 !important;
+.player-title {
+  color: #42A5F5; /* Azul brillante */
+}
+
+.health-text {
+  color: white;
+  text-shadow: 1px 1px 2px black;
 }
 
 .message-console {
@@ -506,11 +518,17 @@ onBeforeUnmount(() => {
   border: 4px solid #444;
   border-radius: 8px;
   font-family: 'Courier New', Courier, monospace;
+  background-color: rgba(20, 20, 20, 0.8) !important;
+}
+
+.console-title {
+  color: #00E676; /* Verde terminal */
 }
 
 .message-log {
     height: 200px;
     overflow-y: auto;
+    background-color: rgba(0,0,0,0.3);
     padding-right: 8px;
     color: #eee;
 }
@@ -521,10 +539,10 @@ onBeforeUnmount(() => {
     font-size: 0.9rem;
 }
 
-.success--text { color: #4CAF50 !important; }
-.warning--text { color: #FFEB3B !important; }
-.critical--text { color: #FF5252 !important; font-weight: bold; }
-.info--text { color: #2196F3 !important; }
+.success--text { color: #69F0AE !important; }
+.warning--text { color: #FFD600 !important; }
+.critical--text { color: #FF1744 !important; font-weight: bold; text-transform: uppercase; }
+.info--text { color: #40C4FF !important; }
 
 /* Webcam Stage (para contener el PoseSkeleton) */
 .webcam-stage {
@@ -549,9 +567,21 @@ onBeforeUnmount(() => {
     
 }
 .ruleta-card {
-  background-color: #3e2723 !important; 
-  border-color: #5d4037;
+  border-color: rgba(255, 171, 0, 0.5);
   color: white;
+}
+
+.exercise-demand {
+  color: #FFAB00; /* Naranja ámbar */
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.reps-display {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  letter-spacing: 1px;
 }
 
 /* --- ESTILOS DE ANIMACIÓN DE GOLPE --- */
@@ -564,23 +594,31 @@ onBeforeUnmount(() => {
 }
 
 .hit-animation {
-  animation: shake 0.2s; /* Coincide con el timeout en JS */
-  box-shadow: 0 0 20px 5px rgba(255, 255, 0, 0.7) !important; /* Brillo amarillo */
+  animation: shake 0.2s ease-in-out;
 }
 
 .boss-image-area {
     min-height: 150px; /* Asegura que hay espacio para el indicador de golpe */
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.boss-icon {
+  color: #BDBDBD;
+  text-shadow: 0 0 15px rgba(0,0,0,0.8);
 }
 
 .hit-indicator {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.8;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 5;
-    text-shadow: 0 0 10px #ff0000;
+    filter: brightness(1.5);
+    opacity: 1;
 }
 /* -------------------------------------- */
 </style>

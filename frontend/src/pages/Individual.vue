@@ -1,10 +1,12 @@
 // ...existing code...
 <script setup>
-import { ref, onBeforeUnmount, shallowRef } from 'vue'
+import { ref, onBeforeUnmount, shallowRef, onMounted, computed } from 'vue'
 import PoseSkeleton from '../components/PoseSkeleton.vue'
 import PoseFeatures from '../components/PoseFeatures.vue'
+import axios from 'axios'
 
 // [VARIABLES DE ESTADO]
+const user = ref(JSON.parse(localStorage.getItem('user')) || {})
 const repeticiones = ref(0)
 const features = shallowRef(null)
 const isPartidaActiva = ref(false)
@@ -12,7 +14,10 @@ const isPoseDetectorReady = ref(false)
 const ejercicioSeleccionado = ref('Sentadillas')
 const intervalRef = ref(null)
 
-const ejercicios = [
+const userRoutines = ref([])
+const selectedRoutineId = ref(null)
+
+const allExercises = [
   'Sentadillas',
   'Flexiones',
   'Abdominales',
@@ -29,6 +34,15 @@ const ejercicios = [
   'Press de Banca',
   'Remo'
 ]
+
+const ejerciciosDisponibles = computed(() => {
+  if (!selectedRoutineId.value) {
+    return allExercises
+  }
+  const routine = userRoutines.value.find(r => r.id === selectedRoutineId.value)
+  return routine ? routine.exercicis.map(ex => ex.nom_exercicis) : allExercises
+})
+
 
 // --- LÓGICA DE DETECCIÓN DE SENTADILLAS (SQUATS) ---
 const squatState = ref('up')
@@ -109,6 +123,20 @@ function detenerPartida() {
 onBeforeUnmount(() => {
   detenerPartida()
 })
+
+onMounted(async () => {
+  const user = JSON.parse(localStorage.getItem('user')) || {}
+  const userId = user?.id || user?.userId
+  if (userId) {
+    try {
+      const response = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`)
+      userRoutines.value = response.data.rutines || []
+    } catch (error) {
+      console.error('Error al cargar las rutinas del usuario:', error)
+      userRoutines.value = []
+    }
+  }
+})
 </script>
 
 <template>
@@ -150,7 +178,19 @@ onBeforeUnmount(() => {
               </v-col>
 
               <v-col cols="12" md="3" class="d-flex flex-column align-center justify-start">
-                <v-select v-model="ejercicioSeleccionado" :items="ejercicios" label="Selecciona Ejercicio" outlined dense dark class="mb-4 exercise-select" prepend-inner-icon="mdi-dumbbell" :disabled="isPartidaActiva" />
+                <v-select
+                  v-model="selectedRoutineId"
+                  :items="userRoutines"
+                  item-title="nom"
+                  item-value="id"
+                  label="Selecciona una Rutina"
+                  outlined dense dark
+                  class="mb-4 exercise-select"
+                  prepend-inner-icon="mdi-clipboard-list"
+                  :disabled="isPartidaActiva"
+                  clearable
+                />
+                <v-select v-model="ejercicioSeleccionado" :items="ejerciciosDisponibles" label="Selecciona Ejercicio" outlined dense dark class="mb-4 exercise-select" prepend-inner-icon="mdi-dumbbell" :disabled="isPartidaActiva" />
                 <v-card elevation="8" class="pa-6 rounded-lg repetitions-card" dark>
                   <div class="text-h7 font-weight-bold mb-2">Repeticiones</div>
                   <div class="text-h4 font-weight-black">{{ repeticiones }}</div>

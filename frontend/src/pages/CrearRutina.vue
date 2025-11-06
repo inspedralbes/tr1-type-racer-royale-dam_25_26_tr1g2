@@ -120,8 +120,13 @@ async function guardarRutina() {
   mensaje.value = ''
 
   try {
+    // Obtener el ID del usuario desde localStorage
+    const user = JSON.parse(localStorage.getItem('user')) || {}
+    const userId = user?.id || user?.userId || null
+
     const resRutina = await axios.post('/api/rutines', {
-      nom: nombreRutina.value
+      nom: nombreRutina.value,
+      id_usuari: userId // Asociar la rutina con el usuario
     })
     idRutinaCreada.value = resRutina.data.id
 
