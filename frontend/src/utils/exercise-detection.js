@@ -32,20 +32,21 @@ export const MAX_MOUNTAIN_CLIMBERS_KNEE_ANGLE = 150;
  * @param {string} currentState - 'up' o 'down'.
  * @param {number} minAngle - Ángulo de posición baja.
  * @param {number} maxAngle - Ángulo de posición alta.
+ * @param {boolean} [invertLogic=false] - Si es true, la lógica se invierte (repetición al bajar de maxAngle).
  * @returns {{newState: string, repCompleted: boolean}}
  */
-function checkRep(angle, currentState, minAngle, maxAngle) {
+function checkRep(angle, currentState, minAngle, maxAngle, invertLogic = false) {
   if (!Number.isFinite(angle)) return { newState: currentState, repCompleted: false };
 
   let newState = currentState;
   let repCompleted = false;
 
-  // Posición baja
-  if (angle < minAngle && currentState === 'up') {
+  const isDown = invertLogic ? angle > maxAngle : angle < minAngle;
+  const isUp = invertLogic ? angle < minAngle : angle > maxAngle;
+
+  if (isDown && currentState === 'up') {
     newState = 'down';
-  } 
-  // Posición alta → cuenta repetición
-  else if (angle > maxAngle && currentState === 'down') {
+  } else if (isUp && currentState === 'down') {
     newState = 'up';
     repCompleted = true;
   }
@@ -101,10 +102,8 @@ export function checkJumpingJacksRep(features, currentState) {
  * @returns {{newState: string, repCompleted: boolean}}
  */
 export function checkMountainClimbersRep(angles, currentState) {
-  const leftKneeBent = angles.leftKnee < MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE;
-  const rightKneeBent = angles.rightKnee < MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE;
-
-  return checkRep(leftKneeBent || rightKneeBent ? 70 : 160, currentState, MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE, MAX_MOUNTAIN_CLIMBERS_KNEE_ANGLE);
+  const kneeAngle = Math.min(angles.leftKnee, angles.rightKnee);
+  return checkRep(kneeAngle, currentState, MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE, MAX_MOUNTAIN_CLIMBERS_KNEE_ANGLE);
 }
 
 // --- EJERCICIOS EXISTENTES ---
@@ -138,7 +137,7 @@ export  function checkSitupRep(angles, currentState) {
     return { newState: currentState, repCompleted: false };
 
   const avgHipAngle = (angles.leftHip + angles.rightHip) / 2
-  return checkRep(avgHipAngle, currentState, MIN_SITUP_HIP_ANGLE, MAX_SITUP_HIP_ANGLE);
+  return checkRep(avgHipAngle, currentState, MIN_SITUP_HIP_ANGLE, MAX_SITUP_HIP_ANGLE, true); // Lógica invertida
 }
 
 export function checkLungeRep(angles, currentState) {

@@ -198,7 +198,9 @@ import {
     checkSquatRep, 
     checkPushupRep, 
     checkSitupRep,    
-    checkLungeRep
+    checkLungeRep,
+    checkJumpingJacksRep,
+    checkMountainClimbersRep
 } from '../utils/exercise-detection.js' 
 
 // --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---
@@ -232,10 +234,12 @@ const repeticiones = ref(0)
 const squatState = ref('up')
 const pushupState = ref('up')
 const situpState = ref('up')   
-const lungeState = ref('up')   
+const lungeState = ref('up')
+const jumpingJacksState = ref('down');
+const mountainClimbersState = ref('up');
 
 const logMensajes = ref([
-    { time: '00:00', text: '¡Bienvenido! Inicia la batalla para que el Jefe elija tu ejercicio.', type: '' }
+    { time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }
 ])
 const messageLogRef = ref(null)
 
@@ -243,7 +247,7 @@ const messageLogRef = ref(null)
 const isJefeGolpeado = ref(false) 
 
 // --- ESTADO Y TIMERS DE LA RULETA ---
-const ejerciciosDisponibles = ref(['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas']) 
+const ejerciciosDisponibles = ref(['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']) 
 const ejercicioSeleccionado = ref(ejerciciosDisponibles.value[0]) // Inicial
 const timerRuleta = ref(null)
 const tiempoRestante = ref(DURACION_RULETA)
@@ -435,6 +439,14 @@ function onFeatures(payload) {
                 result = checkLungeRep(angles, lungeState.value);
                 lungeState.value = result.newState;
                 break;
+            case 'Jumping Jacks':
+                result = checkJumpingJacksRep(features.value, jumpingJacksState.value);
+                jumpingJacksState.value = result.newState;
+                break;
+            case 'Mountain Climbers':
+                result = checkMountainClimbersRep(angles, mountainClimbersState.value);
+                mountainClimbersState.value = result.newState;
+                break;
         }
         
         newRep = result.repCompleted
@@ -447,6 +459,8 @@ function onFeatures(payload) {
             if (ejercicioSeleccionado.value === 'Flexiones') baseDano = 10;
             if (ejercicioSeleccionado.value === 'Abdominales') baseDano = 7;
             if (ejercicioSeleccionado.value === 'Zancadas') baseDano = 9;
+            if (ejercicioSeleccionado.value === 'Jumping Jacks') baseDano = 6;
+            if (ejercicioSeleccionado.value === 'Mountain Climbers') baseDano = 8;
             
             const dano = Math.floor(Math.random() * 5) + baseDano; 
             aplicarDanoJefe(dano, ejercicioSeleccionado.value)
@@ -514,6 +528,8 @@ function iniciarPartida() {
   pushupState.value = 'up';
   situpState.value = 'up';
   lungeState.value = 'up';
+  jumpingJacksState.value = 'down';
+  mountainClimbersState.value = 'up';
   
   seleccionarEjercicioRandom();
   tiempoRestante.value = DURACION_RULETA;
