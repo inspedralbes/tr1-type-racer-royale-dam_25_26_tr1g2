@@ -1,6 +1,12 @@
 <script setup>
 import { ref, computed, shallowRef, onBeforeUnmount } from 'vue'
 
+// NOTA: Asumiendo que PoseSkeleton y PoseFeatures están correctamente importados
+// Si no están definidos, el código solo mostrará la interfaz.
+// Se recomienda tener estos componentes activos para la funcionalidad real de detección.
+// import PoseSkeleton from '../components/PoseSkeleton.vue' 
+// import PoseFeatures from '../components/PoseFeatures.vue'
+
 // [ESTADO MULTIJUGADOR]
 const jugadoresData = [
   { id: 1, nombre: 'Jugador 1', ready: false, repeticiones: 0 },
@@ -17,21 +23,26 @@ const features = shallowRef(null)
 const maxReps = ref(5)
 const panelAbierto = ref([])
 
+// Variables de control de la simulación
 let intervalRef = null 
-
 const audioBeep = { play: () => console.log('🔊 BEEP! Objetivo alcanzado.') }
 
+// ESTADO AÑADIDO: Controla la fase de la SIMULACIÓN (down_phase o up_phase)
+const repCycleState = ref({ 1: 'down_phase', 2: 'down_phase' }); 
+
 // --- LÓGICA DE DETECCIÓN DE REPETICIONES POR JUGADOR ---
+// El estado de la repetición (arriba/abajo) DEBE ser por jugador 
 const squatState = ref({ 1: 'up', 2: 'up' }) 
 const pushupState = ref({ 1: 'up', 2: 'up' }) 
 
+// Umbrales para el conteo de repeticiones (ejemplo)
 const MIN_SQUAT_ANGLE = 120
 const MAX_SQUAT_ANGLE = 165
 const MIN_PUSHUP_ANGLE = 100
 const MAX_PUSHUP_ANGLE = 160
 
 /**
- * ✅ FUNCIÓN CORREGIDA - Verifica repeticiones por jugador
+ * Verifica si se ha completado una repetición para el jugador dado.
  */
 function checkRepeticion(jugadorId, angles) {
   if (!isPartidaActiva.value) return;
@@ -64,30 +75,30 @@ function checkRepeticion(jugadorId, angles) {
 
   const jugadorState = currentStateRef.value[jugadorId];
 
-  // ✅ 1. Posición BAJA (Down) - CORREGIDO
+  // 1. Posición BAJA (Down)
   if (avgAngle < minAngle && jugadorState === 'up') {
     currentStateRef.value = { 
       ...currentStateRef.value, 
       [jugadorId]: 'down' 
     };
-    console.log(`🔽 ${jugador.nombre}: BAJANDO (${avgAngle.toFixed(1)}°)`);
+    // console.log(`🔽 ${jugador.nombre}: BAJANDO (${avgAngle.toFixed(1)}°)`);
   } 
-  // ✅ 2. Posición ALTA (Up) - CORREGIDO
+  // 2. Posición ALTA (Up) -> ¡Suma la repetición!
   else if (avgAngle > maxAngle && jugadorState === 'down') {
     currentStateRef.value = { 
       ...currentStateRef.value, 
       [jugadorId]: 'up' 
     };
     repeticionCompletada = true;
-    console.log(`✅ ${jugador.nombre}: ¡REPETICIÓN! (${avgAngle.toFixed(1)}°)`);
+    // console.log(`✅ ${jugador.nombre}: ¡REPETICIÓN! (${avgAngle.toFixed(1)}°)`);
   }
 
-  // ✅ Si la repetición fue completada - CORREGIDO
+  // Si la repetición fue completada
   if (repeticionCompletada) {
     const index = jugadores.value.findIndex(j => j.id === jugadorId);
     if (index !== -1) {
       jugadores.value[index].repeticiones++;
-      console.log(`📊 ${jugador.nombre}: ${jugadores.value[index].repeticiones}/${maxReps.value}`);
+      // console.log(`📊 ${jugador.nombre}: ${jugadores.value[index].repeticiones}/${maxReps.value}`);
     }
 
     // Comprobar si algún jugador ha ganado
@@ -104,7 +115,7 @@ function checkRepeticion(jugadorId, angles) {
   }
 }
 
-// --- SIMULACIÓN DE REPETICIONES AUTOMÁTICA ---
+// --- SIMULACIÓN DE REPETICIONES AUTOMÁTICA (POR FASE) ---
 function simulateReps() {
   if (!isPartidaActiva.value) return;
 
@@ -112,28 +123,40 @@ function simulateReps() {
     const id = jugador.id;
     const isSquat = ejercicioSeleccionado.value === 'Sentadillas';
     
-    const stateRef = isSquat ? squatState : pushupState;
+    // Configuración
     const minAngle = isSquat ? MIN_SQUAT_ANGLE : MIN_PUSHUP_ANGLE;
     const maxAngle = isSquat ? MAX_SQUAT_ANGLE : MAX_PUSHUP_ANGLE;
     const angleName = isSquat ? 'Knee' : 'Elbow';
     const otherAngleName = isSquat ? 'Elbow' : 'Knee';
     
     let angles = {};
+    // Ruido para simular variación natural
     const noise = Math.random() * 5 - 2.5;
 
-    if (stateRef.value[id] === 'up') {
-      const simulatedAngle = minAngle - 10 + noise; 
-      angles[`left${angleName}`] = simulatedAngle;
-      angles[`right${angleName}`] = simulatedAngle;
-    } else if (stateRef.value[id] === 'down') {
-      const simulatedAngle = maxAngle + 10 + noise; 
-      angles[`left${angleName}`] = simulatedAngle;
-      angles[`right${angleName}`] = simulatedAngle;
+    // LÓGICA DE SIMULACIÓN POR FASE
+    const currentPhase = repCycleState.value[id];
+    let simulatedAngle;
+
+    if (currentPhase === 'down_phase') {
+      // 1. Simular BAJADA (ángulo bajo) -> Esto activa el estado 'down' en el contador real
+      simulatedAngle = minAngle - 10 + noise; 
+      repCycleState.value[id] = 'up_phase'; // Prepara el siguiente tick para la subida
+    } else if (currentPhase === 'up_phase') {
+      // 2. Simular SUBIDA (ángulo alto) -> Esto activa el estado 'up' y suma la repetición
+      simulatedAngle = maxAngle + 10 + noise; 
+      repCycleState.value[id] = 'down_phase'; // Prepara el siguiente tick para la bajada
+    } else {
+        return; 
     }
+
+    angles[`left${angleName}`] = simulatedAngle;
+    angles[`right${angleName}`] = simulatedAngle;
     
+    // Ángulo opuesto neutro
     angles[`left${otherAngleName}`] = 175;
     angles[`right${otherAngleName}`] = 175;
 
+    // Llama a la lógica de repetición con los ángulos simulados
     checkRepeticion(id, angles);
   });
 }
@@ -144,6 +167,7 @@ const todosListos = computed(() =>
 )
 
 function onFeatures(payload) {
+  // Ignorar features reales si la simulación está activa
   if (intervalRef) return; 
 
   if (payload && !isPoseDetectorReady.value) {
@@ -174,13 +198,17 @@ function iniciarPartida() {
   isPartidaActiva.value = true
   mostrarMensajeObjetivo.value = false
   
+  // Reiniciar estados y contadores
   jugadores.value.forEach(j => (j.repeticiones = 0))
   squatState.value = { 1: 'up', 2: 'up' };
   pushupState.value = { 1: 'up', 2: 'up' };
+  // Reiniciar el estado de la simulación
+  repCycleState.value = { 1: 'down_phase', 2: 'down_phase' }; 
   
   if (!intervalRef) {
+    // 750ms -> 1 repetición cada 1.5 segundos por jugador (dos ticks por repetición)
     intervalRef = setInterval(simulateReps, 750); 
-    console.log("✅ Simulación iniciada");
+    console.log("✅ Simulación iniciada (1 rep/1.5s)");
   }
 }
 
