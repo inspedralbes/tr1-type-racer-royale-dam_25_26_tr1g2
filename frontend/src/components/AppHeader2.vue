@@ -21,6 +21,7 @@
       </v-btn>
 
       <v-btn text to="/profile" color="green" class="font-weight-bold mr-2">
+        <v-icon left>mdi-account  </v-icon>
         PROFILE
       </v-btn>
       

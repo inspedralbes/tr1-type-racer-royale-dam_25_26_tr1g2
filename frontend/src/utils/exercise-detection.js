@@ -1,116 +1,154 @@
-// src/utils/exercise-detection.js
-
 // --- UMBRALES GENERALES ---
+// Sentadillas (Squats)
 export const MIN_SQUAT_ANGLE = 120 
 export const MAX_SQUAT_ANGLE = 165 
 
-export const MIN_PUSHUP_ANGLE = 100 
-export const MAX_PUSHUP_ANGLE = 160 
+// Flexiones (Push-ups)
+export const MIN_PUSHUP_ANGLE = 80   // brazo flexionado (abajo)
+export const MAX_PUSHUP_ANGLE = 160  // brazo extendido (arriba)
 
 // --- NUEVOS UMBRALES ---
-// Abdominales (Sit-ups): Ángulo en la cadera (Hip) para detectar la flexión
-export const MIN_SITUP_HIP_ANGLE = 90  // Flexionado (cuerpo arriba)
-export const MAX_SITUP_HIP_ANGLE = 165 // Extendido (cuerpo abajo, plano)
+// Abdominales (Sit-ups)
+export const MIN_SITUP_HIP_ANGLE = 90  
+export const MAX_SITUP_HIP_ANGLE = 165 
 
-// Zancadas (Lunges): Ángulo en la rodilla trasera (Knee)
-export const MIN_LUNGE_KNEE_ANGLE = 90  // Rodilla flexionada (casi toca el suelo)
-export const MAX_LUNGE_KNEE_ANGLE = 160 // Rodilla extendida (posición inicial)
+// Zancadas (Lunges)
+export const MIN_LUNGE_KNEE_ANGLE = 90  
+export const MAX_LUNGE_KNEE_ANGLE = 160 
+
+// Jumping Jacks
+export const MIN_JUMPING_JACKS_ANKLE_DIST_RATIO = 1.5; // Distancia de tobillos vs. hombros
+export const MAX_JUMPING_JACKS_ANKLE_DIST_RATIO = 0.8;
+export const MIN_JUMPING_JACKS_WRIST_Y_RATIO = 0.8; // Posición Y de muñecas vs. hombros
+
+// Mountain Climbers
+export const MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE = 80;
+export const MAX_MOUNTAIN_CLIMBERS_KNEE_ANGLE = 150;
+
 
 /**
- * Función genérica de máquina de estados para contar repeticiones.
- * @param {number} angle - El ángulo clave para la detección.
+ * Máquina de estados genérica para contar repeticiones.
+ * @param {number} angle - Ángulo clave (rodilla, codo, etc.).
  * @param {string} currentState - 'up' o 'down'.
- * @param {number} minAngle - El ángulo que define la posición de 'down'.
- * @param {number} maxAngle - El ángulo que define la posición de 'up'.
+ * @param {number} minAngle - Ángulo de posición baja.
+ * @param {number} maxAngle - Ángulo de posición alta.
+ * @param {boolean} [invertLogic=false] - Si es true, la lógica se invierte (repetición al bajar de maxAngle).
  * @returns {{newState: string, repCompleted: boolean}}
  */
-function checkRep(angle, currentState, minAngle, maxAngle) {
-    if (!Number.isFinite(angle)) return { newState: currentState, repCompleted: false };
+function checkRep(angle, currentState, minAngle, maxAngle, invertLogic = false) {
+  if (!Number.isFinite(angle)) return { newState: currentState, repCompleted: false };
 
-    let newState = currentState;
-    let repCompleted = false;
+  let newState = currentState;
+  let repCompleted = false;
 
-    // 1. Posición BAJA (Down)
-    if (angle < minAngle && currentState === 'up') {
-        newState = 'down';
-    } 
-    
-    // 2. Posición ALTA (Up) -> ¡Suma la repetición!
-    else if (angle > maxAngle && currentState === 'down') {
-        newState = 'up';
-        repCompleted = true;
-    }
+  const isDown = invertLogic ? angle > maxAngle : angle < minAngle;
+  const isUp = invertLogic ? angle < minAngle : angle > maxAngle;
 
-    return { newState, repCompleted };
+  if (isDown && currentState === 'up') {
+    newState = 'down';
+  } else if (isUp && currentState === 'down') {
+    newState = 'up';
+    repCompleted = true;
+  }
+
+  return { newState, repCompleted };
 }
 
+/**
+ * Jumping Jacks: Comprueba la distancia entre tobillos y la altura de las muñecas.
+ * @param {object} features - Objeto completo de features de PoseSkeleton.
+ * @param {string} currentState - 'down' o 'up'.
+ * @returns {{newState: string, repCompleted: boolean}}
+ */
+export function checkJumpingJacksRep(features, currentState) {
+  const { keypoints, normalized } = features;
+  if (!keypoints || keypoints.length < 24 || !normalized?.shoulderWidth_px) {
+    return { newState: currentState, repCompleted: false };
+  }
 
-// --- LÓGICA DE EJERCICIOS EXISTENTES ---
+  const shoulderWidth = normalized.shoulderWidth_px;
+  const leftAnkle = keypoints.find(kp => kp.name === 'left_ankle');
+  const rightAnkle = keypoints.find(kp => kp.name === 'right_ankle');
+  const leftWrist = keypoints.find(kp => kp.name === 'left_wrist');
+  const leftShoulder = keypoints.find(kp => kp.name === 'left_shoulder');
+
+  if (!leftAnkle || !rightAnkle || !leftWrist || !leftShoulder) {
+    return { newState: currentState, repCompleted: false };
+  }
+
+  const ankleDist = Math.hypot(leftAnkle.x - rightAnkle.x, leftAnkle.y - rightAnkle.y);
+  const ankleDistRatio = ankleDist / shoulderWidth;
+  const wristYRatio = leftWrist.y / leftShoulder.y;
+
+  let newState = currentState;
+  let repCompleted = false;
+
+  if (ankleDistRatio > MIN_JUMPING_JACKS_ANKLE_DIST_RATIO && wristYRatio < MIN_JUMPING_JACKS_WRIST_Y_RATIO) {
+    if (currentState === 'down') newState = 'up';
+  } else if (ankleDistRatio < MAX_JUMPING_JACKS_ANKLE_DIST_RATIO) {
+    if (currentState === 'up') {
+      newState = 'down';
+      repCompleted = true;
+    }
+  }
+
+  return { newState, repCompleted };
+}
+
+/**
+ * Mountain Climbers: Comprueba si una de las rodillas se acerca al pecho.
+ * @param {object} angles - Ángulos de la pose.
+ * @param {string} currentState - 'center' o 'knee_forward'.
+ * @returns {{newState: string, repCompleted: boolean}}
+ */
+export function checkMountainClimbersRep(angles, currentState) {
+  const kneeAngle = Math.min(angles.leftKnee, angles.rightKnee);
+  return checkRep(kneeAngle, currentState, MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE, MAX_MOUNTAIN_CLIMBERS_KNEE_ANGLE);
+}
+
+// --- EJERCICIOS EXISTENTES ---
 
 export function checkSquatRep(angles, currentState) {
-    if (!angles.leftKnee || !angles.rightKnee) return { newState: currentState, repCompleted: false };
-    const avgKneeAngle = (angles.leftKnee + angles.rightKnee) / 2;
-    return checkRep(avgKneeAngle, currentState, MIN_SQUAT_ANGLE, MAX_SQUAT_ANGLE);
+  if (!angles.leftKnee || !angles.rightKnee) 
+    return { newState: currentState, repCompleted: false };
+
+  const avgKneeAngle = (angles.leftKnee + angles.rightKnee) / 2;
+  return checkRep(avgKneeAngle, currentState, MIN_SQUAT_ANGLE, MAX_SQUAT_ANGLE);
 }
 
+/**
+ * Flexiones (Push-ups): mide el ángulo del codo
+ */
 export function checkPushupRep(angles, currentState) {
-    if (!angles.leftElbow || !angles.rightElbow) return { newState: currentState, repCompleted: false };
-    const avgElbowAngle = (angles.leftElbow + angles.rightElbow) / 2;
-    return checkRep(avgElbowAngle, currentState, MIN_PUSHUP_ANGLE, MAX_PUSHUP_ANGLE);
+  if (!angles.leftElbow || !angles.rightElbow)
+    return { newState: currentState, repCompleted: false };
+
+  const avgElbowAngle = (angles.leftElbow + angles.rightElbow) / 2;
+
+  // Aplicamos una zona muerta (histeresis) para evitar conteos dobles
+  const result = checkRep(avgElbowAngle, currentState, MIN_PUSHUP_ANGLE, MAX_PUSHUP_ANGLE);
+  return result;
 }
 
-// --- LÓGICA DE NUEVOS EJERCICIOS ---
+// --- NUEVOS EJERCICIOS ---
 
-/**
- * Abdominales (Sit-ups): Basado en la flexión del torso (ángulo de la cadera).
- * Nota: Asume que el usuario está en el suelo (o una esterilla).
- */
-export function checkSitupRep(angles, currentState) {
-    // Usamos el ángulo de la cadera (hip) para medir la flexión del torso.
-    if (!angles.leftHip || !angles.rightHip) return { newState: currentState, repCompleted: false };
-    
-    // Un sit-up implica que el torso se flexiona hacia las piernas.
-    // Cuanto más pequeño sea el ángulo de la cadera, más arriba está el torso.
-    const avgHipAngle = (angles.leftHip + angles.rightHip) / 2;
-    
-    // Invertimos la lógica del UP/DOWN en checkRep si el ángulo ALTO (extendido) es el valor mayor
-    // Aquí: minAngle (90) es "UP" (contraído), maxAngle (165) es "DOWN" (extendido).
-    return checkRep(avgHipAngle, currentState, MIN_SITUP_HIP_ANGLE, MAX_SITUP_HIP_ANGLE);
+export  function checkSitupRep(angles, currentState) {
+  if (!angles.leftHip || !angles.rightHip)
+    return { newState: currentState, repCompleted: false };
+
+  const avgHipAngle = (angles.leftHip + angles.rightHip) / 2
+  return checkRep(avgHipAngle, currentState, MIN_SITUP_HIP_ANGLE, MAX_SITUP_HIP_ANGLE, true); // Lógica invertida
 }
 
-
-/**
- * Zancadas (Lunges): Basado en la flexión de la rodilla trasera.
- * Nota: Es complejo saber qué rodilla es la "delantera" y "trasera" automáticamente. 
- * Asumiremos que ambas rodillas deben extenderse/flexionarse secuencialmente para una repetición.
- * Para simplificar, contaremos la repetición cuando **ambas** rodillas hayan vuelto a la posición alta.
- */
 export function checkLungeRep(angles, currentState) {
-    if (!angles.leftKnee || !angles.rightKnee) return { newState: currentState, repCompleted: false };
+  if (!angles.leftKnee || !angles.rightKnee)
+    return { newState: currentState, repCompleted: false };
 
-    let newState = currentState;
-    let repCompleted = false;
-    
-    // 1. Detectar si alguna rodilla está en la posición baja (DOWN)
-    const leftDown = angles.leftKnee < MIN_LUNGE_KNEE_ANGLE;
-    const rightDown = angles.rightKnee < MIN_LUNGE_KNEE_ANGLE;
-
-    if (leftDown || rightDown) {
-        if (currentState === 'up') {
-            newState = 'down';
-        }
-    } 
-    
-    // 2. Detectar si ambas rodillas están en la posición alta (UP)
-    const leftUp = angles.leftKnee > MAX_LUNGE_KNEE_ANGLE;
-    const rightUp = angles.rightKnee > MAX_LUNGE_KNEE_ANGLE;
-
-    if (leftUp && rightUp) {
-        if (currentState === 'down') {
-            newState = 'up';
-            repCompleted = true; // Se cuenta la repetición al volver a la posición inicial (ambas piernas rectas)
-        }
-    }
-
-    return { newState, repCompleted };
+  // Una zancada se considera 'abajo' si CUALQUIERA de las rodillas está flexionada por debajo del umbral.
+  // Y se considera 'arriba' si AMBAS rodillas están extendidas por encima del umbral.
+  const kneeAngle = Math.min(angles.leftKnee, angles.rightKnee);
+  
+  // Usamos la función genérica checkRep para la lógica.
+  return checkRep(kneeAngle, currentState, MIN_LUNGE_KNEE_ANGLE, MAX_LUNGE_KNEE_ANGLE);
 }
+
