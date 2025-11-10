@@ -103,7 +103,7 @@ axios.defaults.baseURL = API_URL
 
 
 const nombreRutina = ref('')
-const ejerciciosRutina = ref([{ nom_exercicis: '', n_repeticions: '' }])
+const ejerciciosRutina = ref([{ nom_exercicis: '', n_repeticiones: '' }])
 const cargando = ref(false)
 const mensaje = ref('')
 const idRutinaCreada = ref(null)
@@ -117,7 +117,7 @@ const ejerciciosDisponibles = [
 
 
 function agregarEjercicio() {
- ejerciciosRutina.value.push({ nom_exercicis: '', n_repeticions: '' })
+ ejerciciosRutina.value.push({ nom_exercicis: '', n_repeticiones: '' })
 }
 
 
@@ -155,7 +155,7 @@ async function guardarRutina() {
        await axios.post('/api/exercicis_rutina', {
          id_rutina: idRutinaCreada.value,
          nom_exercicis: ex.nom_exercicis,
-         n_repeticions: ex.n_repeticions
+         n_repeticions: ex.n_repeticiones
        })
      }
    }
@@ -163,7 +163,7 @@ async function guardarRutina() {
 
    mensaje.value = 'Rutina creada correctamente.'
    nombreRutina.value = ''
-   ejerciciosRutina.value = [{ nom_exercicis: '', n_repeticions: '' }]
+   ejerciciosRutina.value = [{ nom_exercicis: '', n_repeticiones: '' }]
  } catch (error) {
    console.error(error)
    mensaje.value = 'Error al guardar la rutina.'
