@@ -17,16 +17,24 @@
       </v-btn>
   
       <v-spacer></v-spacer>
-  
-      <!-- Refresh button -->
-      <v-btn icon title="Refrescar" class="mr-2" @click="refreshPage">
-        <v-icon>mdi-refresh</v-icon>
+      <v-btn icon title="Refrescar página" @click="refreshPage">
+        <v-icon color="white">mdi-refresh</v-icon>
       </v-btn>
-
+      
       <v-btn text to="/profile" color="green" class="font-weight-bold mr-2">
+        <v-icon left>mdi-account</v-icon>
         PROFILE
       </v-btn>
       
+      <v-btn
+        text
+        @click="handleLogout"
+        color="error"
+        class="font-weight-bold"
+      >
+        <v-icon left>mdi-logout</v-icon>
+        CERRAR SESIÓN
+      </v-btn>
     </v-app-bar>
   </template>
   

@@ -86,30 +86,41 @@ const passwordRules = [
   v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
 ]
 
-// Importar useAuth
 import { useAuth } from '@/composables/useAuth'
 const { login } = useAuth()
+
+import axios from 'axios'
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000'
 
 // Función de login
 const handleLogin = async () => {
   try {
     loading.value = true
     error.value = null
-
-    // Aquí implementarías la lógica de login con tu backend
-    // Por ahora, simulamos un login exitoso
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simular delay de red
-    
-    // Login exitoso: establecer estado de autenticación
-    login({
-      email: email.value,
-      // Aquí puedes incluir más datos del usuario si es necesario
+    const response = await axios.post('/api/login', {
+      correu: email.value,
+      password: password.value
     })
 
-    // Redirigir a la página principal
-    router.push('/inicial')
+    if (response.data.success) {
+      // Guardar datos del usuario en localStorage
+      login(response.data)
+      localStorage.setItem('user', JSON.stringify(response.data))
+      // Disparar evento para que otras partes de la app reaccionen
+      window.dispatchEvent(new CustomEvent('user-logged-in'))
+      // Redirigir a la página principal
+      router.push('/inicial')
+    } else {
+      error.value = response.data.error || 'Error al iniciar sesión.'
+    }
   } catch (err) {
-    error.value = 'Error al iniciar sesión. Por favor, verifica tus credenciales.'
+    if (err.response && err.response.data && err.response.data.error) {
+      // Si el backend envía un error específico (p.ej. "Usuario no encontrado")
+      error.value = err.response.data.error;
+    } else {
+      // Error de red u otro problema
+      error.value = 'Error al iniciar sesión. Por favor, verifica tus credenciales y la conexión.'
+    }
     console.error('Error de login:', err)
   } finally {
     loading.value = false

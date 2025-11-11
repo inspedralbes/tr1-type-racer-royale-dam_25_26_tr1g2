@@ -8,7 +8,7 @@ services:
       MYSQL_USER: fitai_user
       MYSQL_PASSWORD: fitai_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
@@ -46,7 +46,7 @@ services:
     build: ./frontend
     container_name: tr1-frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       REACT_APP_API_URL: "http://localhost:9000"
 

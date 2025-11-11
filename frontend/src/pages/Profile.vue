@@ -3,7 +3,6 @@
     <v-main>
       <v-container fluid class="pa-6">
         <v-row>
-          <!-- Columna Izquierda: Avatar y datos -->
           <v-col cols="12" md="4">
             <v-card class="profile-card mb-6" elevation="10">
               <v-card-title class="d-flex flex-column align-center">
@@ -13,61 +12,9 @@
                 <h2 class="mt-4">{{ username }}</h2>
                 <v-chip color="primary" small class="mt-2">Nivel {{ level }}</v-chip>
               </v-card-title>
-
-              <v-card-text>
-                <v-list dense>
-                  <v-list-item-title class="text-h6 mb-2">
-                    Estadísticas principales
-                  </v-list-item-title>
-                  <v-divider></v-divider>
-
-                  <v-list-item>
-                    <v-list-item-content>
-                      <v-list-item-title class="d-flex justify-space-between">
-                        <span>HP</span><span>{{ stats.hp }}/{{ stats.maxHp }}</span>
-                      </v-list-item-title>
-                      <v-progress-linear
-                        color="red"
-                        :value="(stats.hp / stats.maxHp) * 100"
-                        height="15"
-                        rounded
-                      />
-                    </v-list-item-content>
-                  </v-list-item>
-
-                  <v-list-item>
-                    <v-list-item-content>
-                      <v-list-item-title class="d-flex justify-space-between">
-                        <span>Daño</span><span>{{ stats.damage }}</span>
-                      </v-list-item-title>
-                      <v-progress-linear
-                        color="orange"
-                        :value="(stats.damage / 100) * 100"
-                        height="15"
-                        rounded
-                      />
-                    </v-list-item-content>
-                  </v-list-item>
-
-                  <v-list-item>
-                    <v-list-item-content>
-                      <v-list-item-title class="d-flex justify-space-between">
-                        <span>Defensa</span><span>{{ stats.defense }}</span>
-                      </v-list-item-title>
-                      <v-progress-linear
-                        color="blue"
-                        :value="(stats.defense / 100) * 100"
-                        height="15"
-                        rounded
-                      />
-                    </v-list-item-content>
-                  </v-list-item>
-                </v-list>
-              </v-card-text>
             </v-card>
           </v-col>
 
-          <!-- Columna Derecha: Rutinas -->
           <v-col cols="12" md="8">
             <v-card class="profile-card" elevation="10">
               <v-card-title class="d-flex justify-space-between align-center">
@@ -89,14 +36,12 @@
                     </ul>
                   </template>
                         
-
-                </v-data-table>
+                  </v-data-table>
               </v-card-text>
             </v-card>
           </v-col>
         </v-row>
 
-        <!-- Diálogo Avatares -->
         <v-dialog v-model="showAvatarDialog" max-width="500px">
           <v-card>
             <v-card-title>Seleccionar Avatar</v-card-title>
@@ -125,56 +70,81 @@
     </v-main>
   </v-app>
 </template>
+
+
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue' // Añadido onUnmounted para limpiar
 import axios from 'axios'
+
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000'
 
-// 🔹 Obtener usuario logueado desde localStorage
-const user = JSON.parse(localStorage.getItem('user')) || {}
-const userId = user?.id || user?.userId || null  // ← FIX: acepta 'id' o 'userId'
-const username = user?.usuari || 'Invitado'
+const user = ref({})
+const userId = ref(null)
+const username = ref('Invitado')
 
-// Avatar y stats
-const selectedAvatar = ref('https://cdn.vuetifyjs.com/images/john.jpg')
-const showAvatarDialog = ref(false)
-const avatars = [
-  { id: 1, url: 'https://cdn.vuetifyjs.com/images/john.jpg' },
-  { id: 2, url: 'https://cdn.vuetifyjs.com/images/jane.jpg' }
-]
-
-const level = ref(1)
-const stats = reactive({ hp: 80, maxHp: 100, damage: 65, defense: 45 })
-
-// Rutinas del usuario
+// ... (Resto de variables reactivas) ...
 const routines = ref([])
-const deletingId = ref(null)
-const routineHeaders = [
-  { text: 'Nombre', align: 'start', value: 'nom' },
-  { text: 'Descripción', value: 'descripcio' },
-  { text: 'Ejercicios', value: 'exercicis' },
-  { text: 'Acciones', value: 'actions', sortable: false }
-]
+// ... (Resto de headers) ...
 
-// 🔹 Cargar rutinas desde el backend
+// 🔹 Función para cargar rutinas desde el backend
+// Profile.vue
+
 const loadRoutines = async () => {
   try {
-    if (!userId) {
+    if (!userId.value) {
       console.warn('No hay usuario logueado, no se pueden cargar rutinas')
       routines.value = []
       return
     }
-
-    const res = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`)
+    
+    // 💡 AÑADIR UNA MARCA DE TIEMPO para invalidar la caché
+    const timestamp = Date.now(); 
+    const res = await axios.get(`/api/rutines/user/${userId.value}?t=${timestamp}`) 
+    
     routines.value = res.data.rutines || []
   } catch (err) {
     console.error('Error al obtener rutinas:', err)
-    routines.value = [] // fallback para evitar errores
+    routines.value = []
   }
 }
+
+const updateProfileState = () => {
+    const newUser = JSON.parse(localStorage.getItem('user')) || {};
+    const newId = newUser?.id || newUser?.userId || null;
+    
+    // Si el ID de usuario ha cambiado (ej. de Invitado a Usuario Real), o de Usuario a Logout
+    if (newId !== userId.value) {
+        userId.value = newId;
+        username.value = newUser?.usuari || 'Invitado';
+        loadRoutines(); // Llama a la carga
+    } else if (newId && routines.value.length === 0) {
+        // Caso de recarga de página donde el ID no ha cambiado pero las rutinas están vacías (seguridad)
+        loadRoutines();
+    }
+}
+
+// -------------------- Lógica de Montaje y Escucha --------------------
+
 onMounted(() => {
-  loadRoutines()
-})
+    // 1. Carga inicial del perfil
+    updateProfileState();
+    
+    // 2. Escuchar cambios de 'user' en OTRAS pestañas/ventanas (evento 'storage')
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'user') {
+            updateProfileState(); 
+        }
+    });
+
+    // 3. 🔑 ESCUCHA EL EVENTO QUE DISPARA TU FUNCIÓN DE LOGIN EN LA MISMA PESTAÑA
+    window.addEventListener('user-logged-in', updateProfileState); 
+});
+
+onUnmounted(() => {
+    // Limpiar listeners al salir del componente
+    window.removeEventListener('storage', updateProfileState);
+    window.removeEventListener('user-logged-in', updateProfileState);
+});
 
 // Acciones botones
 const openAvatarDialog = () => (showAvatarDialog.value = true)
@@ -183,7 +153,6 @@ const selectAvatar = (url) => {
   showAvatarDialog.value = false
 }
 </script>
-
 
 
 <style>
