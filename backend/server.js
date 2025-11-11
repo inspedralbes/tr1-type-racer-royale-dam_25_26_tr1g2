@@ -350,61 +350,105 @@ app.delete('/api/rutines/:id', async (req, res) => {
 // -------------------- WEBSOCKET --------------------
 const wss = new WebSocket.Server({ port: WS_PORT });
 const clients = new Map();
-const sessions = new Map();
-const userSessions = new Map();
-const userStates = new Map();
+
+// Estructuras de datos mejoradas
+// sessions: Map<sessionId, Map<userId, clientId>>
+// clientMetadata: Map<clientId, { ws: WebSocket, userId: string, sessionId: string }>
+const sessions = new Map(); 
+const clientMetadata = new Map();
+
+function broadcastSessionState(sessionId) {
+    if (!sessions.has(sessionId)) return;
+
+    const userMap = sessions.get(sessionId);
+    const sessionState = {};
+
+    // Construir el estado actual de la sesión con { userId: reps }
+    userMap.forEach((clientId, userId) => {
+        const metadata = clientMetadata.get(clientId);
+        sessionState[userId] = metadata?.reps || 0;
+    });
+
+    // Enviar el estado a todos los clientes de la sesión
+    userMap.forEach(clientId => {
+        const metadata = clientMetadata.get(clientId);
+        if (metadata && metadata.ws.readyState === WebSocket.OPEN) {
+            metadata.ws.send(JSON.stringify({ type: 'SESSION_STATE', state: sessionState }));
+        }
+    });
+}
 
 wss.on('connection', ws => {
   const clientId = uuidv4();
-  clients.set(clientId, ws);
+  clientMetadata.set(clientId, { ws }); // Almacenamiento inicial solo con el objeto ws
   ws.send(JSON.stringify({ type: 'welcome', clientId }));
 
   ws.on('message', message => {
     let data;
     try { data = JSON.parse(message); } catch { data = { type: 'text', message }; }
-    const type = data.type;
+    const { type, sessionId, userId } = data;
 
-    if (type === 'JOIN_SESSION') {
-      const sessionId = data.sessionId;
-      if (!sessions.has(sessionId)) sessions.set(sessionId, new Set());
-      sessions.get(sessionId).add(clientId);
-      userSessions.set(clientId, sessionId);
-      if (!userStates.has(sessionId)) userStates.set(sessionId, {});
-      ws.send(JSON.stringify({ type: 'SESSION_STATE', state: userStates.get(sessionId) }));
-    } else if (type === 'REPS_UPDATE') {
-      const sessionId = data.sessionId;
-      if (!sessions.has(sessionId)) return;
-      const state = userStates.get(sessionId);
-      state[clientId] = data.reps;
-      for (const id of sessions.get(sessionId)) {
-        const client = clients.get(id);
-        if (client && client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: 'SESSION_STATE', state }));
+    switch (type) {
+      case 'JOIN_SESSION': {
+        if (!sessionId || !userId) return;
+
+        // 1. Crear la sesión si no existe
+        if (!sessions.has(sessionId)) {
+          sessions.set(sessionId, new Map());
         }
+        const userMap = sessions.get(sessionId);
+
+        // 2. Si el usuario ya está en la sesión, desconectar la conexión antigua
+        if (userMap.has(userId)) {
+          const oldClientId = userMap.get(userId);
+          const oldClientMeta = clientMetadata.get(oldClientId);
+          if (oldClientMeta && oldClientMeta.ws) {
+            oldClientMeta.ws.terminate(); // Cierra la conexión anterior
+          }
+        }
+
+        // 3. Registrar al nuevo cliente
+        userMap.set(userId, clientId);
+        clientMetadata.set(clientId, { ws, userId, sessionId, reps: 0 });
+
+        // 4. Enviar estado actualizado a todos en la sesión
+        broadcastSessionState(sessionId);
+        break;
+      }
+
+      case 'REPS_UPDATE': {
+        const metadata = clientMetadata.get(clientId);
+        if (!metadata || !metadata.sessionId) return;
+
+        // Actualizar las repeticiones del usuario
+        metadata.reps = data.reps;
+        clientMetadata.set(clientId, metadata);
+
+        // Notificar a todos en la sesión
+        broadcastSessionState(metadata.sessionId);
+        break;
       }
     }
   });
 
   ws.on('close', () => {
-    const sessionId = userSessions.get(clientId);
-    if (sessionId && sessions.has(sessionId)) {
-      sessions.get(sessionId).delete(clientId);
-      const state = userStates.get(sessionId);
-      if (state) delete state[clientId];
-      if (sessions.get(sessionId).size === 0) {
+    const metadata = clientMetadata.get(clientId);
+    if (metadata && metadata.sessionId) {
+      const { sessionId, userId } = metadata;
+      const userMap = sessions.get(sessionId);
+
+      // Solo eliminar si el clientId coincide (para evitar eliminar una nueva conexión del mismo usuario)
+      if (userMap && userMap.get(userId) === clientId) {
+        userMap.delete(userId);
+      }
+
+      if (userMap && userMap.size === 0) {
         sessions.delete(sessionId);
-        userStates.delete(sessionId);
       } else {
-        for (const id of sessions.get(sessionId)) {
-          const client = clients.get(id);
-          if (client && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'SESSION_STATE', state: userStates.get(sessionId) }));
-          }
-        }
+        broadcastSessionState(sessionId); // Notificar a los restantes que alguien se fue
       }
     }
-    clients.delete(clientId);
-    userSessions.delete(clientId);
+    clientMetadata.delete(clientId);
   });
 });
 
