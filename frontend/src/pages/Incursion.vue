@@ -6,6 +6,19 @@
        <h1 class="text-h3 font-weight-black text-center battle-title">
            INCURSIÓN CONTRA EL JEFE
        </h1>
+       <p></p>
+       <!-- Botón Volver -->
+            <v-btn
+              color="error"
+              class="mb-4 button-shadow"
+              rounded
+              to="/inicial"
+              elevation="2"
+              block
+            >
+              <v-icon left>mdi-arrow-left</v-icon>
+              Volver
+            </v-btn>
        <!-- CONTADOR DE JUGADORES -->
        <div v-if="bossSessionId" class="text-center mt-2">
          <v-chip color="primary" large>
