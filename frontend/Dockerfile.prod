@@ -1,0 +1,23 @@
+# Usar la imagen oficial de Node
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copiar package.json y package-lock.json
+COPY package*.json ./
+
+# Instalar dependencias
+RUN npm install
+
+# Copiar el resto de la app
+COPY . .
+
+# Construir la app para producción
+RUN npm run build
+
+# Servir la app con un servidor ligero (http-server)
+RUN npm install -g serve
+
+EXPOSE 3000
+
+CMD ["serve", "-s", "dist", "-l", "3000"]

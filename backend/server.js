@@ -11,7 +11,7 @@ const app = express();
 // -------------------- PUERTOS --------------------
 const API_PORT = process.env.API_PORT || 9000;
 const WS_PORT_1 = process.env.WS_PORT_1 || 8080; // WS del código 1
-const WS_PORT_2 = process.env.WS_PORT_2 || 8081; // WS del código 2
+const WS_PORT_2 = process.env.WS_PORT_2 || 8082; // WS del código 2
 
 // -------------------- CORS --------------------
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
@@ -70,7 +70,7 @@ app.post('/api/login', async (req, res) => {
       await db.pool.query('UPDATE Rutines SET id_usuari = ? WHERE id_usuari = ?', [user.id, invitadoId]);
     }
 
-    res.json({ success: true, userId: user.id, usuari: user.usuari, message: 'Inicio de sesión correcto' });
+    res.json({ success: true, id: user.id, usuari: user.usuari, message: 'Inicio de sesión correcto' });
   } catch (err) {
     console.error('Error en /api/login:', err);
     res.status(500).json({ success: false, error: 'Error del servidor' });

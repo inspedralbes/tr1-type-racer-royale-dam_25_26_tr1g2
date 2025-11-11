@@ -1,10 +1,10 @@
--- Usuaris Registrats
 CREATE TABLE Usuaris (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuari VARCHAR(25) UNIQUE NOT NULL,
     correu VARCHAR(200) UNIQUE NOT NULL,
     contrasenya VARCHAR(100) NOT NULL
 );
+
 
 -- Mode 2v2
 CREATE TABLE SessionsVersus (
@@ -16,6 +16,7 @@ CREATE TABLE SessionsVersus (
     FOREIGN KEY (creador_id) REFERENCES Usuaris(id)
 );
 
+
 -- Solo
 CREATE TABLE Rutines (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -26,6 +27,7 @@ CREATE TABLE Rutines (
     FOREIGN KEY (id_usuari) REFERENCES Usuaris(id)
 );
 
+
 CREATE TABLE Exercicis_Rutina (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_rutina INT,
@@ -33,6 +35,7 @@ CREATE TABLE Exercicis_Rutina (
     n_repeticions VARCHAR(100),
     FOREIGN KEY (id_rutina) REFERENCES Rutines(id)
 );
+
 
 -- Showdown
 CREATE TABLE Boss_Sessions (
@@ -43,6 +46,7 @@ CREATE TABLE Boss_Sessions (
     estat ENUM('oberta','en curs','finalitzada') DEFAULT 'oberta',
     data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
 
 CREATE TABLE Boss_Participants (
     id INT AUTO_INCREMENT PRIMARY KEY,

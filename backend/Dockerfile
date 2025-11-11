@@ -1,23 +1,20 @@
-# Usa una imagen base oficial para Node.js
+# Usar la imagen oficial de Node
 FROM node:20-alpine
 
-# Crea y establece el directorio de trabajo dentro del contenedor
+# Establecer directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos package.json y package-lock.json (si existe)
+# Copiar package.json y package-lock.json
 COPY package*.json ./
 
-# Instala las dependencias
+# Instalar dependencias
 RUN npm install
 
-# Copia el resto de tu código de aplicación
+# Copiar el resto del proyecto
 COPY . .
 
-# Expone los puertos que usa tu aplicación
-EXPOSE 3000
-EXPOSE 8080
+# Exponer puerto
+EXPOSE 9000
 
-# Comando para arrancar la aplicación
+# Comando para iniciar la app
 CMD ["npm", "start"]
-# O si usas node directamente:
-# CMD ["node", "server.js"]
