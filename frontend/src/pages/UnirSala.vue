@@ -70,15 +70,7 @@ const codigoSala = ref('')
 const API_BASE_URL = 'http://localhost:9000'
 
 function obtenerUsuarioId() {
-  const userData = localStorage.getItem('user')
-  if (!userData) return null
-  try {
-    const user = JSON.parse(userData)
-    return user.userId || user.id || null  // depende de cómo te devuelva el backend
-  } catch (err) {
-    console.error('Error parsing user from localStorage', err)
-    return null
-  }
+  return localStorage.getItem('userId') || null
 }
 
 async function unirseSala() {

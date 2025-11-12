@@ -29,6 +29,7 @@ services:
     build: ./backend
     container_name: tr1-backend
     ports:
+      - "8082:8082"
       - "9000:9000"
     environment:
       DB_HOST: db
@@ -37,7 +38,7 @@ services:
       DB_PASSWORD: fitai_pass
       DB_NAME: fitai_db
       API_PORT: 9000
-      WS_PORT: 8082  # canvia aquest port si vols que no xocqui amb phpMyAdmin
+      WS_PORT: 8082  # Usamos el puerto 8082 para el WebSocket
       FRONTEND_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
       - db

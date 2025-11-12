@@ -2,38 +2,37 @@
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
+const cors = require('cors'); // Ya importado
 const bcrypt = require('bcrypt');
 const db = require('./config/db'); // exporta pool mysql2/promise
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const API_PORT = process.env.API_PORT || 9000;
-const WS_PORT = process.env.WS_PORT || 8081;
-app.use(cors({
-  origin: 'http://localhost:3001', // tu frontend
-  credentials: true
-}));
-app.set('etag', false);
-app.use(express.json());
+
+const API_PORT = process.env.API_PORT || 9000; // Puerto para el servidor HTTP
+const WS_PORT = process.env.WS_PORT || 8082; // Puerto para el servidor WebSocket
+
+// --- Configuración de CORS ---
+// Esta es la única configuración de CORS necesaria.
+// Permite peticiones desde los orígenes definidos en .env o los valores por defecto.
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
   .split(',')
   .map(s => s.trim());
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Origin,X-Requested-With');
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permitir peticiones sin origen (como Postman o server-to-server) y desde los orígenes permitidos
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   }
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
-  next();
-});
-
-app.use(bodyParser.json());
+};
+app.use(cors(corsOptions)); // Aplicar la configuración de CORS
+app.use(express.json()); // Usar el parser de JSON integrado de Express (reemplaza a bodyParser.json())
+app.set('etag', false); // Deshabilitar ETag para evitar problemas de caché con algunos proxies
 
 // -------------------- RUTAS API --------------------
 
@@ -90,7 +89,7 @@ app.post('/api/login', async (req, res) => {
     // Devolver datos del usuario logueado
     res.json({
       success: true,
-      id: user.id,
+      userId: user.id,
       usuari: user.usuari,
       message: 'Inicio de sesión correcto',
     });
@@ -424,27 +423,36 @@ wss.on('connection', ws => {
           sessions.set(sessionId, new Map());
         }
         const userMap = sessions.get(sessionId);
-        // 2. Si el usuario ya está en la sesión, desconectar la conexión antigua
-        if (userMap.has(userId) && userMap.get(userId) !== clientId) {
-          console.log(`Usuario ${userId} ya está en la sesión ${sessionId}. Rechazando nueva conexión.`);
-          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Ya estás en esta sala desde otro dispositivo o pestaña.' }));
-          ws.terminate();
-          return;
+        // 2. Validar si el usuario ya está en la sesión.
+        if (userMap.has(userId)) {
+          const oldClientId = userMap.get(userId);
+          // Si el cliente anterior sigue conectado, rechazar la nueva conexión.
+          if (clientMetadata.has(oldClientId) && clientMetadata.get(oldClientId).ws.readyState === WebSocket.OPEN) {
+            console.log(`Usuario ${userId} ya está en la sesión ${sessionId}. Rechazando nueva conexión.`);
+            ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Ya estás en esta sala desde otro dispositivo o pestaña.' }));
+            ws.terminate();
+            return;
+          }
         }
         // 3. Registrar al cliente
         userMap.set(userId, clientId);
-        clientMetadata.set(clientId, { ws, userId, sessionId, reps: 0 });
+        // Añadimos nombre y estado 'ready' a los metadatos del cliente
+        clientMetadata.set(clientId, { ws, userId, sessionId, reps: 0, nombre: data.nombre || `Jugador ${userId}`, ready: false });
         // 4. Enviar estado actualizado a todos en la sesión
         const sessionState = {};
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          sessionState[uId] = {
-            reps: meta?.reps || 0,
-            // Aquí puedes añadir más datos del usuario si los tienes
-          };
+          if (meta) {
+            sessionState[uId] = {
+              nombre: meta.nombre,
+              reps: meta.reps,
+              ready: meta.ready
+            };
+          }
         });
 
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState });
+        const creatorId = salasActivas[sessionId]?.creadorId;
+        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
         break;
       }
       case 'REPS_UPDATE': {
@@ -459,10 +467,33 @@ wss.on('connection', ws => {
         const sessionState = {};
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          sessionState[uId] = { reps: meta?.reps || 0 };
+          sessionState[uId] = { nombre: meta?.nombre, reps: meta?.reps || 0, ready: meta?.ready || false };
         });
 
-        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState });
+        const creatorId = salasActivas[metadata.sessionId]?.creadorId;
+        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
+        break;
+      }
+      case 'PLAYER_READY': {
+        const metadata = clientMetadata.get(clientId);
+        if (!metadata || !metadata.sessionId) return;
+
+        // Actualizar el estado 'ready' del jugador
+        metadata.ready = true;
+        clientMetadata.set(clientId, metadata);
+
+        // Notificar a todos en la sesión del cambio de estado
+        const userMap = sessions.get(metadata.sessionId);
+        const sessionState = {};
+        userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          if (meta) {
+            sessionState[uId] = { nombre: meta.nombre, reps: meta.reps, ready: meta.ready };
+          }
+        });
+
+        const creatorId = salasActivas[metadata.sessionId]?.creadorId;
+        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
         break;
       }
     }
@@ -484,10 +515,11 @@ wss.on('connection', ws => {
         const sessionState = {};
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          sessionState[uId] = { reps: meta?.reps || 0 };
+          sessionState[uId] = { nombre: meta?.nombre, reps: meta?.reps || 0, ready: meta?.ready || false };
         });
 
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState });
+        const creatorId = salasActivas[sessionId]?.creadorId;
+        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
       }
     }
     clientMetadata.delete(clientId);

@@ -1,18 +1,29 @@
 <script setup>
-import { ref, computed, shallowRef, onBeforeUnmount } from 'vue'
+import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 // NOTA: Asumiendo que PoseSkeleton y PoseFeatures están correctamente importados
 // Si no están definidos, el código solo mostrará la interfaz.
 // Se recomienda tener estos componentes activos para la funcionalidad real de detección.
-// import PoseSkeleton from '../components/PoseSkeleton.vue' 
-// import PoseFeatures from '../components/PoseFeatures.vue'
+import PoseSkeleton from '../components/PoseSkeleton.vue' 
+import PoseFeatures from '../components/PoseFeatures.vue'
+import axios from 'axios'
 
-// [ESTADO MULTIJUGADOR]
-const jugadoresData = [
-  { id: 1, nombre: 'Jugador 1', ready: false, repeticiones: 0 },
-  { id: 2, nombre: 'Jugador 2', ready: false, repeticiones: 0 }
-];
-const jugadores = ref(jugadoresData)
+const route = useRoute()
+const router = useRouter()
+
+// --- ESTADO DE USUARIO Y SALA ---
+const salaId = ref(route.query.sala || null)
+const userId = ref(localStorage.getItem('userId') || null)
+const creadorId = ref(null) // Se obtendrá desde el servidor
+const esCreador = computed(() => userId.value && creadorId.value && String(userId.value) === String(creadorId.value))
+
+// --- ESTADO WEBSOCKET ---
+const ws = ref(null)
+const isConnected = ref(false)
+
+// [ESTADO MULTIJUGADOR] - Ahora se llena desde el WebSocket
+const jugadores = ref([])
 
 // [ESTADO DE LA PARTIDA]
 const isPoseDetectorReady = ref(true) 
@@ -23,17 +34,10 @@ const features = shallowRef(null)
 const maxReps = ref(5)
 const panelAbierto = ref([])
 
-// Variables de control de la simulación
-let intervalRef = null 
-const audioBeep = { play: () => console.log('🔊 BEEP! Objetivo alcanzado.') }
-
-// ESTADO AÑADIDO: Controla la fase de la SIMULACIÓN (down_phase o up_phase)
-const repCycleState = ref({ 1: 'down_phase', 2: 'down_phase' }); 
-
 // --- LÓGICA DE DETECCIÓN DE REPETICIONES POR JUGADOR ---
-// El estado de la repetición (arriba/abajo) DEBE ser por jugador 
-const squatState = ref({ 1: 'up', 2: 'up' }) 
-const pushupState = ref({ 1: 'up', 2: 'up' }) 
+// El estado de la repetición (arriba/abajo) DEBE ser por jugador
+const squatState = ref({}) 
+const pushupState = ref({}) 
 
 // Umbrales para el conteo de repeticiones (ejemplo)
 const MIN_SQUAT_ANGLE = 120
@@ -45,14 +49,14 @@ const MAX_PUSHUP_ANGLE = 160
  * Verifica si se ha completado una repetición para el jugador dado.
  */
 function checkRepeticion(jugadorId, angles) {
-  if (!isPartidaActiva.value) return;
+  if (!isPartidaActiva.value || !angles) return;
 
-  const jugador = jugadores.value.find(j => j.id === jugadorId);
+  const jugador = jugadores.value.find(j => j.id == jugadorId);
   if (!jugador) {
     console.warn(`❌ Jugador ${jugadorId} no encontrado`);
     return;
   }
-
+  
   let repeticionCompletada = false;
   let currentStateRef = null;
   let minAngle, maxAngle, avgAngle;
@@ -95,135 +99,138 @@ function checkRepeticion(jugadorId, angles) {
 
   // Si la repetición fue completada
   if (repeticionCompletada) {
-    const index = jugadores.value.findIndex(j => j.id === jugadorId);
-    if (index !== -1) {
-      jugadores.value[index].repeticiones++;
-      // console.log(`📊 ${jugador.nombre}: ${jugadores.value[index].repeticiones}/${maxReps.value}`);
-    }
-
-    // Comprobar si algún jugador ha ganado
-    if (jugadores.value.some(j => j.repeticiones >= maxReps.value)) {
-      const ganador = jugadores.value.find(j => j.repeticiones >= maxReps.value);
-      console.log(`🏆 ¡GANADOR: ${ganador.nombre}!`);
-      
-      detenerPartida();
-      audioBeep.play();
-      mostrarMensajeObjetivo.value = true;
-
-      setTimeout(() => (mostrarMensajeObjetivo.value = false), 3000);
+    // Enviar actualización de repeticiones al servidor
+    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+      ws.value.send(JSON.stringify({
+        type: 'REPS_UPDATE',
+        reps: jugador.repeticiones + 1
+      }));
     }
   }
-}
-
-// --- SIMULACIÓN DE REPETICIONES AUTOMÁTICA (POR FASE) ---
-function simulateReps() {
-  if (!isPartidaActiva.value) return;
-
-  jugadores.value.forEach(jugador => {
-    const id = jugador.id;
-    const isSquat = ejercicioSeleccionado.value === 'Sentadillas';
-    
-    // Configuración
-    const minAngle = isSquat ? MIN_SQUAT_ANGLE : MIN_PUSHUP_ANGLE;
-    const maxAngle = isSquat ? MAX_SQUAT_ANGLE : MAX_PUSHUP_ANGLE;
-    const angleName = isSquat ? 'Knee' : 'Elbow';
-    const otherAngleName = isSquat ? 'Elbow' : 'Knee';
-    
-    let angles = {};
-    // Ruido para simular variación natural
-    const noise = Math.random() * 5 - 2.5;
-
-    // LÓGICA DE SIMULACIÓN POR FASE
-    const currentPhase = repCycleState.value[id];
-    let simulatedAngle;
-
-    if (currentPhase === 'down_phase') {
-      // 1. Simular BAJADA (ángulo bajo) -> Esto activa el estado 'down' en el contador real
-      simulatedAngle = minAngle - 10 + noise; 
-      repCycleState.value[id] = 'up_phase'; // Prepara el siguiente tick para la subida
-    } else if (currentPhase === 'up_phase') {
-      // 2. Simular SUBIDA (ángulo alto) -> Esto activa el estado 'up' y suma la repetición
-      simulatedAngle = maxAngle + 10 + noise; 
-      repCycleState.value[id] = 'down_phase'; // Prepara el siguiente tick para la bajada
-    } else {
-        return; 
-    }
-
-    angles[`left${angleName}`] = simulatedAngle;
-    angles[`right${angleName}`] = simulatedAngle;
-    
-    // Ángulo opuesto neutro
-    angles[`left${otherAngleName}`] = 175;
-    angles[`right${otherAngleName}`] = 175;
-
-    // Llama a la lógica de repetición con los ángulos simulados
-    checkRepeticion(id, angles);
-  });
 }
 
 // --- GESTIÓN DE LA PARTIDA Y FEATURES ---
 const todosListos = computed(() =>
-  jugadores.value.every(j => j.ready)
+  jugadores.value.length > 0 && jugadores.value.every(j => j.ready)
 )
 
 function onFeatures(payload) {
-  // Ignorar features reales si la simulación está activa
-  if (intervalRef) return; 
-
   if (payload && !isPoseDetectorReady.value) {
     isPoseDetectorReady.value = true
   }
-
   features.value = (typeof structuredClone === 'function')
     ? structuredClone(payload)
     : JSON.parse(JSON.stringify(payload || {}))
   
-  if (isPartidaActiva.value && features.value && features.value.poses) {
-    features.value.poses.forEach((pose, index) => {
-      const jugadorId = index + 1; 
-      checkRepeticion(jugadorId, pose.angles || {});
-    });
+  // Solo el usuario actual procesa sus propias poses
+  if (isPartidaActiva.value && features.value?.poses?.[0]) {
+      checkRepeticion(userId.value, features.value.poses[0].angles);
   }
 }
 
-function marcarListo(id) {
-  const jugador = jugadores.value.find(j => j.id === id)
-  if (jugador) jugador.ready = true
+function marcarListo() {
+  if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({ type: 'PLAYER_READY' }));
+  }
 }
 
-function iniciarPartida() {
-  if (!todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return
+async function iniciarPartida() {
+  if (!esCreador.value || !todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return;
   
-  console.log('🎮 INICIANDO PARTIDA -', ejercicioSeleccionado.value);
-  isPartidaActiva.value = true
-  mostrarMensajeObjetivo.value = false
-  
-  // Reiniciar estados y contadores
-  jugadores.value.forEach(j => (j.repeticiones = 0))
-  squatState.value = { 1: 'up', 2: 'up' };
-  pushupState.value = { 1: 'up', 2: 'up' };
-  // Reiniciar el estado de la simulación
-  repCycleState.value = { 1: 'down_phase', 2: 'down_phase' }; 
-  
-  if (!intervalRef) {
-    // 750ms -> 1 repetición cada 1.5 segundos por jugador (dos ticks por repetición)
-    intervalRef = setInterval(simulateReps, 750); 
-    console.log("✅ Simulación iniciada (1 rep/1.5s)");
+  try {
+    // El creador notifica al servidor HTTP para iniciar la sala
+    await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value });
+    // El servidor se encargará de notificar a todos por WebSocket
+  } catch (error) {
+    console.error("Error al iniciar la partida:", error);
+    alert("No se pudo iniciar la partida.");
   }
 }
 
 function detenerPartida() {
   console.log('⏹️ PARTIDA DETENIDA');
   isPartidaActiva.value = false
-  
-  if (intervalRef) {
-    clearInterval(intervalRef);
-    intervalRef = null;
-    console.log("❌ Simulación detenida");
-  }
 }
 
-onBeforeUnmount(() => detenerPartida())
+onMounted(() => {
+  if (!salaId.value || !userId.value) {
+    alert("No se ha especificado una sala o no has iniciado sesión.");
+    router.push('/inicial');
+    return;
+  }
+
+  ws.value = new WebSocket('ws://localhost:8082'); // Apuntamos al puerto correcto
+
+  ws.value.onopen = () => {
+    console.log('🔌 Conectado al WebSocket.');
+    isConnected.value = true;
+    // Unirse a la sala
+    ws.value.send(JSON.stringify({
+      type: 'JOIN_SESSION',
+      sessionId: salaId.value,
+      userId: userId.value,
+      nombre: localStorage.getItem('username') || `Jugador ${userId.value}`
+    }));
+  };
+
+  ws.value.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log('📩 Mensaje recibido:', data);
+
+    switch (data.type) {
+      case 'SESSION_STATE':
+        // Transforma el objeto de estado en un array para la UI
+        jugadores.value = Object.entries(data.state).map(([id, playerData]) => ({
+          id: String(id), // Aseguramos que el ID sea siempre un string para comparaciones consistentes
+          nombre: playerData.nombre,
+          repeticiones: playerData.reps,
+          ready: playerData.ready
+        }));
+        // El servidor ahora nos dice quién es el creador
+        if (data.creatorId) {
+          creadorId.value = data.creatorId;
+        }
+        // Inicializar estados de repetición para nuevos jugadores
+        jugadores.value.forEach(jugador => {
+          if (!squatState.value[jugador.id]) {
+            squatState.value[jugador.id] = 'up';
+          }
+          if (!pushupState.value[jugador.id]) {
+            pushupState.value[jugador.id] = 'up';
+          }
+        });
+        break;
+      case 'SESSION_STARTED':
+        console.log('🎮 PARTIDA INICIADA POR EL SERVIDOR');
+        isPartidaActiva.value = true;
+        mostrarMensajeObjetivo.value = false;
+        // Reiniciar contadores locales al inicio
+        jugadores.value.forEach(j => j.repeticiones = 0);
+        break;
+      case 'JOIN_ERROR':
+        alert(`Error al unirse: ${data.message}`);
+        router.push('/unirsala');
+        break;
+    }
+  };
+
+  ws.value.onclose = () => {
+    console.log('🔌 Desconectado del WebSocket.');
+    isConnected.value = false;
+  };
+
+  ws.value.onerror = (error) => {
+    console.error('❌ Error de WebSocket:', error);
+    alert("Error de conexión con el servidor de juego.");
+  };
+});
+
+onBeforeUnmount(() => {
+  detenerPartida();
+  if (ws.value) {
+    ws.value.close();
+  }
+})
 </script>
 
 <template>
@@ -231,7 +238,7 @@ onBeforeUnmount(() => detenerPartida())
     <v-main>
       <v-container fluid class="pa-4 custom-container"> 
         <v-card elevation="16" class="pa-6 rounded-xl card-elevated" dark>
-          <v-card-title class="justify-center pb-4">
+          <v-card-title class="justify-center pb-2">
             <h2 class="text-h5 font-weight-black">Modo Multijugador - {{ ejercicioSeleccionado }}</h2>
           </v-card-title>
 
@@ -246,6 +253,11 @@ onBeforeUnmount(() => detenerPartida())
             <v-icon left>mdi-arrow-left</v-icon>
             Volver al Inicio
           </v-btn>
+          
+          <div class="text-center mb-4">
+            <v-chip small :color="isConnected ? 'green' : 'red'">{{ isConnected ? 'CONECTADO' : 'DESCONECTADO' }}</v-chip>
+            <v-chip small class="ml-2">Sala: {{ salaId }}</v-chip>
+          </div>
 
           <v-card-text>
             <v-row align="start">
@@ -267,9 +279,6 @@ onBeforeUnmount(() => detenerPartida())
                         ¡Objetivo alcanzado! Ganador: 
                         {{ jugadores.find(j => j.repeticiones >= maxReps)?.nombre || 'Jugador' }}
                       </h2>
-                      <p v-if="intervalRef" class="text-caption mt-2">
-                         (Conteo de repeticiones simulado)
-                      </p>
                     </div>
                   </transition>
                 </div>
@@ -280,11 +289,12 @@ onBeforeUnmount(() => detenerPartida())
                     large
                     rounded
                     class="button-shadow button-pulse"
+                    v-if="esCreador"
                     @click="iniciarPartida"
                     :disabled="!todosListos || !isPoseDetectorReady || isPartidaActiva"
                   >
                     <v-icon left>mdi-play</v-icon>
-                    {{ todosListos ? 'Iniciar Partida' : 'Esperando jugadores...' }}
+                    {{ todosListos ? 'Iniciar Partida' : `Esperando ${jugadores.filter(j => !j.ready).length} jug...` }}
                   </v-btn>
 
                   <v-btn
@@ -307,7 +317,7 @@ onBeforeUnmount(() => detenerPartida())
                 <v-card
                   v-for="jugador in jugadores"
                   :key="jugador.id"
-                  class="pa-4 mb-4 rounded-lg repetitions-card"
+                  class="pa-3 mb-3 rounded-lg repetitions-card"
                   :style="{borderColor: jugador.id === 1 ? '#2196F3' : '#FF9800'}"
                   elevation="8"
                   dark
@@ -326,11 +336,11 @@ onBeforeUnmount(() => detenerPartida())
                   </div>
 
                   <v-btn
-                    v-if="!jugador.ready && !isPartidaActiva"
+                    v-if="!jugador.ready && !isPartidaActiva && jugador.id === userId"
                     color="green"
                     block
                     rounded
-                    @click="marcarListo(jugador.id)"
+                    @click="marcarListo"
                   >
                     <v-icon left>mdi-check</v-icon>
                     Estoy listo
@@ -340,6 +350,7 @@ onBeforeUnmount(() => detenerPartida())
                     v-else-if="jugador.ready && !isPartidaActiva"
                     color="green"
                     text-color="white"
+                    block
                     class="mt-2"
                   >
                     ✅ Listo
@@ -349,6 +360,7 @@ onBeforeUnmount(() => detenerPartida())
                     v-else-if="isPartidaActiva"
                     :color="jugador.repeticiones >= maxReps ? 'amber' : 'primary'"
                     text-color="white"
+                    block
                     class="mt-2"
                   >
                     {{ jugador.repeticiones >= maxReps ? '¡META!' : 'COMPITIENDO...' }}
@@ -392,7 +404,7 @@ onBeforeUnmount(() => detenerPartida())
                       DATOS DEL SENSOR (Ángulos Clave)
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
-                      <!-- Asume que PoseFeatures puede manejar un objeto con múltiples poses -->
+                      <!-- Asume que PoseFeatures puede manejar un objeto con una pose -->
                       <PoseFeatures :features="features" />
                     </v-expansion-panel-text>
                   </v-expansion-panel>
