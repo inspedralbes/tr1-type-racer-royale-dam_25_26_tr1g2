@@ -100,6 +100,8 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Objeto en memoria para rastrear las salas activas
+const salasActivas = {};
 
 app.post('/api/salas/crear', async (req, res) => {
   const { codigo, creadorId, nombreCreador, tipo, modo, jugadores, opciones } = req.body;
@@ -109,6 +111,9 @@ app.post('/api/salas/crear', async (req, res) => {
   }
 
   try {
+    // Guardar la sala en memoria para poder validarla después
+    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date() };
+
     // Aquí iría la lógica para guardar la sala en la base de datos.
     // Por ahora, simulamos que se guarda y devolvemos el código como ID de sesión.
     // Ejemplo de inserción (deberás adaptarlo a tu tabla de salas/sesiones):
@@ -129,7 +134,18 @@ app.post('/api/salas/crear', async (req, res) => {
   }
 });
 
-app.post('/api/session/start', (req, res) => {
+app.get('/api/salas/check/:codigo', (req, res) => {
+  const { codigo } = req.params;
+  if (salasActivas[codigo]) {
+    // La sala existe en memoria
+    res.json({ success: true, exists: true });
+  } else {
+    // La sala no existe o el servidor se reinició
+    res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+  }
+});
+
+app.post('/api/sessions/start', (req, res) => {
   const { codigo } = req.body;
 
   if (!codigo) {
