@@ -63,22 +63,52 @@
   </template>
   
   <script setup>
-  import { ref } from 'vue'
-  import { useRouter } from 'vue-router'
-  
-  const router = useRouter()
-  const codigoSala = ref('')
-  
-  // Función para unirse a la sala
-  function unirseSala() {
-    if (codigoSala.value.trim()) {
-      // Aquí puedes redirigir a la misma página de la sala o gestionar la unión
-      alert(`Te has unido a la sala: ${codigoSala.value}`)
-      // Ejemplo: redirigir a la página de juego pasando el código
-      // router.push({ path: '/crearsala', query: { sala: codigoSala.value } })
+import { ref } from 'vue'
+import axios from 'axios'
+import { useRouter } from 'vue-router'
+
+
+const router = useRouter()
+const codigoSala = ref('')  
+
+
+const API_BASE_URL = 'http://localhost:9000'
+
+function obtenerUsuarioId() {
+  return localStorage.getItem('userId') || null;
+}
+ 
+  async function unirseSala() {
+    if (!codigoSala.value.trim()) return
+ 
+    try {
+      const userId = obtenerUsuarioId();
+      if (!userId) {
+        alert('Debes iniciar sesión para unirte a una sala.');
+        router.push('/login');
+        return;
+      }
+
+      const res = await axios.post(`${API_BASE_URL}/api/multiplayer/join`, {
+        sessionId: codigoSala.value.trim(),
+        userId: parseInt(userId, 10),
+      })
+ 
+      if (res.data.success) {
+        router.push({ name: 'multijugador', query: { sala: codigoSala.value.trim() } })
+      } else {
+        alert(res.data.error || 'Error al unirse a la sala.')
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'No se pudo conectar al servidor o la sala no existe.';
+      alert(errorMsg);
+      console.error('Error al unirse a la sala:', err)
     }
   }
   </script>
+
+
+
   
   <style>
   .app-background {

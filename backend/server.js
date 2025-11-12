@@ -100,7 +100,52 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// -------------------- SESIONES 2vs2 --------------------
+
+app.post('/api/salas/crear', async (req, res) => {
+  const { codigo, creadorId, nombreCreador, tipo, modo, jugadores, opciones } = req.body;
+
+  if (!codigo || !creadorId) {
+    return res.status(400).json({ success: false, error: 'El código y el creadorId son obligatorios.' });
+  }
+
+  try {
+    // Aquí iría la lógica para guardar la sala en la base de datos.
+    // Por ahora, simulamos que se guarda y devolvemos el código como ID de sesión.
+    // Ejemplo de inserción (deberás adaptarlo a tu tabla de salas/sesiones):
+    /*
+    const [result] = await db.pool.query(
+      'INSERT INTO Sesiones (codigo, creador_id, nombre_creador, tipo, modo, opciones) VALUES (?, ?, ?, ?, ?, ?)',
+      [codigo, creadorId, nombreCreador, tipo, modo, JSON.stringify(opciones)]
+    );
+    const sessionId = result.insertId;
+    */
+
+    // Simulación: devolvemos el código generado en el frontend como si fuera el ID.
+    const sessionId = codigo;
+    res.json({ success: true, sessionId: sessionId });
+  } catch (err) {
+    console.error('Error en /api/salas/crear:', err);
+    res.status(500).json({ success: false, error: 'Error al crear la sala.' });
+  }
+});
+
+app.post('/api/session/start', (req, res) => {
+  const { codigo } = req.body;
+
+  if (!codigo) {
+    return res.status(400).json({ success: false, error: 'El código de la sala es obligatorio.' });
+  }
+
+  // Aquí podrías actualizar el estado de la sala en la base de datos a 'iniciada'
+  // Por ejemplo: await db.pool.query('UPDATE Sesiones SET estado = "iniciada" WHERE codigo = ?', [codigo]);
+
+  // Notificar a todos los clientes en la sala que la partida ha comenzado
+  if (sessions.has(codigo)) {
+    broadcastToSession(codigo, { type: 'SESSION_STARTED' });
+  }
+
+  res.json({ success: true, message: `Sala ${codigo} iniciada.` });
+});
 
 // ...existing code...
 
@@ -329,20 +374,15 @@ const clients = new Map();
 const sessions = new Map();
 const clientMetadata = new Map();
 
-function broadcastSessionState(sessionId) {
+function broadcastToSession(sessionId, message) {
   if (!sessions.has(sessionId)) return;
   const userMap = sessions.get(sessionId);
-  const sessionState = {};
-  // Construir el estado actual de la sesión con { userId: reps }
-  userMap.forEach((clientId, userId) => {
-    const metadata = clientMetadata.get(clientId);
-    sessionState[userId] = metadata?.reps || 0;
-  });
-  // Enviar el estado a todos los clientes de la sesión
+
+  // Enviar el mensaje a todos los clientes de la sesión
   userMap.forEach(clientId => {
     const metadata = clientMetadata.get(clientId);
     if (metadata && metadata.ws.readyState === WebSocket.OPEN) {
-      metadata.ws.send(JSON.stringify({ type: 'SESSION_STATE', state: sessionState }));
+      metadata.ws.send(JSON.stringify(message));
     }
   });
 }
@@ -369,18 +409,26 @@ wss.on('connection', ws => {
         }
         const userMap = sessions.get(sessionId);
         // 2. Si el usuario ya está en la sesión, desconectar la conexión antigua
-        if (userMap.has(userId)) {
-          const oldClientId = userMap.get(userId);
-          const oldClientMeta = clientMetadata.get(oldClientId);
-          if (oldClientMeta && oldClientMeta.ws) {
-            oldClientMeta.ws.terminate(); // Cierra la conexión anterior
-          }
+        if (userMap.has(userId) && userMap.get(userId) !== clientId) {
+          console.log(`Usuario ${userId} ya está en la sesión ${sessionId}. Rechazando nueva conexión.`);
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Ya estás en esta sala desde otro dispositivo o pestaña.' }));
+          ws.terminate();
+          return;
         }
-        // 3. Registrar al nuevo cliente
+        // 3. Registrar al cliente
         userMap.set(userId, clientId);
         clientMetadata.set(clientId, { ws, userId, sessionId, reps: 0 });
         // 4. Enviar estado actualizado a todos en la sesión
-        broadcastSessionState(sessionId);
+        const sessionState = {};
+        userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          sessionState[uId] = {
+            reps: meta?.reps || 0,
+            // Aquí puedes añadir más datos del usuario si los tienes
+          };
+        });
+
+        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState });
         break;
       }
       case 'REPS_UPDATE': {
@@ -389,8 +437,16 @@ wss.on('connection', ws => {
         // Actualizar las repeticiones del usuario
         metadata.reps = data.reps;
         clientMetadata.set(clientId, metadata);
+        
         // Notificar a todos en la sesión
-        broadcastSessionState(metadata.sessionId);
+        const userMap = sessions.get(metadata.sessionId);
+        const sessionState = {};
+        userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          sessionState[uId] = { reps: meta?.reps || 0 };
+        });
+
+        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState });
         break;
       }
     }
@@ -408,7 +464,14 @@ wss.on('connection', ws => {
       if (userMap && userMap.size === 0) {
         sessions.delete(sessionId);
       } else {
-        broadcastSessionState(sessionId); // Notificar a los restantes que alguien se fue
+        // Notificar a los restantes que alguien se fue
+        const sessionState = {};
+        userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          sessionState[uId] = { reps: meta?.reps || 0 };
+        });
+
+        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState });
       }
     }
     clientMetadata.delete(clientId);

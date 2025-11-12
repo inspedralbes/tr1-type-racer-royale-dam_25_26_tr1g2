@@ -93,14 +93,16 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 
 const codigoSala = ref('')
+const router = useRouter()
 const salaIniciada = ref(false)
 const maxPersonas = ref(2)
 const personasOptions = [2,3,4,5,6,7,8]
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
-const api = axios.create({ baseURL: API_BASE, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
+const API_BASE_URL = 'http://localhost:9000'
+const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
 
 function obtenerCreadorId() {
   return localStorage.getItem('userId') || localStorage.getItem('creadorId') || null
@@ -130,11 +132,11 @@ async function generarCodigo() {
   }
 
   try {
-    const resp = await api.post('/api/session/save', payload)
+    const resp = await api.post('/api/salas/crear', payload)
     const sid = resp.data?.sessionId ?? resp.data?.id ?? resp.data?.insertId ?? null
     if (sid) {
+      // solo guardamos el código, no redirigimos todavía
       codigoSala.value = sid
-      alert(`Sala creada en servidor (id: ${sid})`)
     } else {
       alert('Sala creada en servidor (id no devuelto por el API)')
     }
@@ -160,11 +162,12 @@ async function iniciarSala() {
   if (!codigoSala.value) return alert('Genera la sala antes de iniciar.')
   salaIniciada.value = true
   try {
-    await api.post('/api/session/start', {
+    await api.post('/api/sessions/start', {
       codigo: codigoSala.value,
       iniciadorId: obtenerCreadorId() || 'invitado'
     })
-    alert('Sala iniciada.')
+    // ahora sí redirigimos
+    router.push({ name: 'multijugador', query: { sala: codigoSala.value } })
   } catch (err) {
     console.warn('No se pudo notificar inicio de sala:', err)
     const servidorMsg = err?.response?.data?.error || err?.message

@@ -11,6 +11,7 @@ import Individual from '@/pages/Individual.vue'
 import Incursion from '@/pages/Incursion.vue'
 import Profile from '@/pages/Profile.vue'
 import CrearRutina from '@/pages/CrearRutina.vue'
+import Multijugador  from '@/pages/Multijugador.vue'  
 
 const routes = [
   { path: '/', component: Welcome },
@@ -24,6 +25,7 @@ const routes = [
   { path: '/incursion', component: Incursion, name: 'incursion' },
   { path: '/profile', component: Profile, name: 'profile' },
   { path: '/crearRutina', component: CrearRutina, name: 'crearRutina' },
+  { path: '/multijugador', component: Multijugador, name: 'multijugador' }
 ]
 
 const router = createRouter({
