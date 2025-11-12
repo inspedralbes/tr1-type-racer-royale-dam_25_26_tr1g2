@@ -76,6 +76,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+
 const router = useRouter()
 const isFormValid = ref(false)
 const loading = ref(false)
@@ -102,7 +103,8 @@ const passwordRules = [
   v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
 ]
 
-// Función de registro
+const API_URL = 'http://localhost:9000';
+
 const handleRegister = async () => {
   try {
     loading.value = true
@@ -111,11 +113,19 @@ const handleRegister = async () => {
     const res = await fetch(`${API_URL}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuari: usuari.value, correu: email.value, password: password.value })
+      body: JSON.stringify({
+        usuari: username.value,
+        correu: email.value,
+        password: password.value
+      })
     })
 
-    // Si el registro es exitoso, redirigir al login
-    router.push('/login')
+    if (res.ok) {
+      router.push('/login')
+    } else {
+      const data = await res.json()
+      error.value = data.error || 'Error al registrar el usuario.'
+    }
   } catch (err) {
     error.value = 'Error al registrar el usuario. Por favor, inténtalo de nuevo.'
     console.error('Error de registro:', err)
@@ -123,6 +133,8 @@ const handleRegister = async () => {
     loading.value = false
   }
 }
+
+
 </script>
 
 <style scoped>

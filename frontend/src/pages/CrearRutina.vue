@@ -124,28 +124,34 @@ async function guardarRutina() {
     const user = JSON.parse(localStorage.getItem('user')) || {}
     const userId = user?.id || user?.userId || null
 
-    const resRutina = await axios.post('/api/rutines', {
+    // Filtrar ejercicios válidos
+    const ejerciciosParaGuardar = ejerciciosRutina.value.filter(
+      ex => ex.nom_exercicis && String(ex.nom_exercicis).trim() && Number(ex.n_repeticions) > 0
+    )
+
+    // Llamada al backend
+    const response = await axios.post('/api/session/save', {
+      userId,
       nom: nombreRutina.value,
-      id_usuari: userId // Asociar la rutina con el usuario
+      descripcio: null, // opcional: añadir descripción si quieres
+      exercicis: ejerciciosParaGuardar
     })
-    idRutinaCreada.value = resRutina.data.id
 
-    for (const ex of ejerciciosRutina.value) {
-      if (ex.nom_exercicis.trim()) {
-        await axios.post('/api/exercicis_rutina', {
-          id_rutina: idRutinaCreada.value,
-          nom_exercicis: ex.nom_exercicis,
-          n_repeticions: ex.n_repeticions
-        })
-      }
+    if (response.data?.success) {
+      mensaje.value = 'Rutina creada correctamente.'
+      // opcional: guardar ID creada
+      idRutinaCreada.value = response.data.rutinaId
+      setTimeout(() => router.push('/individual'), 1500)
+    } else {
+      mensaje.value = 'Error al guardar la rutina.'
     }
-
-    mensaje.value = 'Rutina creada correctamente.'
-    nombreRutina.value = ''
-    ejerciciosRutina.value = [{ nom_exercicis: '', n_repeticions: '' }]
   } catch (error) {
-    console.error(error)
-    mensaje.value = 'Error al guardar la rutina.'
+    console.error('Error en guardarRutina:', error)
+    if (error.response?.data?.error) {
+      mensaje.value = `Error: ${error.response.data.error}`
+    } else {
+      mensaje.value = 'Error al guardar la rutina.'
+    }
   } finally {
     cargando.value = false
   }

@@ -1,6 +1,6 @@
 // ...existing code...
 <script setup>
-import { ref, onBeforeUnmount, shallowRef, onMounted, computed } from 'vue'
+import { ref, onBeforeUnmount, shallowRef, onMounted, computed, watch } from 'vue'
 import PoseSkeleton from '../components/PoseSkeleton.vue'
 import PoseFeatures from '../components/PoseFeatures.vue'
 import axios from 'axios'
@@ -126,8 +126,8 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   const user = JSON.parse(localStorage.getItem('user')) || {}
-  const userId = user?.id || user?.userId
-  if (userId) {
+  const userId = user?.id
+  if (userId) { // Solo cargamos si hay un ID de usuario real
     try {
       const response = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`)
       userRoutines.value = response.data.rutines || []
@@ -135,6 +135,20 @@ onMounted(async () => {
       console.error('Error al cargar las rutinas del usuario:', error)
       userRoutines.value = []
     }
+  }
+})
+
+// 🔹 Watcher para actualizar el ejercicio cuando se cambia la rutina
+watch(selectedRoutineId, (newRoutineId) => {
+  if (newRoutineId) {
+    const routine = userRoutines.value.find(r => r.id === newRoutineId)
+    // Si la rutina existe y tiene ejercicios, selecciona el primero
+    if (routine && routine.exercicis.length > 0) {
+      ejercicioSeleccionado.value = routine.exercicis[0].nom_exercicis
+    }
+  } else {
+    // Si se deselecciona la rutina, vuelve al ejercicio por defecto
+    ejercicioSeleccionado.value = 'Sentadillas'
   }
 })
 </script>

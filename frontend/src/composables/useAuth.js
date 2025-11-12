@@ -5,7 +5,7 @@ const isAuthenticated = ref(false)
 let initialUser = null
 try {
   if (typeof window !== 'undefined') {
-    const raw = localStorage.getItem('auth_user')
+    const raw = localStorage.getItem('user')
     if (raw) initialUser = JSON.parse(raw)
   }
 } catch (e) {
@@ -20,7 +20,7 @@ export function useAuth() {
     isAuthenticated.value = true
     user.value = userData
     try {
-      localStorage.setItem('auth_user', JSON.stringify(userData))
+      localStorage.setItem('user', JSON.stringify(userData))
     } catch (e) {}
   }
 
@@ -28,7 +28,7 @@ export function useAuth() {
     isAuthenticated.value = false
     user.value = null
     try {
-      localStorage.removeItem('auth_user')
+      localStorage.removeItem('user')
     } catch (e) {}
   }
 
