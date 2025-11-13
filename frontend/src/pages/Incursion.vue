@@ -54,7 +54,7 @@
           
           <v-row align="center" class="mt-4">
             <v-col cols="6">
-              <div class="d-flex justify-center gap-2" v-if="!bossSessionId">
+              <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
                 <v-btn
                     color="success"
                     large
@@ -421,53 +421,40 @@ function onFeatures(payload) {
 
     // 2. CHEQUEO DE REPETICIÓN (Daño al jefe si es buena)
     if (features.value?.angles) {
-        const angles = features.value.angles
-        let newRep = false
-        let result = { newState: 'up', repCompleted: false }
+        const exerciseHandlers = {
+            'Sentadillas': { detect: checkSquatRep, state: squatState },
+            'Flexiones': { detect: checkPushupRep, state: pushupState },
+            'Abdominales': { detect: checkSitupRep, state: situpState },
+            'Zancadas': { detect: checkLungeRep, state: lungeState },
+            'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState },
+            'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState }
+        };
 
-        // Mapeo de ejercicio a función de detección y estado
-        switch(ejercicioSeleccionado.value) {
-            case 'Sentadillas':
-                result = checkSquatRep(angles, squatState.value);
-                squatState.value = result.newState;
-                break;
-            case 'Flexiones':
-                result = checkPushupRep(angles, pushupState.value);
-                pushupState.value = result.newState;
-                break;
-            case 'Abdominales':
-                result = checkSitupRep(angles, situpState.value);
-                situpState.value = result.newState;
-                break;
-            case 'Zancadas':
-                result = checkLungeRep(angles, lungeState.value);
-                lungeState.value = result.newState;
-                break;
-            case 'Jumping Jacks':
-                result = checkJumpingJacksRep(features.value, jumpingJacksState.value);
-                jumpingJacksState.value = result.newState;
-                break;
-            case 'Mountain Climbers':
-                result = checkMountainClimbersRep(angles, mountainClimbersState.value);
-                mountainClimbersState.value = result.newState;
-                break;
-        }
-        
-        newRep = result.repCompleted
-        
-        if (newRep) {
-            repeticiones.value++
+        const handler = exerciseHandlers[ejercicioSeleccionado.value];
+
+        if (handler) {
+            // Jumping Jacks necesita el objeto 'features' completo, los demás solo los ángulos.
+            const detectionInput = ejercicioSeleccionado.value === 'Jumping Jacks' ? features.value : features.value.angles;
+            const result = handler.detect(detectionInput, handler.state.value);
             
-            // Daño base con ajuste por ejercicio
-            let baseDano = DAÑO_AL_JEFE_BASE;
-            if (ejercicioSeleccionado.value === 'Flexiones') baseDano = 10;
-            if (ejercicioSeleccionado.value === 'Abdominales') baseDano = 7;
-            if (ejercicioSeleccionado.value === 'Zancadas') baseDano = 9;
-            if (ejercicioSeleccionado.value === 'Jumping Jacks') baseDano = 6;
-            if (ejercicioSeleccionado.value === 'Mountain Climbers') baseDano = 8;
-            
-            const dano = Math.floor(Math.random() * 5) + baseDano; 
-            aplicarDanoJefe(dano, ejercicioSeleccionado.value)
+            // Actualizamos el estado del ejercicio
+            handler.state.value = result.newState;
+
+            if (result.repCompleted) {
+                repeticiones.value++;
+
+                const damageModifiers = {
+                    'Flexiones': 10,
+                    'Abdominales': 7,
+                    'Zancadas': 9,
+                    'Jumping Jacks': 6,
+                    'Mountain Climbers': 8
+                };
+
+                const baseDano = damageModifiers[ejercicioSeleccionado.value] || DAÑO_AL_JEFE_BASE;
+                const dano = Math.floor(Math.random() * 5) + baseDano;
+                aplicarDanoJefe(dano, ejercicioSeleccionado.value);
+            }
         }
     }
 }
@@ -475,9 +462,19 @@ function onFeatures(payload) {
 
 // --- LÓGICA DE UNIÓN Y PARTIDA ---
 async function unirseAIncursion() {
+  const userId = user.value?.id || user.value?.userId;
+  if (!userId) {
+    añadirMensaje('Debes iniciar sesión para unirte a una incursión.', 'error--text');
+    // Opcional: redirigir a login
+    // import { useRouter } from 'vue-router'; const router = useRouter(); router.push('/login');
+    mostrarDialogoUnirse.value = false;
+    return;
+  }
+
   buscandoPartida.value = true;
   mostrarDialogoUnirse.value = false;
   añadirMensaje('Buscando una incursión abierta...', 'info--text');
+
 
   // Simulación de llamada a un backend que busca o crea una sala
   // En un caso real, aquí harías:
@@ -532,7 +529,7 @@ function iniciarPartida() {
   pushupState.value = 'up';
   situpState.value = 'up';
   lungeState.value = 'up';
-  jumpingJacksState.value = 'down';
+  jumpingJacksState.value = 'down'; // Estado inicial correcto para Jumping Jacks
   mountainClimbersState.value = 'up';
   
   seleccionarEjercicioRandom();

@@ -84,13 +84,11 @@ async function unirseSala() {
       return;
     }
 
-    // 1. Validar que la sala existe en el backend
     const codigo = codigoSala.value.trim();
     const res = await axios.get(`${API_BASE_URL}/api/salas/check/${codigo}`);
 
     if (res.data.success && res.data.exists) {
-      // 2. Si la sala existe, redirigir a la página del multijugador.
-      // La conexión real por WebSocket se hará en Multijugador.vue
+
       router.push({ name: 'multijugador', query: { sala: codigo } });
     } else {
       alert(res.data.error || 'Error al validar la sala.');

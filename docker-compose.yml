@@ -12,6 +12,11 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "fitai_user", "-pfitai_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -41,7 +46,8 @@ services:
       WS_PORT: 8082  # Usamos el puerto 8082 para el WebSocket
       FRONTEND_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
