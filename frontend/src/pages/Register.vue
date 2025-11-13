@@ -110,12 +110,12 @@ const handleRegister = async () => {
     loading.value = true
     error.value = null
 
-    const res = await fetch(`${API_URL}/api/register`, {
+    const res = await fetch(`${API_URL}/api/users/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        usuari: username.value,
-        correu: email.value,
+        username: username.value,
+        email: email.value,
         password: password.value
       })
     })

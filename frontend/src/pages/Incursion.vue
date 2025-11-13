@@ -50,7 +50,7 @@
           
           <v-row align="center" class="mt-4">
             <v-col cols="6">
-              <div class="d-flex justify-center gap-2" v-if="!bossSessionId">
+              <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
                 <v-btn
                     color="success"
                     large
@@ -471,9 +471,19 @@ function onFeatures(payload) {
 
 // --- LÓGICA DE UNIÓN Y PARTIDA ---
 async function unirseAIncursion() {
+  const userId = user.value?.id || user.value?.userId;
+  if (!userId) {
+    añadirMensaje('Debes iniciar sesión para unirte a una incursión.', 'error--text');
+    // Opcional: redirigir a login
+    // import { useRouter } from 'vue-router'; const router = useRouter(); router.push('/login');
+    mostrarDialogoUnirse.value = false;
+    return;
+  }
+
   buscandoPartida.value = true;
   mostrarDialogoUnirse.value = false;
   añadirMensaje('Buscando una incursión abierta...', 'info--text');
+
 
   // Simulación de llamada a un backend que busca o crea una sala
   // En un caso real, aquí harías:

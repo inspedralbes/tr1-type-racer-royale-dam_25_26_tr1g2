@@ -97,15 +97,19 @@ const handleLogin = async () => {
   try {
     loading.value = true
     error.value = null
-    const response = await axios.post('/api/login', {
-      correu: email.value,
+    const response = await axios.post('/api/users/login', {
+      email: email.value,
       password: password.value
     })
 
-    if (response.data.success) {
+    // La respuesta de Sequelize ahora no tiene `success`, directamente devuelve los datos o un error.
+    if (response.data && response.data.token) {
+      const userData = { ...response.data.user, token: response.data.token };
       // Guardar datos del usuario en localStorage
-      login(response.data)
-      localStorage.setItem('user', JSON.stringify(response.data))
+      login(userData); // El composable useAuth recibe los nuevos datos
+      localStorage.setItem('userId', userData.id); // Guardamos el ID
+      localStorage.setItem('username', userData.username); // Guardamos el nombre de usuario
+      localStorage.setItem('user', JSON.stringify(userData)); // Guardamos todo el objeto de usuario
       // Disparar evento para que otras partes de la app reaccionen
       window.dispatchEvent(new CustomEvent('user-logged-in'))
       // Redirigir a la página principal

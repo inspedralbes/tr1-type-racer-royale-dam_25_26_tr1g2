@@ -105,7 +105,7 @@ const API_BASE_URL = 'http://localhost:9000'
 const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
 
 function obtenerCreadorId() {
-  return localStorage.getItem('userId') || localStorage.getItem('creadorId') || null
+  return localStorage.getItem('userId') || null
 }
 function obtenerNombreUsuario() {
   return localStorage.getItem('username') || 'Invitado'
@@ -118,7 +118,7 @@ async function generarCodigo() {
     codigo += chars.charAt(Math.floor(Math.random() * chars.length))
   }
 
-  const creadorId = obtenerCreadorId() || 'invitado'
+  const creadorId = String(obtenerCreadorId() || 'invitado') // CRÍTICO: Asegurar que el ID sea siempre string
   const nombre = obtenerNombreUsuario()
 
   const payload = {
@@ -127,7 +127,7 @@ async function generarCodigo() {
     nombreCreador: nombre,
     tipo: 'public',
     modo: '2vs2',
-    jugadores: [{ id: creadorId, nombre, rol: 'host', conectado: true }],
+    jugadores: [{ id: String(creadorId), nombre, rol: 'host', conectado: true }],
     opciones: {}
   }
 

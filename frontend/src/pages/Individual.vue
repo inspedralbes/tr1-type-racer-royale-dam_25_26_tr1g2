@@ -124,19 +124,35 @@ onBeforeUnmount(() => {
   detenerPartida()
 })
 
-onMounted(async () => {
-  const user = JSON.parse(localStorage.getItem('user')) || {}
-  const userId = user?.id
-  if (userId) { // Solo cargamos si hay un ID de usuario real
+const loadUserRoutines = async () => {
+  const user = JSON.parse(localStorage.getItem('user')) || {};
+  const userId = user?.id || user?.userId;
+
+  if (userId) {
     try {
-      const response = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`)
-      userRoutines.value = response.data.rutines || []
+      const response = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`);
+      userRoutines.value = response.data.rutines || [];
     } catch (error) {
-      console.error('Error al cargar las rutinas del usuario:', error)
-      userRoutines.value = []
+      console.error('Error al cargar las rutinas del usuario:', error);
+      userRoutines.value = [];
     }
+  } else {
+    // Si no hay usuario, vaciamos las rutinas
+    userRoutines.value = [];
   }
-})
+};
+
+onMounted(() => {
+  loadUserRoutines();
+
+  // Escuchar por si el usuario inicia sesión en la misma pestaña
+  window.addEventListener('user-logged-in', loadUserRoutines);
+});
+
+onBeforeUnmount(() => {
+  // Limpiar el listener al salir del componente
+  window.removeEventListener('user-logged-in', loadUserRoutines);
+});
 
 // 🔹 Watcher para actualizar el ejercicio cuando se cambia la rutina
 watch(selectedRoutineId, (newRoutineId) => {

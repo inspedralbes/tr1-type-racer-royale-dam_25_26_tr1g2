@@ -115,7 +115,7 @@ const updateProfileState = () => {
     // Si el ID de usuario ha cambiado (ej. de Invitado a Usuario Real), o de Usuario a Logout
     if (newId !== userId.value) {
         userId.value = newId;
-        username.value = newUser?.usuari || 'Invitado';
+        username.value = newUser?.username || 'Invitado';
         loadRoutines(); // Llama a la carga
     } else if (newId && routines.value.length === 0) {
         // Caso de recarga de página donde el ID no ha cambiado pero las rutinas están vacías (seguridad)
