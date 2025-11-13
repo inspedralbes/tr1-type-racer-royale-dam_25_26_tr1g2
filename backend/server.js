@@ -1,10 +1,9 @@
-// ...existing code...
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Ya importado
 const bcrypt = require('bcrypt');
-const db = require('./config/db'); // exporta pool mysql2/promise
+const db = require('./models'); // Canviem a la connexió de Sequelize
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
@@ -37,67 +36,13 @@ app.set('etag', false); // Deshabilitar ETag para evitar problemas de caché con
 // -------------------- RUTAS API --------------------
 
 // Ruta raíz
-app.get('/', (req, res) => {
-  res.send('Servidor Express activo! Rutas: /api/register, /api/login, /api/session/save, /api/boss/create, /api/boss/join, /api/boss/attack, /api/boss/:bossId');
-});
+app.get('/', (req, res) => { res.send('Servidor Express actiu!'); });
 
-// Registrar usuario
-app.post('/api/register', async (req, res) => {
-  const { usuari, correu, password } = req.body;
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-    await db.pool.query(
-      'INSERT INTO Usuaris (usuari, correu, contrasenya) VALUES (?,?,?)',
-      [usuari, correu, hashed]
-    );
-    res.json({ success: true, message: 'Usuario registrado correctamente' });
-  } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return res
-      .status(409)
-      .json({ success: false, error: 'El correo o usuario ya está registrado' });
-    res.status(500).json({ success: false, error: 'Error al registrar usuario' });
-  }
-});
+// Rutes d'usuari amb Sequelize
+const userRoutes = require('./routes/userRoutes');
+app.use('/api/users', userRoutes);
 
-// Login
-app.post('/api/login', async (req, res) => {
-  const { correu, password } = req.body;
-  try {
-    // 1️ Buscar usuario real
-    const [rows] = await db.pool.query('SELECT * FROM Usuaris WHERE correu=?', [correu]);
-    if (rows.length === 0) return res.status(401).json({ success: false, error: 'Usuario no encontrado' });
-    const user = rows[0];
-    const match = await bcrypt.compare(password, user.contrasenya);
-    if (!match) return res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
-
-    // 2️Buscar si existe el usuario invitado
-    const [guestRows] = await db.pool.query('SELECT id FROM Usuaris WHERE usuari = ?', ['invitado']);
-    if (guestRows.length > 0) {
-      const invitadoId = guestRows[0].id;
-      // 3️ Transferir todas las rutinas del invitado al usuario real
-      await db.pool.query(
-        'UPDATE Rutines SET id_usuari = ? WHERE id_usuari = ?',
-        [user.id, invitadoId]
-      );
-      // 4. Eliminar el usuario 'invitado' para que no queden rutinas huérfanas en el futuro
-      await db.pool.query(
-        'DELETE FROM Usuaris WHERE id = ?',
-        [invitadoId]
-      );
-    }
-
-    // Devolver datos del usuario logueado
-    res.json({
-      success: true,
-      userId: user.id,
-      usuari: user.usuari,
-      message: 'Inicio de sesión correcto',
-    });
-  } catch (err) {
-    console.error('Error en /api/login:', err);
-    res.status(500).json({ success: false, error: 'Error del servidor' });
-  }
-});
+const db_pool = require('./config/db').pool; // Mantenim el pool per a les altres consultes
 
 // Objeto en memoria para rastrear las salas activas
 const salasActivas = {};
@@ -117,7 +62,7 @@ app.post('/api/salas/crear', async (req, res) => {
     // Por ahora, simulamos que se guarda y devolvemos el código como ID de sesión.
     // Ejemplo de inserción (deberás adaptarlo a tu tabla de salas/sesiones):
     /*
-    const [result] = await db.pool.query(
+    const [result] = await db_pool.query(
       'INSERT INTO Sesiones (codigo, creador_id, nombre_creador, tipo, modo, opciones) VALUES (?, ?, ?, ?, ?, ?)',
       [codigo, creadorId, nombreCreador, tipo, modo, JSON.stringify(opciones)]
     );
@@ -152,7 +97,7 @@ app.post('/api/sessions/start', (req, res) => {
   }
 
   // Aquí podrías actualizar el estado de la sala en la base de datos a 'iniciada'
-  // Por ejemplo: await db.pool.query('UPDATE Sesiones SET estado = "iniciada" WHERE codigo = ?', [codigo]);
+  // Por ejemplo: await db_pool.query('UPDATE Sesiones SET estado = "iniciada" WHERE codigo = ?', [codigo]);
 
   // Notificar a todos los clientes en la sala que la partida ha comenzado
   if (sessions.has(codigo)) {
@@ -172,27 +117,26 @@ app.post('/api/session/save', async (req, res) => {
   try {
     // validar si el userId existe
     if (finalUserId) {
-      const [rows] = await db.pool.query('SELECT id FROM Usuaris WHERE id = ?', [finalUserId]);
+      const [rows] = await db_pool.query('SELECT id FROM Usuaris WHERE id = ?', [finalUserId]);
       if (rows.length === 0) finalUserId = null; // si no existe, tratar como invitado
     }
 
     // si no hay userId válido, usar o crear invitado
     if (!finalUserId) {
-      const [rows] = await db.pool.query('SELECT id FROM Usuaris WHERE usuari = ?', ['invitado']);
+      const [rows] = await db_pool.query('SELECT id FROM Usuaris WHERE usuari = ?', ['invitado']);
       if (rows.length > 0) {
         finalUserId = rows[0].id;
       } else {
         const hashed = await bcrypt.hash('invitado123', 10);
-        const [createRes] = await db.pool.query(
+        const [createRes] = await db_pool.query(
           'INSERT INTO Usuaris (usuari, correu, contrasenya) VALUES (?,?,?)',
           ['invitado', 'invitado@local', hashed]
         );
         finalUserId = createRes.insertId;
       }
     }
-
     // crear rutina
-    const [result] = await db.pool.query(
+    const [result] = await db_pool.query(
       'INSERT INTO Rutines (id_usuari, nom, descripcio) VALUES (?, ?, ?)',
       [finalUserId, nom, descripcio]
     );
@@ -202,7 +146,7 @@ app.post('/api/session/save', async (req, res) => {
     // insertar ejercicios
     if (Array.isArray(exercicis)) {
       for (const ex of exercicis) {
-        await db.pool.query(
+        await db_pool.query(
           'INSERT INTO Exercicis_Rutina (id_rutina, nom_exercicis, n_repeticions) VALUES (?, ?, ?)',
           [rutinaId, ex.nom_exercicis, ex.n_repeticions]
         );
@@ -223,7 +167,7 @@ app.post('/api/session/save', async (req, res) => {
 app.post('/api/boss/create', async (req, res) => {
   const { jefeVidaMax = 300, maxParticipants = 10 } = req.body;
   try {
-    const [result] = await db.pool.query(
+    const [result] = await db_pool.query(
       'INSERT INTO Boss_Sessions (jefe_vida_max, jefe_vida_actual, max_participants) VALUES (?,?,?)',
       [jefeVidaMax, jefeVidaMax, maxParticipants]
     );
@@ -237,13 +181,13 @@ app.post('/api/boss/create', async (req, res) => {
 app.post('/api/boss/join', async (req, res) => {
   const { bossId, usuariId } = req.body;
   try {
-    const [exists] = await db.pool.query(
+    const [exists] = await db_pool.query(
       'SELECT * FROM Boss_Participants WHERE id_boss_sessio=? AND id_usuari=?',
       [bossId, usuariId]
     );
     if (exists.length > 0) return res.status(400).json({ error: 'Ya estás inscrito a esta sesión' });
 
-    await db.pool.query(
+    await db_pool.query(
       'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
       [bossId, usuariId]
     );
@@ -259,7 +203,7 @@ app.post('/api/boss/join', async (req, res) => {
 app.get('/api/boss/:bossId', async (req, res) => {
   const { bossId } = req.params;
   try {
-    const [rows] = await db.pool.query(
+    const [rows] = await db_pool.query(
       'SELECT jefe_vida_max, jefe_vida_actual, max_participants, estat FROM Boss_Sessions WHERE id=?',
       [bossId]
     );
@@ -279,21 +223,21 @@ app.post('/api/boss/attack', async (req, res) => {
   }
   try {
     // 1. Obtener vida actual
-    const [rows] = await db.pool.query('SELECT jefe_vida_actual FROM Boss_Sessions WHERE id = ?', [bossId]);
+    const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM Boss_Sessions WHERE id = ?', [bossId]);
     if (rows.length === 0) return res.status(404).json({ success: false, error: 'Boss no encontrado' });
 
     const vidaActual = rows[0].jefe_vida_actual;
     const nuevaVida = Math.max(0, vidaActual - danoAplicado);
 
     // 2. Actualizar vida
-    await db.pool.query(
+    await db_pool.query(
       'UPDATE Boss_Sessions SET jefe_vida_actual = ? WHERE id = ?',
       [nuevaVida, bossId]
     );
 
     // Opcional: Actualizar el estado a 'finalitzada' si la vida llega a 0
     if (nuevaVida === 0) {
-      await db.pool.query(
+      await db_pool.query(
         'UPDATE Boss_Sessions SET estat = "finalitzada" WHERE id = ?',
         [bossId]
       );
@@ -312,7 +256,7 @@ app.post('/api/exercicis_rutina', async (req, res) => {
     return res.status(400).json({ success: false, error: 'id_rutina y nom_exercicis son requeridos.' });
   }
   try {
-    const [result] = await db.pool.query(
+    const [result] = await db_pool.query(
       'INSERT INTO Exercicis_Rutina (id_rutina, nom_exercicis, n_repeticions) VALUES (?,?,?)',
       [id_rutina, nom_exercicis, n_repeticions || null]
     );
@@ -329,7 +273,7 @@ app.post('/api/exercicis_rutina', async (req, res) => {
 app.get('/api/rutines/user/:id', async (req, res) => {
   const userId = req.params.id;
   try {
-    const [rows] = await db.pool.query(
+    const [rows] = await db_pool.query(
   `SELECT 
       r.id AS rutina_id,
       r.nom,
@@ -367,9 +311,9 @@ app.delete('/api/rutines/:id', async (req, res) => {
   const { id } = req.params
   try {
     // Eliminar los ejercicios relacionados primero
-    await db.pool.query('DELETE FROM Exercicis_Rutina WHERE id_rutina = ?', [id])
+    await db_pool.query('DELETE FROM Exercicis_Rutina WHERE id_rutina = ?', [id])
     // Luego eliminar la rutina
-    await db.pool.query('DELETE FROM Rutines WHERE id = ?', [id])
+    await db_pool.query('DELETE FROM Rutines WHERE id = ?', [id])
     res.json({ success: true })
   } catch (err) {
     console.error('Error al eliminar rutina:', err)
@@ -527,16 +471,20 @@ wss.on('connection', ws => {
 });
 
 // -------------------- INICIAR SERVIDOR --------------------
-const httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
+let httpServer;
+db.sequelize.sync().then(() => {
+  console.log('Base de dades sincronitzada amb Sequelize.');
+  httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
+});
 
 async function shutdown() {
   console.log('Cerrando servidores...');
   try {
     wss.close(() => console.log('WebSocket cerrado.'));
     httpServer.close(() => console.log('HTTP server cerrado.'));
-    if (db && db.pool && typeof db.pool.end === 'function') {
-      await db.pool.end();
-      console.log('Pool MySQL cerrado.');
+    if (db_pool && typeof db_pool.end === 'function') {
+      await db_pool.end();
+      console.log('Pool MySQL (raw) cerrado.');
     }
     process.exit(0);
   } catch (err) {

@@ -1,4 +1,17 @@
 -- Usuaris Registrats
+-- Tablas sin dependencias externas
+
+-- Solo
+CREATE TABLE Rutines (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_usuari INT NOT NULL,
+    nom VARCHAR(100) NOT NULL,
+    descripcio TEXT,
+    data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_usuari) REFERENCES Usuaris(id)
+);
+
+-- Usuaris Registrats
 CREATE TABLE Usuaris (
     id INT AUTO_INCREMENT PRIMARY KEY,
     usuari VARCHAR(25) UNIQUE NOT NULL,
@@ -14,16 +27,6 @@ CREATE TABLE SessionsVersus (
     data_creacio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     creador_id INT,
     FOREIGN KEY (creador_id) REFERENCES Usuaris(id)
-);
-
--- Solo
-CREATE TABLE Rutines (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    id_usuari INT NOT NULL,
-    nom VARCHAR(100) NOT NULL,
-    descripcio TEXT,
-    data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_usuari) REFERENCES Usuaris(id)
 );
 
 CREATE TABLE Exercicis_Rutina (

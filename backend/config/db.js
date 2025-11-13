@@ -37,15 +37,10 @@ async function connectWithRetry(retries = 10, delay = 3000) {
   process.exit(1); // salir si no se conecta
 }
 
-// Ejecutar la conexión antes de iniciar el servidor
-connectWithRetry().then(() => {
-  const express = require('express');
-  const app = express();
-
-  app.get('/', (req, res) => res.send('Servidor Express funcionando'));
-
-  const PORT = process.env.PORT || 9000;
-  app.listen(PORT, () => console.log(`Servidor Express en puerto ${PORT}`));
-});
+// Ejecutar la conexión para verificarla al inicio, pero no bloquear el proceso ni iniciar un servidor
+// La lógica de reintento de conexión del pool de mysql2/promise ya maneja la reconexión si la DB se cae temporalmente.
+// Para el inicio, el healthcheck de Docker Compose es más robusto.
+connectWithRetry()
+  .catch(err => console.error('Error inicial de conexión al pool de MySQL:', err));
 
 module.exports = { pool };
