@@ -105,6 +105,8 @@ const handleLogin = async () => {
     if (response.data.success) {
       // Guardar datos del usuario en localStorage
       login(response.data)
+      localStorage.setItem('userId', response.data.userId) // Guardamos el ID directamente
+      localStorage.setItem('username', response.data.usuari) // Guardamos el nombre de usuario
       localStorage.setItem('user', JSON.stringify(response.data))
       // Disparar evento para que otras partes de la app reaccionen
       window.dispatchEvent(new CustomEvent('user-logged-in'))
