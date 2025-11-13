@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   db:
     image: mariadb:12
@@ -12,11 +14,6 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "fitai_user", "-pfitai_pass"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -43,11 +40,10 @@ services:
       DB_PASSWORD: fitai_pass
       DB_NAME: fitai_db
       API_PORT: 9000
-      WS_PORT: 8082  # Usamos el puerto 8082 para el WebSocket
+      WS_PORT: 8082
       FRONTEND_ORIGINS: "http://localhost:3000,http://localhost:3001"
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
   frontend:
     build: ./frontend
@@ -56,6 +52,13 @@ services:
       - "3001:3000"
     environment:
       REACT_APP_API_URL: "http://localhost:9000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+
+
 
 volumes:
   db_data:

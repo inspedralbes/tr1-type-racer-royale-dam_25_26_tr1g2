@@ -15,8 +15,15 @@ const sequelize = new Sequelize(
       connectTimeout: 60000,
     },
     logging: false,
+    retry: {
+      match: [/ECONNREFUSED/],
+      max: 10,       // reintenta 10 veces
+      backoffBase: 2000, // espera 2s entre intentos
+      backoffExponent: 1.5
+    }
   }
 );
+
 
 sequelize.authenticate()
   .then(() => console.log('Connexió amb Sequelize establerta correctament.'))

@@ -1,23 +1,22 @@
 # Usar la imagen oficial de Node
 FROM node:20-alpine
 
+
 WORKDIR /app
 
-# Copiar package.json y package-lock.json
-COPY package*.json ./
 
-# Instalar dependencias
+# Instalar dependencias (no copiamos aún el resto de la app)
+COPY package*.json ./
 RUN npm install
+
 
 # Copiar el resto de la app
 COPY . .
 
-# Construir la app para producción
-RUN npm run build
 
-# Servir la app con un servidor ligero (http-server)
-RUN npm install -g serve
-
+# Exponer el puerto de desarrollo de Vite (o React)
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+
+# Comando para iniciar la app en modo desarrollo con hot reload
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
