@@ -7,13 +7,12 @@
               Volver
             </v-btn>
       <v-col cols="12">
-        <h1 class="text-h3 font-weight-black text-center battle-title">
-            INCURSIÓN CONTRA EL JEFE
+        <h1 class="text-h4 text-sm-h3 font-weight-black text-center battle-title">
+          INCURSIÓN CONTRA EL JEFE
         </h1>
-        <!-- CONTADOR DE JUGADORES -->
         <div v-if="bossSessionId" class="text-center mt-2">
-          <v-chip color="primary" large>
-            <v-icon left>mdi-account-group</v-icon>
+          <v-chip color="primary" small class="text-caption text-sm-body-2">
+            <v-icon left small>mdi-account-group</v-icon>
             Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
           </v-chip>
         </div>
@@ -23,75 +22,98 @@
     <v-row>
       
       <v-col cols="12" md="6" order-md="1">
-        <v-card class="pa-4 game-card player-card fill-height">
-          <h2 class="text-h5 font-weight-bold mb-4 text-center player-title">TU ENTRENADOR</h2>
+        <v-card class="pa-3 pa-sm-4 game-card player-card fill-height">
+          <h2 class="text-h6 text-sm-h5 font-weight-bold mb-3 text-center player-title">TU ENTRENADOR</h2>
 
           <div class="mb-4">
             <div class="d-flex align-center justify-space-between mb-1">
-                <div class="text-caption font-weight-bold">TU HP</div>
+                <div class="text-caption font-weight-bold text-truncate">TU HP</div>
                 <div class="text-caption font-weight-bold">
                     {{ jugadorVidaActual }} / {{ jugadorVidaMaxima }}
                 </div>
             </div>
             <v-progress-linear
                 :value="jugadorVidaPorcentaje"
-                height="20"
+                height="18"
                 rounded
                 :color="calcularColorVida(jugadorVidaPorcentaje)" >
                  <template v-slot:default="{ value }">
-                  <strong class="health-text">{{ Math.ceil(value) }}%</strong>
+                  <strong class="health-text text-caption">{{ Math.ceil(value) }}%</strong>
                 </template>
             </v-progress-linear>
           </div>
           
           <div class="webcam-stage mb-4">
+            <!-- 1. El Skeleton con la cámara (fondo) -->
             <PoseSkeleton @features="onFeatures" />
             <div v-if="!isPoseDetectorReady" class="loader-overlay">
                 <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                <p class="mt-2">Cargando detector de pose...</p>
+                <p class="mt-2 text-caption">Cargando detector de pose...</p>
             </div>
+            
+            <!-- 2. Registro de Combate (Superpuesto en la cámara) -->
+            <div class="combat-log-overlay">
+              <div class="message-log" ref="messageLogRef"> 
+                <p v-for="(msg, index) in logMensajes" :key="index" :class="msg.type">
+                  <strong>[{{ msg.time }}]</strong> {{ msg.text }}
+                </p>
+              </div>
+            </div>
+            
           </div>
           
           <v-row align="center" class="mt-4">
+<<<<<<< HEAD
             <v-col cols="6">
               <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
+=======
+            
+            <v-col cols="12" sm="6">
+              <div class="d-flex justify-center gap-2" v-if="!bossSessionId">
+>>>>>>> 78f464a (adaptación al telf y cambio paginas.)
                 <v-btn
                     color="success"
-                    large
+                    small
                     @click="mostrarDialogoUnirse = true"
                     :disabled="!isPoseDetectorReady"
-                    class="action-btn"
+                    class="action-btn btn-mobile-fix"
+                    block
                 >
-                    <v-icon left>mdi-magnify</v-icon>
-                    BUSCAR INCURSIÓN
+                    <v-icon left small>mdi-magnify</v-icon>
+                    <span class="text-truncate">BUSCAR INCURSIÓN</span>
                 </v-btn>
               </div>
-              <div class="d-flex justify-center gap-2" v-else>
+              <div class="d-flex justify-center gap-2 flex-wrap" v-else>
                 <v-btn
                   v-if="esCreador"
                   color="success"
-                  large
+                  small
                   @click="iniciarPartida"
                   :disabled="isPartidaActiva || !isPoseDetectorReady"
-                  class="action-btn"
+                  class="action-btn btn-mobile-fix"
+                  :block="$vuetify.breakpoint.xsOnly"
+                  :class="{'flex-grow-1': $vuetify.breakpoint.smAndUp}"
                 >
-                  <v-icon left>mdi-sword</v-icon>
-                  INICIAR
+                  <v-icon left small>mdi-sword</v-icon>
+                  <span class="text-truncate">INICIAR</span>
                 </v-btn>
                 <v-btn
                   color="error"
-                  large
+                  small
                   @click="isPartidaActiva ? detenerPartida() : salirDeLaIncursion()"
                   :disabled="!bossSessionId"
-                  class="action-btn"
+                  class="action-btn btn-mobile-fix"
+                  :block="$vuetify.breakpoint.xsOnly"
+                  :class="{'flex-grow-1': $vuetify.breakpoint.smAndUp}"
                 >
-                  <v-icon left>{{ isPartidaActiva ? 'mdi-shield-off' : 'mdi-exit-run' }}</v-icon>
-                  {{ isPartidaActiva ? 'DETENER' : 'SALIR' }}
+                  <v-icon left small>{{ isPartidaActiva ? 'mdi-shield-off' : 'mdi-exit-run' }}</v-icon>
+                  <span class="text-truncate">{{ isPartidaActiva ? 'DETENER' : 'SALIR' }}</span>
                 </v-btn>
               </div>
             </v-col>
-            <v-col cols="6" class="text-center">
-              <div class="reps-display">REPETICIONES: <span>{{ repeticiones }}</span></div>
+            
+            <v-col cols="12" sm="6" class="text-center">
+              <div class="reps-display">REPETICIONES: <span class="text-h5 text-sm-h4">{{ repeticiones }}</span></div>
             </v-col>
           </v-row>
         </v-card>
@@ -99,10 +121,10 @@
 
       <v-col cols="12" md="6" order-md="2">
         
-        <v-card class="pa-4 game-card mb-4 ruleta-card" dark>
+        <v-card class="pa-3 pa-sm-4 game-card mb-4 ruleta-card" dark>
             <div class="d-flex align-center justify-space-between">
-                <h3 class="text-h6 font-weight-bold">PRÓXIMO ATAQUE EN:</h3>
-                <div class="text-h4 font-weight-black" :class="{'error--text': tiempoRestante < 15}">
+                <h3 class="text-subtitle-1 font-weight-bold text-truncate">PRÓXIMO ATAQUE EN:</h3>
+                <div class="text-h5 text-sm-h4 font-weight-black" :class="{'error--text': tiempoRestante < 15}">
                     {{ tiempoFormateado }}
                 </div>
             </div>
@@ -110,13 +132,13 @@
             <v-divider class="my-2"></v-divider>
             
             <div class="text-center">
-                <p class="mb-1 text-subtitle-1">¡El Jefe exige!</p>
-                <h2 class="text-h3 font-weight-black exercise-demand">
+                <p class="mb-1 text-caption text-sm-subtitle-1">¡El Jefe exige!</p>
+                <h2 class="text-h5 text-sm-h3 font-weight-black exercise-demand text-truncate">
                     {{ ejercicioSeleccionado.toUpperCase() }}
                 </h2>
                 <v-progress-linear
                     :value=" (tiempoRestante / DURACION_RULETA) * 100 "
-                    height="10"
+                    height="8"
                     rounded
                     :color="calcularColorVida( (tiempoRestante / DURACION_RULETA) * 100 )"
                     class="mt-3"
@@ -125,12 +147,12 @@
         </v-card>
         
         <v-card 
-            class="pa-4 game-card enemy-card mb-4"
+            class="pa-3 pa-sm-4 game-card enemy-card"
             :class="{'hit-animation': isJefeGolpeado}"
         >
           <div class="d-flex align-center justify-space-between mb-3">
-            <h2 class="text-h5 font-weight-bold enemy-title">JEFE DE GIMNASIO</h2>
-            <div class="text-subtitle-1 font-weight-bold">
+            <h2 class="text-h6 text-sm-h5 font-weight-bold enemy-title text-truncate">JEFE DE GIMNASIO</h2>
+            <div class="text-subtitle-2 font-weight-bold">
               HP: {{ jefeVidaActual }} / {{ jefeVidaMaxima }}
             </div>
           </div>
@@ -138,46 +160,38 @@
           <div class="mb-3">
             <v-progress-linear
               :value="jefeVidaPorcentaje"
-              height="25"
+              height="20"
               rounded
               :color="calcularColorVida(jefeVidaPorcentaje)"
             >
               <template v-slot:default="{ value }">
-                <strong class="health-text">{{ Math.ceil(value) }}%</strong>
+                <strong class="health-text text-caption">{{ Math.ceil(value) }}%</strong>
               </template>
             </v-progress-linear>
           </div>
           
           <div class="text-center boss-image-area">
-             <v-icon size="120" class="boss-icon">mdi-robot-angry</v-icon>
-             <div v-if="isJefeGolpeado" class="hit-indicator">
-               <v-icon size="100" color="yellow lighten-1">mdi-flash</v-icon>
-             </div>
+              <v-icon size="80" class="boss-icon">mdi-robot-angry</v-icon>
+              <div v-if="isJefeGolpeado" class="hit-indicator">
+                <v-icon size="80" color="yellow lighten-1">mdi-flash</v-icon>
+              </div>
           </div>
         </v-card>
         
-        <v-card class="pa-4 game-card message-console">
-          <h3 class="text-h6 mb-2 console-title">REGISTRO DE COMBATE</h3>
-          <div class="message-log" ref="messageLogRef">
-            <p v-for="(msg, index) in logMensajes" :key="index" :class="msg.type">
-                <strong>[{{ msg.time }}]</strong> {{ msg.text }}
-            </p>
-          </div>
-        </v-card>
+        <!-- Eliminado el card de consola de la columna derecha, ahora está dentro de la webcam-stage -->
         
       </v-col>
     </v-row>
 
-    <!-- DIÁLOGO DE CONFIRMACIÓN -->
     <v-dialog v-model="mostrarDialogoUnirse" persistent max-width="400">
       <v-card class="game-card">
-        <v-card-title class="text-h5 player-title">¿Unirte a la Incursión?</v-card-title>
-        <v-card-text>
+        <v-card-title class="text-h6 text-sm-h5 player-title text-wrap">¿Unirte a la Incursión?</v-card-title>
+        <v-card-text class="text-body-2">
           Se buscará una sala de incursión abierta. Si no hay ninguna disponible, se creará una nueva para ti y otros jugadores.
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="mostrarDialogoUnirse = false">
+          <v-btn color="grey" text @click="mostrarDialogoUnirse = false" class="text-truncate">
             Cancelar
           </v-btn>
           <v-btn
@@ -185,6 +199,7 @@
             text
             @click="unirseAIncursion"
             :loading="buscandoPartida"
+            class="text-truncate"
           >
             Confirmar
           </v-btn>
@@ -237,7 +252,7 @@ const repeticiones = ref(0)
 // Máquinas de estado para cada ejercicio
 const squatState = ref('up')
 const pushupState = ref('up')
-const situpState = ref('up')   
+const situpState = ref('up')    
 const lungeState = ref('up')
 const jumpingJacksState = ref('down');
 const mountainClimbersState = ref('up');
@@ -312,29 +327,8 @@ function aplicarDanoJugador(dano, razon) {
 async function aplicarDanoJefe(dano, ataque) {
     if (!isPartidaActiva.value) return
     
-    // 1. Llamada a la API para aplicar daño y obtener la nueva vida (requiere que el endpoint POST /api/boss/attack esté activo)
-    // try {
-    //     const response = await fetch('/api/boss/attack', {
-    //         method: 'POST',
-    //         headers: { 'Content-Type': 'application/json' },
-    //         body: JSON.stringify({ bossId: bossSessionId.value, danoAplicado: dano }),
-    //     });
-    //     const data = await response.json();
-
-    //     if (!response.ok || !data.success) {
-    //         console.error("Error al atacar al boss:", data.error || response.statusText);
-    //         añadirMensaje(`ERROR: Falló la comunicación con el Jefe.`, 'error--text');
-    //         return;
-    //     }
-
-    //     // 2. Actualizar vida local con el valor devuelto por el servidor
-    //     jefeVidaActual.value = data.nuevaVida;
-
-    // } catch (error) {
-    //     console.error("Error de red al atacar al boss:", error);
-    //     añadirMensaje(`ERROR DE RED: No se pudo contactar con el Jefe.`, 'error--text');
-    //     return;
-    // }
+    // SIMULACIÓN
+    jefeVidaActual.value = Math.max(0, jefeVidaActual.value - dano);
     
     // 3. Animación de golpe
     isJefeGolpeado.value = true
@@ -475,12 +469,15 @@ async function unirseAIncursion() {
   mostrarDialogoUnirse.value = false;
   añadirMensaje('Buscando una incursión abierta...', 'info--text');
 
+<<<<<<< HEAD
 
   // Simulación de llamada a un backend que busca o crea una sala
   // En un caso real, aquí harías:
   // const response = await axios.post('/api/boss/join', { userId: user.value.id });
   // const { sessionId, isCreator, participants } = response.data;
   
+=======
+>>>>>>> 78f464a (adaptación al telf y cambio paginas.)
   // --- SIMULACIÓN ---
   await new Promise(resolve => setTimeout(resolve, 1500)); // Simula espera de red
   const sessionId = 1; // ID de sesión simulado
@@ -499,15 +496,10 @@ async function unirseAIncursion() {
     añadirMensaje('¡Te has unido a una incursión! Esperando al líder para iniciar.', 'success--text');
   }
   
-  // Aquí conectarías al WebSocket con el ID de la sesión
-  // conectarWebSocket(sessionId);
-  
   await cargarEstadoJefe();
 }
 
 function salirDeLaIncursion() {
-  // Aquí harías una llamada a la API para salir de la sala
-  // y desconectarías el WebSocket
   bossSessionId.value = null;
   esCreador.value = false;
   isPartidaActiva.value = false;
@@ -519,9 +511,6 @@ function salirDeLaIncursion() {
 // --- LÓGICA DE INICIO/FIN DE PARTIDA ---
 function iniciarPartida() {
   if (isPartidaActiva.value || !isPoseDetectorReady.value || !bossSessionId.value) return;
-  
-  // El creador envía un mensaje por WebSocket para que todos inicien
-  // En esta simulación, lo iniciamos localmente
   
   jugadorVidaActual.value = jugadorVidaMaxima;
   repeticiones.value = 0;
@@ -550,14 +539,9 @@ function detenerPartida() {
 }
 
 // --- LLAMADA INICIAL AL MONTAR ---
-// Función para cargar la vida inicial del jefe desde el servidor
 async function cargarEstadoJefe() {
   if (!bossSessionId.value) return;
   try {
-    // const response = await fetch(`/api/boss/${bossSessionId.value}`);
-    // const data = await response.json();
-    // jefeVidaActual.value = data.boss.jefe_vida_actual;
-    
     // Simulación
     jefeVidaActual.value = jefeVidaMaxima;
     añadirMensaje(`Estado del Jefe cargado: ${jefeVidaActual.value} HP.`, 'info--text');
@@ -597,7 +581,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
   background-color: rgba(40, 50, 60, 0.8) !important; 
   color: white;
-  position: relative; /* Necesario para la animación */
+  position: relative; 
   backdrop-filter: blur(5px);
 }
 
@@ -622,38 +606,25 @@ onBeforeUnmount(() => {
   text-shadow: 1px 1px 2px black;
 }
 
-.message-console {
-  background-color: #212121 !important;
-  border: 4px solid #444;
-  border-radius: 8px;
-  font-family: 'Courier New', Courier, monospace;
-  background-color: rgba(20, 20, 20, 0.8) !important;
+.ruleta-card {
+  border-color: rgba(255, 171, 0, 0.5);
+  color: white;
 }
 
-.console-title {
-  color: #00E676; /* Verde terminal */
+.exercise-demand {
+  color: #FFAB00; /* Naranja ámbar */
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
 
-.message-log {
-    height: 200px;
-    overflow-y: auto;
-    background-color: rgba(0,0,0,0.3);
-    padding-right: 8px;
-    color: #eee;
+.reps-display {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  letter-spacing: 1px;
 }
 
-.message-log p {
-    margin: 0;
-    line-height: 1.4;
-    font-size: 0.9rem;
-}
-
-.success--text { color: #69F0AE !important; }
-.warning--text { color: #FFD600 !important; }
-.critical--text { color: #FF1744 !important; font-weight: bold; text-transform: uppercase; }
-.info--text { color: #40C4FF !important; }
-
-/* Webcam Stage (para contener el PoseSkeleton) */
+/* --- ESTILOS DE LA CÁMARA/CHAT --- */
 .webcam-stage {
     position: relative;
     width: 100%;
@@ -673,24 +644,82 @@ onBeforeUnmount(() => {
     justify-content: center;
     color: white;
     z-index: 10;
-    
-}
-.ruleta-card {
-  border-color: rgba(255, 171, 0, 0.5);
-  color: white;
 }
 
-.exercise-demand {
-  color: #FFAB00; /* Naranja ámbar */
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+/* El nuevo contenedor de la superposición de chat */
+.combat-log-overlay {
+    position: absolute;
+    top: 10px; /* Separación de la parte superior */
+    left: 10px; /* Separación de la izquierda */
+    width: 95%; /* Ocupa casi todo el ancho */
+    height: 100%;
+    pointer-events: none; /* Permite clicks a través de él si fuera necesario */
+    z-index: 5; /* Asegura que esté sobre la webcam */
 }
 
-.reps-display {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-  letter-spacing: 1px;
+.message-log {
+    /* Altura solo para la zona del chat (parte superior izquierda) */
+    max-height: 40%; 
+    width: 70%;
+    overflow-y: hidden; /* Ocultamos el scrollbar, solo mostramos las últimas líneas */
+    display: flex;
+    flex-direction: column-reverse; /* Muestra el mensaje más nuevo abajo, pero la caja está arriba */
+    background-color: transparent;
+    padding-right: 8px;
+    color: #eee;
+    word-break: break-word;
+    /* Efecto de desvanecimiento en la parte superior */
+    mask-image: linear-gradient(to bottom, transparent 0%, black 50%, black 100%);
+}
+
+.message-log p {
+    margin-bottom: 2px;
+    line-height: 1.3;
+    font-size: 0.8rem;
+    padding: 2px 5px;
+    background-color: rgba(0, 0, 0, 0.4); /* Fondo semi-transparente para cada mensaje */
+    border-radius: 4px;
+    width: fit-content;
+    max-width: 100%;
+    pointer-events: auto; /* Restaura la capacidad de desplazamiento (si lo hubiéramos activado) */
+    animation: fadeIn 0.5s ease-out; /* Animación simple al aparecer */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Colores de los mensajes */
+.success--text { color: #69F0AE !important; }
+.warning--text { color: #FFD600 !important; }
+.critical--text { color: #FF1744 !important; font-weight: bold; }
+.info--text { color: #40C4FF !important; }
+
+/* --- ADAPTACIONES PARA MÓVIL --- */
+@media (max-width: 600px) {
+  .battle-title {
+    font-size: 1.5rem !important; 
+  }
+  
+  .exercise-demand {
+    font-size: 1.8rem !important;
+  }
+
+  /* Ajuste de chat en móvil */
+  .combat-log-overlay {
+    top: 5px; 
+    left: 5px;
+  }
+  
+  .message-log {
+    max-height: 50%; /* Más alto en móvil */
+    width: 90%;
+  }
+
+  .message-log p {
+    font-size: 0.75rem;
+  }
 }
 
 /* --- ESTILOS DE ANIMACIÓN DE GOLPE --- */
@@ -707,7 +736,7 @@ onBeforeUnmount(() => {
 }
 
 .boss-image-area {
-    min-height: 150px; /* Asegura que hay espacio para el indicador de golpe */
+    min-height: 150px; 
     position: relative;
     display: flex;
     align-items: center;
@@ -715,7 +744,7 @@ onBeforeUnmount(() => {
 }
 
 .boss-icon {
-  color: #BDBDBD;
+  color: #BDBDBd;
   text-shadow: 0 0 15px rgba(0,0,0,0.8);
 }
 
@@ -729,5 +758,4 @@ onBeforeUnmount(() => {
     filter: brightness(1.5);
     opacity: 1;
 }
-/* -------------------------------------- */
 </style>

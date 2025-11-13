@@ -1,4 +1,3 @@
-// ...existing code...
 <template>
   <v-app dark class="app-background">
     <v-main>
@@ -57,19 +56,20 @@
               </template>
             </v-text-field>
 
-            <div class="d-flex align-center justify-center mt-4" style="gap: 16px;">
+            <!-- Contenedor adaptativo para selección y botón -->
+            <div class="d-flex flex-wrap align-center justify-center mt-4 responsive-container">
               <v-select
                 v-model="maxPersonas"
                 :items="personasOptions"
                 label="Máx. personas"
                 dense
                 outlined
-                style="max-width: 140px;"
+                class="mb-3 responsive-select"
                 :disabled="salaIniciada"
               />
               <v-btn
                 color="success"
-                class="button-shadow px-10 py-5 d-flex align-center justify-center"
+                class="button-shadow px-10 py-5 d-flex align-center justify-center mb-3 responsive-btn"
                 rounded
                 @click="iniciarSala"
                 elevation="10"
@@ -104,12 +104,8 @@ const personasOptions = [2,3,4,5,6,7,8]
 const API_BASE_URL = 'http://localhost:9000'
 const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
 
-function obtenerCreadorId() {
-  return localStorage.getItem('userId') || null
-}
-function obtenerNombreUsuario() {
-  return localStorage.getItem('username') || 'Invitado'
-}
+function obtenerCreadorId() { return localStorage.getItem('userId') || null }
+function obtenerNombreUsuario() { return localStorage.getItem('username') || 'Invitado' }
 
 async function generarCodigo() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -117,10 +113,8 @@ async function generarCodigo() {
   for (let i = 0; i < 6; i++) {
     codigo += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-
-  const creadorId = String(obtenerCreadorId() || 'invitado') // CRÍTICO: Asegurar que el ID sea siempre string
+  const creadorId = String(obtenerCreadorId() || 'invitado')
   const nombre = obtenerNombreUsuario()
-
   const payload = {
     codigo,
     creadorId,
@@ -130,20 +124,14 @@ async function generarCodigo() {
     jugadores: [{ id: String(creadorId), nombre, rol: 'host', conectado: true }],
     opciones: {}
   }
-
   try {
     const resp = await api.post('/api/salas/crear', payload)
     const sid = resp.data?.sessionId ?? resp.data?.id ?? resp.data?.insertId ?? null
-    if (sid) {
-      // solo guardamos el código, no redirigimos todavía
-      codigoSala.value = sid
-    } else {
-      alert('Sala creada en servidor (id no devuelto por el API)')
-    }
+    if (sid) codigoSala.value = sid
+    else alert('Sala creada en servidor (id no devuelto por el API)')
   } catch (err) {
-    console.error('Error guardando sala -', err?.response?.status, err?.response?.data ?? err.message)
-    const servidorMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message
-    alert(`No se pudo guardar la sala. (${err?.response?.status ?? 'sin respuesta'})\nDetalle: ${servidorMsg}`)
+    console.error('Error guardando sala -', err)
+    alert('No se pudo guardar la sala.')
   }
 }
 
@@ -153,7 +141,6 @@ async function copiarCodigo() {
     await navigator.clipboard.writeText(codigoSala.value)
     alert('Código copiado al portapapeles.')
   } catch (err) {
-    console.error('No se pudo copiar:', err)
     alert('No se pudo copiar el código.')
   }
 }
@@ -162,16 +149,10 @@ async function iniciarSala() {
   if (!codigoSala.value) return alert('Genera la sala antes de iniciar.')
   salaIniciada.value = true
   try {
-    await api.post('/api/sessions/start', {
-      codigo: codigoSala.value,
-      iniciadorId: obtenerCreadorId() || 'invitado'
-    })
-    // ahora sí redirigimos
+    await api.post('/api/sessions/start', { codigo: codigoSala.value, iniciadorId: obtenerCreadorId() || 'invitado' })
     router.push({ name: 'multijugador', query: { sala: codigoSala.value } })
   } catch (err) {
-    console.warn('No se pudo notificar inicio de sala:', err)
-    const servidorMsg = err?.response?.data?.error || err?.message
-    alert(`No se pudo iniciar la sala. (${err?.response?.status ?? 'sin respuesta'})\nDetalle: ${servidorMsg}`)
+    alert('No se pudo iniciar la sala.')
   }
 }
 </script>
@@ -201,5 +182,41 @@ async function iniciarSala() {
   transform: translateY(-3px);
   box-shadow: 0 10px 30px 0 rgba(33, 150, 243, 0.7);
 }
+
+/* Contenedor adaptativo para select + botón */
+.responsive-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Select responsive */
+.responsive-select {
+  min-width: 140px;
+  flex: 1 1 auto;
+  max-width: 160px;
+}
+
+/* Botón responsive */
+.responsive-btn {
+  flex: 1 1 auto;
+  min-width: 140px;
+}
+
+/* Ajustes móviles */
+@media (max-width: 600px) {
+  .responsive-container {
+    flex-direction: column;
+  }
+  .responsive-select, .responsive-btn {
+    max-width: 100%;
+    width: 100%;
+  }
+  .button-shadow {
+    font-size: 1rem;
+    padding: 12px 10px;
+  }
+}
 </style>
-// ...existing code...

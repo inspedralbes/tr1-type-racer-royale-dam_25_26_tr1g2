@@ -1,10 +1,6 @@
 <script setup>
 import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-// NOTA: Asumiendo que PoseSkeleton y PoseFeatures están correctamente importados
-// Si no están definidos, el código solo mostrará la interfaz.
-// Se recomienda tener estos componentes activos para la funcionalidad real de detección.
 import PoseSkeleton from '../components/PoseSkeleton.vue' 
 import PoseFeatures from '../components/PoseFeatures.vue'
 import axios from 'axios'
@@ -12,20 +8,15 @@ import axios from 'axios'
 const route = useRoute()
 const router = useRouter()
 
-// --- ESTADO DE USUARIO Y SALA ---
 const salaId = ref(route.query.sala || null)
 const userId = ref(localStorage.getItem('userId') || null)
-const creadorId = ref(null) // Se obtendrá desde el servidor
+const creadorId = ref(null)
 const esCreador = computed(() => userId.value && creadorId.value && String(userId.value) === String(creadorId.value))
 
-// --- ESTADO WEBSOCKET ---
 const ws = ref(null)
 const isConnected = ref(false)
-
-// [ESTADO MULTIJUGADOR] - Ahora se llena desde el WebSocket
 const jugadores = ref([])
 
-// [ESTADO DE LA PARTIDA]
 const isPoseDetectorReady = ref(true) 
 const isPartidaActiva = ref(false)
 const ejercicioSeleccionado = ref('Sentadillas')
@@ -34,28 +25,19 @@ const features = shallowRef(null)
 const maxReps = ref(5)
 const panelAbierto = ref([])
 
-// --- LÓGICA DE DETECCIÓN DE REPETICIONES POR JUGADOR ---
-// El estado de la repetición (arriba/abajo) DEBE ser por jugador
 const squatState = ref({}) 
 const pushupState = ref({}) 
 
-// Umbrales para el conteo de repeticiones (ejemplo)
 const MIN_SQUAT_ANGLE = 120
 const MAX_SQUAT_ANGLE = 165
 const MIN_PUSHUP_ANGLE = 100
 const MAX_PUSHUP_ANGLE = 160
 
-/**
- * Verifica si se ha completado una repetición para el jugador dado.
- */
 function checkRepeticion(jugadorId, angles) {
   if (!isPartidaActiva.value || !angles) return;
 
   const jugador = jugadores.value.find(j => j.id == jugadorId);
-  if (!jugador) {
-    console.warn(`❌ Jugador ${jugadorId} no encontrado`);
-    return;
-  }
+  if (!jugador) return;
   
   let repeticionCompletada = false;
   let currentStateRef = null;
@@ -79,52 +61,34 @@ function checkRepeticion(jugadorId, angles) {
 
   const jugadorState = currentStateRef.value[jugadorId];
 
-  // 1. Posición BAJA (Down)
   if (avgAngle < minAngle && jugadorState === 'up') {
-    currentStateRef.value = { 
-      ...currentStateRef.value, 
-      [jugadorId]: 'down' 
-    };
-    // console.log(`🔽 ${jugador.nombre}: BAJANDO (${avgAngle.toFixed(1)}°)`);
+    currentStateRef.value = { ...currentStateRef.value, [jugadorId]: 'down' };
   } 
-  // 2. Posición ALTA (Up) -> ¡Suma la repetición!
   else if (avgAngle > maxAngle && jugadorState === 'down') {
-    currentStateRef.value = { 
-      ...currentStateRef.value, 
-      [jugadorId]: 'up' 
-    };
+    currentStateRef.value = { ...currentStateRef.value, [jugadorId]: 'up' };
     repeticionCompletada = true;
-    // console.log(`✅ ${jugador.nombre}: ¡REPETICIÓN! (${avgAngle.toFixed(1)}°)`);
   }
 
-  // Si la repetición fue completada
-  if (repeticionCompletada) {
-    // Enviar actualización de repeticiones al servidor
-    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      ws.value.send(JSON.stringify({
-        type: 'REPS_UPDATE',
-        reps: jugador.repeticiones + 1
-      }));
-    }
+  if (repeticionCompletada && ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({
+      type: 'REPS_UPDATE',
+      reps: jugador.repeticiones + 1
+    }));
   }
 }
 
-// --- GESTIÓN DE LA PARTIDA Y FEATURES ---
 const todosListos = computed(() =>
   jugadores.value.length > 0 && jugadores.value.every(j => j.ready)
 )
 
 function onFeatures(payload) {
-  if (payload && !isPoseDetectorReady.value) {
-    isPoseDetectorReady.value = true
-  }
-  features.value = (typeof structuredClone === 'function')
-    ? structuredClone(payload)
-    : JSON.parse(JSON.stringify(payload || {}))
-  
-  // Solo el usuario actual procesa sus propias poses
+  if (payload && !isPoseDetectorReady.value) isPoseDetectorReady.value = true;
+  features.value = (typeof structuredClone === 'function') 
+    ? structuredClone(payload) 
+    : JSON.parse(JSON.stringify(payload || {}));
+
   if (isPartidaActiva.value && features.value?.poses?.[0]) {
-      checkRepeticion(userId.value, features.value.poses[0].angles);
+    checkRepeticion(userId.value, features.value.poses[0].angles);
   }
 }
 
@@ -136,11 +100,8 @@ function marcarListo() {
 
 async function iniciarPartida() {
   if (!esCreador.value || !todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return;
-  
   try {
-    // El creador notifica al servidor HTTP para iniciar la sala
     await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value });
-    // El servidor se encargará de notificar a todos por WebSocket
   } catch (error) {
     console.error("Error al iniciar la partida:", error);
     alert("No se pudo iniciar la partida.");
@@ -148,8 +109,7 @@ async function iniciarPartida() {
 }
 
 function detenerPartida() {
-  console.log('⏹️ PARTIDA DETENIDA');
-  isPartidaActiva.value = false
+  isPartidaActiva.value = false;
 }
 
 onMounted(() => {
@@ -159,12 +119,10 @@ onMounted(() => {
     return;
   }
 
-  ws.value = new WebSocket('ws://localhost:8082'); // Apuntamos al puerto correcto
+  ws.value = new WebSocket('ws://localhost:8082');
 
   ws.value.onopen = () => {
-    console.log('🔌 Conectado al WebSocket.');
     isConnected.value = true;
-    // Unirse a la sala
     ws.value.send(JSON.stringify({
       type: 'JOIN_SESSION',
       sessionId: salaId.value,
@@ -175,36 +133,23 @@ onMounted(() => {
 
   ws.value.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    console.log('📩 Mensaje recibido:', data);
-
     switch (data.type) {
       case 'SESSION_STATE':
-        // Transforma el objeto de estado en un array para la UI
         jugadores.value = Object.entries(data.state).map(([id, playerData]) => ({
-          id: String(id), // Aseguramos que el ID sea siempre un string para comparaciones consistentes
+          id: String(id),
           nombre: playerData.nombre,
           repeticiones: playerData.reps,
           ready: playerData.ready
         }));
-        // El servidor ahora nos dice quién es el creador
-        if (data.creatorId) {
-          creadorId.value = data.creatorId;
-        }
-        // Inicializar estados de repetición para nuevos jugadores
+        if (data.creatorId) creadorId.value = data.creatorId;
         jugadores.value.forEach(jugador => {
-          if (!squatState.value[jugador.id]) {
-            squatState.value[jugador.id] = 'up';
-          }
-          if (!pushupState.value[jugador.id]) {
-            pushupState.value[jugador.id] = 'up';
-          }
+          if (!squatState.value[jugador.id]) squatState.value[jugador.id] = 'up';
+          if (!pushupState.value[jugador.id]) pushupState.value[jugador.id] = 'up';
         });
         break;
       case 'SESSION_STARTED':
-        console.log('🎮 PARTIDA INICIADA POR EL SERVIDOR');
         isPartidaActiva.value = true;
         mostrarMensajeObjetivo.value = false;
-        // Reiniciar contadores locales al inicio
         jugadores.value.forEach(j => j.repeticiones = 0);
         break;
       case 'JOIN_ERROR':
@@ -214,22 +159,13 @@ onMounted(() => {
     }
   };
 
-  ws.value.onclose = () => {
-    console.log('🔌 Desconectado del WebSocket.');
-    isConnected.value = false;
-  };
-
-  ws.value.onerror = (error) => {
-    console.error('❌ Error de WebSocket:', error);
-    alert("Error de conexión con el servidor de juego.");
-  };
+  ws.value.onclose = () => isConnected.value = false;
+  ws.value.onerror = () => alert("Error de conexión con el servidor de juego.");
 });
 
 onBeforeUnmount(() => {
   detenerPartida();
-  if (ws.value) {
-    ws.value.close();
-  }
+  if (ws.value) ws.value.close();
 })
 </script>
 
@@ -239,7 +175,9 @@ onBeforeUnmount(() => {
       <v-container fluid class="pa-4 custom-container"> 
         <v-card elevation="16" class="pa-6 rounded-xl card-elevated" dark>
           <v-card-title class="justify-center pb-2">
-            <h2 class="text-h5 font-weight-black">Modo Multijugador - {{ ejercicioSeleccionado }}</h2>
+            <h2 class="text-h5 font-weight-black">
+              Modo Multijugador - {{ ejercicioSeleccionado }}
+            </h2>
           </v-card-title>
 
           <v-btn
@@ -255,16 +193,17 @@ onBeforeUnmount(() => {
           </v-btn>
           
           <div class="text-center mb-4">
-            <v-chip small :color="isConnected ? 'green' : 'red'">{{ isConnected ? 'CONECTADO' : 'DESCONECTADO' }}</v-chip>
+            <v-chip small :color="isConnected ? 'green' : 'red'">
+              {{ isConnected ? 'CONECTADO' : 'DESCONECTADO' }}
+            </v-chip>
             <v-chip small class="ml-2">Sala: {{ salaId }}</v-chip>
           </div>
 
           <v-card-text>
             <v-row align="start">
+              <!-- Columna cámara -->
               <v-col cols="12" md="8" class="d-flex flex-column align-center">
                 <div class="webcam-container mb-4">
-                  <!-- Se espera el componente PoseSkeleton que emite 'features' -->
-                  <!-- NOTA: Si este componente no existe en el entorno, solo verás el contenedor vacío. -->
                   <PoseSkeleton class="video-feed" @features="onFeatures" />
 
                   <div v-if="!isPoseDetectorReady" class="webcam-overlay">
@@ -283,7 +222,7 @@ onBeforeUnmount(() => {
                   </transition>
                 </div>
 
-                <div class="d-flex gap-4">
+                <div class="button-group d-flex gap-4 mb-4">
                   <v-btn
                     color="primary"
                     large
@@ -294,7 +233,7 @@ onBeforeUnmount(() => {
                     :disabled="!todosListos || !isPoseDetectorReady || isPartidaActiva"
                   >
                     <v-icon left>mdi-play</v-icon>
-                    {{ todosListos ? 'Iniciar Partida' : `Esperando ${jugadores.filter(j => !j.ready).length} jug...` }}
+                    {{ todosListos ? 'Iniciar Partida' : `Esperando ${jugadores.filter(j => !j.ready).length} jugador(es)...` }}
                   </v-btn>
 
                   <v-btn
@@ -311,9 +250,8 @@ onBeforeUnmount(() => {
                 </div>
               </v-col>
 
+              <!-- Columna jugadores + configuraciones -->
               <v-col cols="12" md="4" class="d-flex flex-column align-center">
-                
-                <!-- Tarjetas de Jugadores -->
                 <v-card
                   v-for="jugador in jugadores"
                   :key="jugador.id"
@@ -327,7 +265,6 @@ onBeforeUnmount(() => {
                     Reps: {{ jugador.repeticiones }} / {{ maxReps }}
                   </div>
                   
-                  <!-- Mostrar estado dinámico -->
                   <div class="mt-2 text-caption font-weight-bold" v-if="isPartidaActiva">
                       Estado: 
                       <span v-if="ejercicioSeleccionado === 'Sentadillas'">{{ squatState[jugador.id] }}</span>
@@ -367,8 +304,8 @@ onBeforeUnmount(() => {
                   </v-chip>
                   
                 </v-card>
-                <!-- Fin Tarjetas de Jugadores -->
 
+                <!-- Selector de ejercicio -->
                 <v-select
                   v-model="ejercicioSeleccionado"
                   :items="['Sentadillas','Flexiones','Abdominales']"
@@ -376,27 +313,41 @@ onBeforeUnmount(() => {
                   outlined
                   dense
                   dark
-                  class="mt-4"
+                  class="mb-4"
                   :disabled="isPartidaActiva"
                 ></v-select>
-                
-                <v-slider
-                  v-model="maxReps"
-                  label="Objetivo de Repeticiones"
-                  :min="1"
-                  :max="20"
-                  step="1"
-                  thumb-label
-                  dark
-                  :disabled="isPartidaActiva"
-                  class="mt-4"
-                ></v-slider>
 
-                <!-- Panel de Debug de Pose (Opcional, si PoseFeatures está disponible) -->
+                <!-- Selector de repeticiones -->
+                <div class="d-flex flex-column w-100 mb-4">
+                  <v-slider
+                    v-model="maxReps"
+                    label="Repeticiones objetivo"
+                    :min="1"
+                    :max="20"
+                    step="1"
+                    thumb-label
+                    dense
+                    dark
+                    :disabled="isPartidaActiva"
+                  ></v-slider>
+                  <v-text-field
+                    v-model="maxReps"
+                    type="number"
+                    label="Repeticiones"
+                    dense
+                    outlined
+                    dark
+                    :min="1"
+                    :max="20"
+                    class="mt-2"
+                    :disabled="isPartidaActiva"
+                  ></v-text-field>
+                </div>
+
                 <v-expansion-panels
                   v-model="panelAbierto"
                   flat
-                  class="features-card mt-4"
+                  class="features-card"
                   multiple
                 >
                   <v-expansion-panel>
@@ -404,7 +355,6 @@ onBeforeUnmount(() => {
                       DATOS DEL SENSOR (Ángulos Clave)
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
-                      <!-- Asume que PoseFeatures puede manejar un objeto con una pose -->
                       <PoseFeatures :features="features" />
                     </v-expansion-panel-text>
                   </v-expansion-panel>
@@ -420,79 +370,26 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.app-background {
-  background: linear-gradient(135deg, #121212, #1c1c1c);
-  color: #E0E0E0;
-}
-
-.card-elevated {
-  background-color: #212121 !important;
-  border: 1px solid #333;
-}
-
-.custom-container {
-  max-width: 1000px !important;
-}
-
-.webcam-container {
-  position: relative;
-  width: 100%;
-  padding-top: 0%;
-  min-height: 400px; 
-  border: 2px dashed #555;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-}
-
-.repetitions-card {
-  width: 100%;
-  max-width: 250px;
-  background-color: #2c2c2c !important;
-  text-align: center;
-}
-
-.webcam-overlay, .objetivo-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-
-.webcam-overlay {
-  background-color: rgba(0,0,0,0.7);
-  z-index: 10;
-}
-
-.objetivo-overlay {
-  background-color: rgba(255, 193, 7, 0.1);
-  backdrop-filter: blur(2px);
-  z-index: 20;
-  text-align: center;
-  animation: scaleIn 0.6s ease;
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-
-.d-flex.gap-4 { gap: 1rem; }
-
-.features-card {
-  width: 100%;
-  max-width: 250px;
-  background-color: #2c2c2c !important;
-  border: 1px solid #444;
-  border-radius: 8px;
-}
+.app-background { background: linear-gradient(135deg, #121212, #1c1c1c); color: #fff; }
+.card-elevated { background-color: #212121 !important; border: 1px solid #333; color: #fff !important; }
+.card-elevated h2 { white-space: normal; word-break: break-word; text-align: center; }
+.custom-container { max-width: 1000px !important; }
+.webcam-container { position: relative; width: 100%; padding-top: 0%; min-height: 500px; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+@media (max-width: 768px) { .webcam-container { min-height: 300px; } }
+.repetitions-card { width: 100%; max-width: 250px; background-color: #2c2c2c !important; text-align: center; color: #fff !important; }
+.webcam-overlay, .objetivo-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #fff; }
+.webcam-overlay { background-color: rgba(0,0,0,0.7); z-index: 10; }
+.objetivo-overlay { background-color: rgba(255,193,7,0.1); backdrop-filter: blur(2px); z-index: 20; text-align: center; animation: scaleIn 0.6s ease; }
+@keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.d-flex.gap-4 { gap: 1rem; flex-wrap: wrap; }
+.v-row > .v-col { display: flex; flex-direction: column; align-items: center; }
+.features-card { width: 100%; max-width: 250px; background-color: #2c2c2c !important; border: 1px solid #444; border-radius: 8px; color: #fff !important; }
+.v-btn { width: 100%; max-width: 300px; text-align: center; }
+.v-btn.button-pulse { white-space: normal; word-break: break-word; }
+.objetivo-overlay h2 { font-size: 1.2rem; word-break: break-word; }
+.button-group { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
+@media (min-width: 992px) { .button-group { flex-wrap: nowrap; } }
+@media (max-width: 768px) { .v-btn { max-width: 100%; font-size: 0.9rem; } .repetitions-card, .features-card { max-width: 100%; margin-bottom: 1rem; } .objetivo-overlay h2 { font-size: 1rem; } }
 </style>

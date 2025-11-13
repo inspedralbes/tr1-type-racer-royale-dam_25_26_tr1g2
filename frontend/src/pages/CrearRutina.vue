@@ -15,35 +15,52 @@
               dense
               prepend-inner-icon="mdi-pencil"
               class="mb-4"
+              hide-details
             />
 
             <v-divider class="my-4"></v-divider>
 
-            <div v-for="(ex, index) in ejerciciosRutina" :key="index" class="d-flex align-center mb-4 gap-4">
-              <v-select
-                v-model="ex.nom_exercicis"
-                :items="ejerciciosDisponibles"
-                label="Ejercicio"
-                outlined
-                dense
-                class="flex-grow-1"
-                prepend-inner-icon="mdi-dumbbell"
-              ></v-select>
+            <!-- Bucle de Ejercicios Adaptado para Móviles -->
+            <v-row v-for="(ex, index) in ejerciciosRutina" :key="index" class="mb-4" align="center" no-gutters>
+              <!-- Selector de Ejercicio: 12 columnas en móvil, 6 en escritorio -->
+              <v-col cols="12" sm="6" md="5" class="py-1">
+                <v-select
+                  v-model="ex.nom_exercicis"
+                  :items="ejerciciosDisponibles"
+                  label="Ejercicio"
+                  outlined
+                  dense
+                  prepend-inner-icon="mdi-dumbbell"
+                  hide-details
+                ></v-select>
+              </v-col>
 
-              <v-text-field
-                v-model="ex.n_repeticions"
-                label="Repeticiones"
-                outlined
-                dense
-                type="number"
-                class="flex-grow-1"
-                prepend-inner-icon="mdi-counter"
-              ></v-text-field>
+              <!-- Input de Repeticiones: 8 columnas en móvil (para ser ancho), 4 en escritorio -->
+              <v-col cols="8" sm="4" md="5" class="py-1 pr-2">
+                <v-text-field
+                  v-model="ex.n_repeticions"
+                  label="Repeticiones"
+                  outlined
+                  dense
+                  type="number"
+                  prepend-inner-icon="mdi-counter"
+                  hide-details
+                ></v-text-field>
+              </v-col>
 
-              <v-btn icon color="error" @click="eliminarEjercicio(index)" v-if="ejerciciosRutina.length > 1">
-                <v-icon>mdi-delete</v-icon>
-              </v-btn>
-            </div>
+              <!-- Botón de Eliminar: 4 columnas en móvil, 2 en escritorio. Se coloca junto a las repeticiones -->
+              <v-col cols="4" sm="2" md="2" class="py-1 d-flex justify-end">
+                <v-btn
+                  icon
+                  color="error"
+                  @click="eliminarEjercicio(index)"
+                  v-if="ejerciciosRutina.length > 1"
+                  size="large"
+                >
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </v-col>
+            </v-row>
 
             <v-btn color="primary" class="mt-2" @click="agregarEjercicio" rounded>
               <v-icon left>mdi-plus</v-icon> Añadir ejercicio

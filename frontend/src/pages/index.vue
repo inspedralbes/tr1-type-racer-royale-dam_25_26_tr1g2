@@ -7,18 +7,20 @@
           class="pa-6 rounded-xl text-center card-elevated"
           max-width="800"
         >
-          <v-card-title class="justify-center pt-0 pb-2">
-            <span class="text-h6 font-weight-bold text-main text-uppercase mb-1">
-              <v-icon small left color="primary">mdi-lightning-bolt</v-icon>
-              Tecnologia en temps real
-            </span>
-            <h1 class="text-h4 text-md-h3 font-weight-black mb-2 text-main">
+          <v-card-title class="justify-center flex-column pt-0 pb-2 text-center">
+            <div class="d-flex align-center justify-center flex-wrap text-center title-container">
+              <v-icon small left color="primary" class="mr-1">mdi-lightning-bolt</v-icon>
+              <span class="text-h6 font-weight-bold text-main text-uppercase mb-1 title-responsive">
+                Tecnologia en temps real
+              </span>
+            </div>
+            <h1 class="text-h4 text-md-h3 font-weight-black mb-2 text-main title-train-ai">
               TRAIN AI
             </h1>
           </v-card-title>
 
           <v-card-text>
-            <p class="text-body-1 mb-3 text-muted {color: 'white'}">
+            <p class="text-body-1 mb-3 text-muted">
               Benvingut/da a la plataforma d'entrenament sincronitzat. Analitzem els teus moviments amb MoveNet de TensorFlow.js per oferir feedback instantani i precís.
             </p>
             <p class="text-body-2 mb-4 text-secondary-text">
@@ -45,7 +47,7 @@
             </v-row>
 
             <v-card flat class="pa-2 rounded-lg technologies-card mb-6">
-              <div class="text-subtitle-1 font-weight-bold mb-2 text-main">
+              <div class="text-subtitle-1 font-weight-bold mb-2 text-main tech-title">
                 Tecnologies
               </div>
               <div class="d-flex flex-wrap justify-center">
@@ -63,13 +65,15 @@
             <div class="d-flex justify-center">
               <v-btn
                 color="primary"
-                class="button-shadow px-10 py-5 d-flex align-center justify-center"
+                class="button-shadow d-flex align-center justify-center text-center"
                 rounded
                 @click="goToInicial"
                 elevation="12"
               >
-                <v-icon size="32" class="mr-2">mdi-run-fast</v-icon>
-                <span class="text-h5 font-weight-bold">Comença a Entrenar ara</span>
+                <div class="d-flex align-center justify-center flex-nowrap">
+                  <v-icon size="28" class="mr-2">mdi-run-fast</v-icon>
+                  <span class="text-h6 font-weight-bold no-wrap-text">Comença a Entrenar ara</span>
+                </div>
               </v-btn>
             </div>
 
@@ -102,21 +106,19 @@ const features = [
 
 <style>
 /* -------------------------------------------------------------------------- */
-/* DEFINICIÓN DE VARIABLES CSS NATIVAS (CSS Custom Properties)                 */
+/* VARIABLES DE COLOR */
 /* -------------------------------------------------------------------------- */
 
-/* MODO CLARO (Default) */
 :root {
   --bg-color: #f5f5f5;
   --card-color: #ffffff;
   --tech-card-color: #f8f8f8;
-  --text-color: #222; /* Color principal de texto (H1, H2, etc.) */
-  --text-muted: #555; /* Texto para párrafos */
-  --secondary-color-text: #757575; /* Texto secundario */
-  --primary-color-text: #1976D2; /* Color 'primary' de Vuetify en modo claro */
+  --text-color: #222;
+  --text-muted: #555;
+  --secondary-color-text: #757575;
+  --primary-color-text: #1976D2;
 }
 
-/* MODO OSCURO (Anula las variables anteriores si el sistema lo prefiere) */
 @media (prefers-color-scheme: dark) {
   :root {
     --bg-color: linear-gradient(135deg, #121212 0%, #1c1c1c 100%);
@@ -125,33 +127,17 @@ const features = [
     --text-color: #e0e0e0;
     --text-muted: #aaa;
     --secondary-color-text: #999;
-    --primary-color-text: #4FC3F7; /* Un azul más claro para 'primary' en modo oscuro */
+    --primary-color-text: #4FC3F7;
   }
 }
 
 /* -------------------------------------------------------------------------- */
-/* APLICACIÓN DE ESTILOS PERSONALIZADOS                                       */
+/* ESTILOS GENERALES */
 /* -------------------------------------------------------------------------- */
 
-/* CLASES DE TEXTO ADAPTATIVAS (Para reemplazar clases de Vuetify como primary--text) */
-/* CLAVE: Usamos !important para asegurar que anule la clase de color por defecto de Vuetify. */
-.text-main {
-  color: var(--text-color) !important;
-}
-.text-muted {
-  color: var(--text-muted) !important;
-}
-.text-secondary-text {
-  color: var(--secondary-color-text) !important;
-}
-
-/* CLAVE: Reemplazar el color primario de Vuetify para que se adapte al tema */
-.v-application .primary--text {
-  color: var(--primary-color-text) !important;
-  caret-color: var(--primary-color-text) !important;
-}
-
-/* ESTILOS DE LA APLICACIÓN Y COMPONENTES */
+.text-main { color: var(--text-color) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-secondary-text { color: var(--secondary-color-text) !important; }
 
 .app-background {
   background: var(--bg-color) !important;
@@ -161,15 +147,94 @@ const features = [
 
 .card-elevated {
   background-color: var(--card-color) !important;
-  /* Usamos una variable de texto atenuado para el borde, que se invierte con el tema */
-  border: 1px solid var(--text-muted); 
+  border: 1px solid var(--text-muted);
 }
+
+/* -------------------------------------------------------------------------- */
+/* TÍTULOS Y BOTÓN RESPONSIVOS */
+/* -------------------------------------------------------------------------- */
+
+.title-container {
+  flex-wrap: wrap;
+  text-align: center;
+}
+
+.title-responsive {
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.title-train-ai {
+  font-size: 2.2rem;
+}
+
+@media (max-width: 600px) {
+  .title-responsive {
+    font-size: 1.1rem;
+    display: block;
+    text-align: center;
+  }
+
+  .title-train-ai {
+    font-size: 1.8rem !important;
+  }
+
+  .button-shadow {
+    font-size: 1rem !important;
+    padding: 14px 20px !important;
+    height: auto;
+    white-space: normal;
+  }
+
+  .no-wrap-text {
+    white-space: normal !important;
+    text-align: center;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* BOTÓN */
+/* -------------------------------------------------------------------------- */
+
+.button-shadow {
+  font-size: 1.2rem;
+  min-height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px 0 rgba(33, 150, 243, 0.45);
+  transition: all 0.25s ease-in-out;
+  text-align: center;
+}
+
+.button-shadow:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px 0 rgba(33, 150, 243, 0.7);
+}
+
+.v-btn__content {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.no-wrap-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* OTRAS TARJETAS */
+/* -------------------------------------------------------------------------- */
 
 .technologies-card {
   background-color: var(--tech-card-color) !important;
 }
 
-/* --- OTROS ESTILOS (BOTONES, CHIPS, ETC.) --- */
 .feature-card {
   transition: transform 0.3s ease-in-out;
   opacity: 0.95;
@@ -180,30 +245,9 @@ const features = [
   opacity: 1;
 }
 
-.button-shadow {
-  font-size: 1.2rem;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 20px 0 rgba(33, 150, 243, 0.45);
-  transition: all 0.25s ease-in-out;
-}
-
-.button-shadow:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px 0 rgba(33, 150, 243, 0.7);
-}
-
-.v-btn__content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .tech-chip {
   font-weight: bold;
   color: #ffffff !important;
-  background-color:rgb(20, 20, 20) !important;
+  background-color: rgb(20, 20, 20) !important;
 }
 </style>
