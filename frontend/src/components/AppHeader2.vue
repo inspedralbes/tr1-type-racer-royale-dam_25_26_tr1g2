@@ -74,47 +74,6 @@
 
       <v-list-item to="/profile" @click="drawer = false">
         <v-icon left>mdi-account</v-icon>
-<<<<<<< HEAD
-        PROFILE
-      </v-btn>
-      
-      <v-btn
-        text
-        @click="handleLogout"
-        color="error"
-        class="font-weight-bold"
-      >
-        <v-icon left>mdi-logout</v-icon>
-        CERRAR SESIÓN
-      </v-btn>
-    </v-app-bar>
-  </template>
-  
-  <script setup>
-  import { useAuth } from '@/composables/useAuth'
-  import { useRouter } from 'vue-router'
-  
-  const { logout } = useAuth()
-  const router = useRouter()
-  
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
-  }
-
-  const refreshPage = () => {
-    location.reload()
-  }
-  </script>
-  
-  <style scoped>
-  /* Estilos específicos para este componente si los necesitas */
-  .v-toolbar__title {
-    /* Asegura que el título sea clickeable o tenga un cursor diferente si lo envuelves en un router-link */
-    cursor: default; 
-  }
-  </style>
-=======
         Perfil
       </v-list-item>
 
@@ -155,4 +114,3 @@ const refreshPage = () => {
   cursor: default;
 }
 </style>
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)

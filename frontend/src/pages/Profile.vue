@@ -177,20 +177,6 @@ const loadRoutines = async () => {
 }
 
 const updateProfileState = () => {
-<<<<<<< HEAD
-    const newUser = JSON.parse(localStorage.getItem('user')) || {};
-    const newId = newUser?.id || newUser?.userId || null;
-    
-    // Si el ID de usuario ha cambiado (ej. de Invitado a Usuario Real), o de Usuario a Logout
-    if (newId !== userId.value) {
-        userId.value = newId;
-        username.value = newUser?.username || 'Invitado';
-        loadRoutines(); // Llama a la carga
-    } else if (newId && routines.value.length === 0) {
-        // Caso de recarga de página donde el ID no ha cambiado pero las rutinas están vacías (seguridad)
-        loadRoutines();
-    }
-=======
   const newUser = JSON.parse(localStorage.getItem('user')) || {}
   const newId = newUser?.id || newUser?.userId || null
   if (newId !== userId.value) {
@@ -202,7 +188,6 @@ const updateProfileState = () => {
   } else if (newId && routines.value.length === 0) {
     loadRoutines()
   }
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)
 }
 
 const openAvatarDialog = () => { previewAvatar.value = selectedAvatar.value; customAvatarUrl.value = ''; showAvatarDialog.value = true }

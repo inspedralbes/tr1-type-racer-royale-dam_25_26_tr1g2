@@ -96,28 +96,16 @@ function detenerPartida() {
 
 onBeforeUnmount(() => { detenerPartida() })
 
-<<<<<<< HEAD
+// Función para cargar rutinas de usuario (Soluciona el error de sintaxis)
 const loadUserRoutines = async () => {
-  const user = JSON.parse(localStorage.getItem('user')) || {};
-  const userId = user?.id || user?.userId;
-
-=======
-// Cargar rutinas de usuario
-onMounted(async () => {
   const userId = user.value?.id
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)
   if (userId) {
     try {
       const response = await axios.get(`http://localhost:9000/api/rutines/user/${userId}`);
       userRoutines.value = response.data.rutines || [];
     } catch (error) {
-<<<<<<< HEAD
-      console.error('Error al cargar las rutinas del usuario:', error);
-      userRoutines.value = [];
-=======
       console.error('Error al cargar rutinas:', error)
       userRoutines.value = []
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)
     }
   } else {
     // Si no hay usuario, vaciamos las rutinas
@@ -125,6 +113,8 @@ onMounted(async () => {
   }
 };
 
+
+// Cargar rutinas de usuario al montar el componente y escuchar eventos de inicio de sesión
 onMounted(() => {
   loadUserRoutines();
 
