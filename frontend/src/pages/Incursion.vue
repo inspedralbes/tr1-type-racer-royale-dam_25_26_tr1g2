@@ -2,6 +2,10 @@
   <v-container fluid class="pa-4 incursion-background">
     
     <v-row class="mb-4 align-center">
+      <v-btn color="error" rounded large to="/inicial">
+              <v-icon left>mdi-arrow-left</v-icon>
+              Volver
+            </v-btn>
       <v-col cols="12">
         <h1 class="text-h3 font-weight-black text-center battle-title">
             INCURSIÓN CONTRA EL JEFE

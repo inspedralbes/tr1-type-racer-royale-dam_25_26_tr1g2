@@ -49,6 +49,10 @@
     logout()
     router.push('/login')
   }
+
+  const refreshPage = () => {
+    location.reload()
+  }
   </script>
   
   <style scoped>
