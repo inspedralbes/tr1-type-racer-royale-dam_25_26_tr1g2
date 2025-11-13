@@ -1,6 +1,14 @@
 -- Usuaris Registrats
 -- Tablas sin dependencias externas
 
+-- Usuaris Registrats
+CREATE TABLE Usuaris (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuari VARCHAR(25) UNIQUE NOT NULL,
+    correu VARCHAR(200) UNIQUE NOT NULL,
+    contrasenya VARCHAR(100) NOT NULL
+);
+
 -- Solo
 CREATE TABLE Rutines (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -9,14 +17,6 @@ CREATE TABLE Rutines (
     descripcio TEXT,
     data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_usuari) REFERENCES Usuaris(id)
-);
-
--- Usuaris Registrats
-CREATE TABLE Usuaris (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    usuari VARCHAR(25) UNIQUE NOT NULL,
-    correu VARCHAR(200) UNIQUE NOT NULL,
-    contrasenya VARCHAR(100) NOT NULL
 );
 
 -- Mode 2v2
