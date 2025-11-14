@@ -27,7 +27,7 @@
               La IA s'executa al client (privacitat garantida) i les dades es sincronitzen amb WebSockets natius.
             </p>
 
-            <v-row class="mb-4">
+         <v-row class="mb-4 d-none d-sm-flex">
               <v-col
                 v-for="(feature, i) in features"
                 :key="i"
