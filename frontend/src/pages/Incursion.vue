@@ -63,7 +63,7 @@
           </div>
           
           <v-row align="center" class="mt-4">
-            <v-col cols="6">
+            <v-col cols="12" sm="6">
               <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
                 <v-btn
                     color="success"
@@ -74,7 +74,7 @@
                     block
                 >
                     <v-icon left small>mdi-magnify</v-icon>
-                    <span class="text-truncate">BUSCAR INCURSIÓN</span>
+                    <span class="text-wrap">BUSCAR INCURSIÓN</span>
                 </v-btn>
               </div>
               <div class="d-flex justify-center gap-2 flex-wrap" v-else>
