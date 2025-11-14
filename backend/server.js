@@ -100,7 +100,7 @@ app.post('/api/sessions/start', (req, res) => {
     salasActivas[codigo].partidaFinalizada = false; // Reiniciar estado al iniciar
     // Para incursiones, marcamos la partida como iniciada para bloquearla
     if (salasActivas[codigo].modo === 'incursion') {
-      salasActivas[codigo].partidaIniciada = true;
+      // La lógica de inicio de incursión ahora se maneja por WebSocket
     }
   }
 
@@ -424,48 +424,84 @@ wss.on('connection', ws => {
       case 'INCURSION_JOIN': {
         if (!sessionId || !userId) return;
 
-        // Si la sala no existe en memoria, la creamos (el primer jugador la crea)
-        if (!salasActivas[sessionId]) {
-          salasActivas[sessionId] = {
-            creadorId: userId,
-            nombreCreador: data.nombre,
-            jugadores: [],
-            createdAt: new Date(),
-            maxJugadores: 16, // Límite para incursiones
-            modo: 'incursion',
-            partidaIniciada: false
-          };
-          sessions.set(sessionId, new Map());
+        let incursionSessionId = null;
+        let sala = null;
+
+        // Buscar la única sala de incursión activa
+        for (const id in salasActivas) {
+          if (salasActivas[id].modo === 'incursion' && !salasActivas[id].partidaIniciada) {
+            incursionSessionId = id;
+            sala = salasActivas[id];
+            break;
+          }
         }
 
-        const sala = salasActivas[sessionId];
-        const userMap = sessions.get(sessionId);
+        // Si no hay sala, el primer jugador la crea
+        if (!incursionSessionId) {
+          incursionSessionId = `BOSS-${uuidv4().slice(0, 4)}`;
+          console.log(`Creando nueva sala de incursión: ${incursionSessionId}`);
+          sala = {
+            creadorId: userId, // El primer jugador es el creador
+            createdAt: new Date(),
+            maxJugadores: 10,
+            modo: 'incursion',
+            partidaIniciada: false,
+            jefeVidaMax: 250, // Vida base (se sumarán 50 por el primer jugador)
+            jefeVidaActual: 250
+          };
+          salasActivas[incursionSessionId] = sala;
+          sessions.set(incursionSessionId, new Map());
+        }
 
-        // Rechazar si la partida ya ha comenzado
-        if (sala.partidaIniciada) {
-          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión ya ha comenzado.' }));
+        const userMap = sessions.get(incursionSessionId);
+
+        // Rechazar si la sala está llena o la partida ya ha comenzado
+        if (sala.partidaIniciada || userMap.size >= sala.maxJugadores) {
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión está llena.' }));
           ws.terminate();
           return;
         }
 
         // Añadir al jugador
         userMap.set(userId, clientId);
-        clientMetadata.set(clientId, { ws, userId, sessionId, nombre: data.nombre });
+        clientMetadata.set(clientId, { ws, userId, sessionId: incursionSessionId, nombre: data.nombre, damageDealt: 0 });
+
+        // Escalar vida del jefe por cada jugador que se une
+        sala.jefeVidaMax += 50;
+        sala.jefeVidaActual += 50;
 
         // Notificar a todos los de la sala del nuevo estado
         const participantes = [];
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          if (meta) participantes.push({ id: uId, nombre: meta.nombre });
+          if (meta) participantes.push({ id: uId, nombre: meta.nombre, damageDealt: meta.damageDealt || 0 });
         });
 
-        broadcastToSession(sessionId, {
+        broadcastToSession(incursionSessionId, {
+          sessionId: incursionSessionId, // Devolver el ID de la sesión al cliente
           type: 'INCURSION_STATE',
           participantes: participantes,
           creadorId: sala.creadorId,
+          jefeVidaMax: sala.jefeVidaMax,
+          jefeVidaActual: sala.jefeVidaActual,
           message: `${data.nombre} se ha unido a la incursión.`
         });
 
+        break;
+      }
+      case 'INCURSION_START': {
+        const metadata = clientMetadata.get(clientId);
+        if (!metadata || !metadata.sessionId) return;
+        const sala = salasActivas[metadata.sessionId];
+
+        // Solo el creador puede iniciar
+        if (sala && String(sala.creadorId) === String(metadata.userId) && !sala.partidaIniciada) {
+          sala.partidaIniciada = true;
+          broadcastToSession(metadata.sessionId, {
+            type: 'INCURSION_STARTED',
+            jefeVidaActual: sala.jefeVidaActual
+          });
+        }
         break;
       }
       case 'REPS_UPDATE': {
@@ -559,6 +595,27 @@ wss.on('connection', ws => {
         broadcastToSession(metadata.sessionId, { type: 'SETTINGS_UPDATED', ejercicio: data.ejercicio, maxReps: data.maxReps });
         break;
       }
+      case 'INCURSION_ATTACK': {
+        const metadata = clientMetadata.get(clientId);
+        if (!metadata || !metadata.sessionId) return;
+
+        const sala = salasActivas[metadata.sessionId];
+        if (!sala || !sala.partidaIniciada) return;
+
+        // Actualizar vida del jefe
+        sala.jefeVidaActual = Math.max(0, sala.jefeVidaActual - data.damage);
+
+        // Registrar daño del jugador
+        metadata.damageDealt = (metadata.damageDealt || 0) + data.damage;
+
+        // Notificar a todos del nuevo estado del jefe
+        broadcastToSession(metadata.sessionId, {
+          type: 'BOSS_HEALTH_UPDATE',
+          jefeVidaActual: sala.jefeVidaActual,
+          attackerName: metadata.nombre
+        });
+        break;
+      }
     }
   });
 
@@ -582,6 +639,13 @@ wss.on('connection', ws => {
     if (String(sala.creadorId) === String(userId)) {
       broadcastToSession(sessionId, { type: 'LEADER_LEFT', message: 'El creador ha abandonado la sala. La sesión ha terminado.' });
       sessions.delete(sessionId);
+      // Si la sala era una incursión, también la eliminamos de la BDD o la marcamos como finalizada
+      if (sala.modo === 'incursion') {
+        db_pool.query(
+          "UPDATE Boss_Sessions SET estat = 'finalitzada' WHERE id = ?",
+          [sessionId]
+        ).catch(err => console.error("Error al cerrar Boss_Session en BDD:", err));
+      }
       delete salasActivas[sessionId];
       console.log(`El creador ${userId} ha salido de la sala ${sessionId}. Sala cerrada.`);
     } else {
@@ -595,12 +659,35 @@ wss.on('connection', ws => {
         delete salasActivas[sessionId];
         console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
       } else {
-        // Si aún quedan jugadores, actualizamos su estado.
-        const sessionState = {};
+        // Si aún quedan jugadores, actualizamos su estado
+        if (sala.modo === 'incursion' && !sala.partidaIniciada) {
+          // Si la incursión no ha empezado, re-escalamos la vida del jefe
+          sala.jefeVidaMax -= 50;
+          sala.jefeVidaActual -= 50;
+        }
+
+        const participantes = [];
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          if (meta) {
-            sessionState[uId] = { nombre: meta.nombre, reps: meta.reps || 0, ready: meta.ready || false };
+          if (meta) participantes.push({ id: uId, nombre: meta.nombre, damageDealt: meta.damageDealt || 0 });
+        });
+
+        // El tipo de mensaje de estado depende del modo de la sala
+        const stateUpdate = sala.modo === 'incursion'
+          ? {
+              type: 'INCURSION_STATE',
+              participantes: participantes,
+              creadorId: sala.creadorId,
+              jefeVidaMax: sala.jefeVidaMax,
+              jefeVidaActual: sala.jefeVidaActual,
+              message: `${metadata.nombre} ha abandonado la incursión.`
+            }
+          : {
+              type: 'SESSION_STATE',
+              state: Object.fromEntries(participantes.map(p => [p.id, { nombre: p.nombre, reps: 0, ready: false }])),
+              creatorId: sala.creadorId,
+              ejercicio: sala.ejercicio,
+              maxReps: sala.maxReps
           }
         });
         broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId: sala.creadorId, ejercicio: sala.ejercicio, maxReps: sala.maxReps });

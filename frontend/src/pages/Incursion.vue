@@ -1,6 +1,5 @@
 <template>
   <v-container fluid class="pa-4 incursion-background">
-    
     <v-row class="mb-4 align-center justify-space-between">
       <v-col cols="auto">
         <v-btn color="error" rounded large to="/inicial">
@@ -24,7 +23,7 @@
           REPS: <span class="text-h4">{{ repeticiones }}</span>
         </div>
       </v-col>
-    </v-row>
+    </v-row> 
     
     <v-row>
       
@@ -94,9 +93,9 @@
                   small
                   @click="iniciarPartidaAPI"
                   :disabled="isPartidaActiva || !isPoseDetectorReady"
-                  class="action-btn btn-mobile-fix"
-                  :block="$vuetify.breakpoint.xsOnly"
-                  :class="{'flex-grow-1': $vuetify.breakpoint.smAndUp}"
+                  class="action-btn"
+                  :block="xsOnly"
+                  :class="{'flex-grow-1': smAndUp}"
                 >
                   <v-icon left small>mdi-sword</v-icon>
                   <span class="text-truncate">INICIAR</span>
@@ -105,14 +104,14 @@
                   color="error"
                   small
                   @click="isPartidaActiva ? detenerPartida() : salirDeLaIncursion()"
-                  :disabled="!bossSessionId"
-                  class="action-btn btn-mobile-fix"
-                  :block="$vuetify.breakpoint.xsOnly"
-                  :class="{'flex-grow-1': $vuetify.breakpoint.smAndUp}"
+                  :disabled="!bossSessionId || buscandoPartida"
+                  class="action-btn"
+                  :block="xsOnly"
+                  :class="{'flex-grow-1': smAndUp}"
                 >
                   <v-icon left small>{{ isPartidaActiva ? 'mdi-shield-off' : 'mdi-exit-run' }}</v-icon>
                   <span class="text-truncate">{{ isPartidaActiva ? 'DETENER' : 'SALIR' }}</span>
-                </v-btn>
+                </v-btn> 
               </div>
             </v-col>
 
@@ -177,31 +176,25 @@
                 <v-icon size="80" color="yellow lighten-1">mdi-flash</v-icon>
               </div>
           </div>
+
+          <!-- Lista de Participantes -->
+          <v-list dense class="participants-list mt-4">
+            <v-list-subheader>PARTICIPANTES</v-list-subheader>
+            <v-list-item
+              v-for="p in participantes"
+              :key="p.id"
+              class="participant-item"
+            >
+              <v-list-item-title class="font-weight-bold">{{ p.nombre }}</v-list-item-title>
+              <v-list-item-subtitle>Daño: {{ p.damageDealt || 0 }}</v-list-item-subtitle>
+              <template v-slot:append>
+                <v-icon v-if="p.id === esCreador" color="amber">mdi-star</v-icon>
+              </template>
+            </v-list-item>
+          </v-list>
         </v-card>
-        
-        <!-- Eliminado el card de consola de la columna derecha, ahora está dentro de la webcam-stage -->
-        
       </v-col>
     </v-row>
-
-    <!-- Diálogo para crear sala si no se encuentra ninguna -->
-    <v-dialog v-model="mostrarDialogoCrear" persistent max-width="450">
-      <v-card class="game-card">
-        <v-card-title class="text-h6 player-title">No se encontraron incursiones</v-card-title>
-        <v-card-text class="text-body-1">
-          Actualmente no hay ninguna sala de incursión esperando jugadores. ¿Te gustaría crear una nueva y ser el líder?
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="mostrarDialogoCrear = false">
-            Cancelar
-          </v-btn>
-          <v-btn color="success" text @click="crearIncursion">
-            Sí, crear sala
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
   </v-container>
 </template>
@@ -212,15 +205,16 @@ import PoseSkeleton from '../components/PoseSkeleton.vue' // Asegúrate que la r
 import { 
     checkSquatRep, 
     checkPushupRep, 
-    checkSitupRep,    
+    checkSitupRep,
     checkLungeRep,
     checkJumpingJacksRep,
     checkMountainClimbersRep
 } from '../utils/exercise-detection.js' 
+import { useDisplay } from 'vuetify'
 
 // --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---
-const jefeVidaMaxima = 100 // Usada como referencia visual, la real viene del servidor
-const jugadorVidaMaxima = 100 
+let jefeVidaMaxima = ref(300); // Vida base, se actualizará desde el servidor
+const jugadorVidaMaxima = 100;
 const DURACION_RULETA = 60 // 1 minuto para pruebas
 const MAX_PARTICIPANTS = 10;
 const DAÑO_AL_JEFE_BASE = 8;
@@ -239,12 +233,10 @@ const esCreador = ref(false);
 const buscandoPartida = ref(false);
 const participantes = ref([]);
 
-const mostrarDialogoCrear = ref(false); // Diálogo para confirmar creación
-
 // --- ESTADO DEL COMBATE ---
 const jefeVidaActual = ref(jefeVidaMaxima)
 const jugadorVidaActual = ref(jugadorVidaMaxima)
-const repeticiones = ref(0)
+const repeticiones = ref(0);
 
 // Máquinas de estado para cada ejercicio
 const squatState = ref('up')
@@ -272,6 +264,9 @@ let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
 // --- WEBSOCKET ---
 const ws = ref(null);
 const isConnected = ref(false);
+
+// Vuetify Display (para breakpoints)
+const { xsOnly, smAndUp } = useDisplay();
 
 
 // --- COMPUTED ---
@@ -304,7 +299,6 @@ function añadirMensaje(text, type = '') {
 
 
 // --- LÓGICA DE DAÑO ---
-
 function aplicarDanoJugador(dano, razon) {
     if (!isPartidaActiva.value) return;
     if (dañoJugadorTimeout) return; 
@@ -325,31 +319,17 @@ function aplicarDanoJugador(dano, razon) {
 }
 
 // MODIFICADA para incluir la llamada a la API y la animación
-async function aplicarDanoJefe(dano, ataque) {
+function aplicarDanoJefe(dano) {
     if (!isPartidaActiva.value) return
     
-    // SIMULACIÓN
-    jefeVidaActual.value = Math.max(0, jefeVidaActual.value - dano);
-    
-    // 3. Animación de golpe
+    // Enviar ataque al servidor
+    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+        ws.value.send(JSON.stringify({ type: 'INCURSION_ATTACK', damage: dano }));
+    }
     isJefeGolpeado.value = true
     setTimeout(() => {
         isJefeGolpeado.value = false
-    }, 200) 
-    
-    // 4. Mensajes y chequeo de fin de partida
-    const isCritico = dano > DAÑO_AL_JEFE_BASE
-    const tipoDano = isCritico ? 'critical--text' : 'success--text'
-    const textoDano = isCritico ? '💥 ¡GOLPE CRÍTICO!' : ' 💪 ¡ATAQUE EXITOSO!'
-    
-    añadirMensaje(`(${ataque}) ${textoDano} Jefe pierde ${dano} HP.`, tipoDano)
-    
-    if (jefeVidaActual.value === 0) {
-        detenerPartida()
-        añadirMensaje(`🥳 ¡FELICIDADES! ¡Has derrotado al Jefe!`, 'info--text')
-    } else {
-        añadirMensaje(`Jefe tiene ${jefeVidaActual.value}/${jefeVidaMaxima} de vida restante.`)
-    }
+    }, 200);
 }
 
 
@@ -477,18 +457,30 @@ function conectarWebSocket() {
     const data = JSON.parse(event.data);
     switch (data.type) {
       case 'INCURSION_STATE':
+        bossSessionId.value = data.sessionId; // Guardamos el ID de la sesión
         participantes.value = data.participantes;
-        esCreador.value = String(data.creadorId) === String(user.value?.id);
+        esCreador.value = String(data.creadorId) === String(user.value.id);
+        jefeVidaMax.value = data.jefeVidaMax;
+        jefeVidaActual.value = data.jefeVidaActual;
         if (data.message) {
           añadirMensaje(data.message, 'info--text');
-        }
+        } 
         break;
       case 'INCURSION_STARTED':
+        jefeVidaActual.value = data.jefeVidaActual;
         iniciarPartida();
         break;
       case 'JOIN_ERROR':
         añadirMensaje(`Error al unirse: ${data.message}`, 'error--text');
         salirDeLaIncursion(); // Volver al estado inicial
+        break;
+      case 'BOSS_HEALTH_UPDATE':
+        jefeVidaActual.value = data.jefeVidaActual;
+        añadirMensaje(`¡${data.attackerName} ha atacado! Vida del jefe: ${data.jefeVidaActual}`, 'success--text'); 
+        if (jefeVidaActual.value <= 0) {
+            detenerPartida();
+            añadirMensaje(`🥳 ¡FELICIDADES! ¡Habéis derrotado al Jefe!`, 'critical--text');
+        }
         break;
       case 'LEADER_LEFT':
         añadirMensaje('El líder ha abandonado la incursión. La sesión ha terminado.', 'error--text');
@@ -517,59 +509,17 @@ async function gestionarUnionIncursion() {
   }
 
   buscandoPartida.value = true;
-  añadirMensaje('Buscando una incursión abierta...', 'info--text');
+  añadirMensaje('Buscando o creando incursión...', 'info--text'); 
 
-  // --- SIMULACIÓN DE BÚSQUEDA ---
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  const salaEncontrada = Math.random() < 0.3; // 30% de probabilidad de encontrar sala
+  // La lógica ahora es simple: nos conectamos y el servidor decide.
+  conectarWebSocket();
 
-  if (salaEncontrada) {
-    // Simular que nos unimos a una sala existente
-    bossSessionId.value = `B${Math.floor(Math.random() * 9000) + 1000}`;
-    añadirMensaje(`¡Sala encontrada! Uniéndose a ${bossSessionId.value}...`, 'success--text');
-    conectarWebSocket();
-  } else {
-    // No se encontró sala, preguntamos si quiere crear una
-    añadirMensaje('No se encontraron incursiones. ¿Quieres crear una nueva?', 'warning--text');
-    mostrarDialogoCrear.value = true;
-  }
-  buscandoPartida.value = false;
-}
-
-async function crearIncursion() {
-  const creadorId = user.value?.id || user.value?.userId;
-  if (!creadorId) {
-    añadirMensaje('Debes iniciar sesión para crear una incursión.', 'error--text');
-    return;
-  }
-
-  mostrarDialogoCrear.value = false;
-  buscandoPartida.value = true;
-  añadirMensaje('Creando una nueva sala de incursión...', 'info--text');
-  
-  try {
-    // Generamos un código aleatorio como en CrearSala.vue
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let codigo = '';
-    for (let i = 0; i < 6; i++) {
-      codigo += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    bossSessionId.value = codigo;
-    añadirMensaje(`Sala ${codigo} creada. Esperando jugadores...`, 'success--text');
-    
-    conectarWebSocket();
-    await cargarEstadoJefe();
-  } catch (error) {
-    añadirMensaje('Error al intentar crear la sala.', 'error--text');
-  } finally {
-    buscandoPartida.value = false;
-  }
+  setTimeout(() => { buscandoPartida.value = false; }, 4000); // Timeout de seguridad
 }
 
 function salirDeLaIncursion() {
   bossSessionId.value = null;
-  esCreador.value = false;
+  esCreador.value = false; 
   isPartidaActiva.value = false;
   participantes.value = [];
   logMensajes.value = [{ time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
@@ -581,13 +531,11 @@ function salirDeLaIncursion() {
 }
 
 // --- LÓGICA DE INICIO/FIN DE PARTIDA ---
-async function iniciarPartidaAPI() {
+function iniciarPartidaAPI() {
   if (!esCreador.value || !bossSessionId.value) return;
-  try {
-    await fetch(`http://localhost:9000/api/sessions/start`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ codigo: bossSessionId.value }) });
-    // El servidor enviará 'INCURSION_STARTED' a todos, lo que llamará a iniciarPartida()
-  } catch (error) {
-    añadirMensaje('Error al iniciar la partida en el servidor.', 'error--text');
+  // Enviar mensaje al servidor para que inicie la partida para todos
+  if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({ type: 'INCURSION_START' }));
   }
 }
 
@@ -622,16 +570,7 @@ function detenerPartida() {
 
 // --- LLAMADA INICIAL AL MONTAR ---
 async function cargarEstadoJefe() {
-  if (!bossSessionId.value) return;
-  try {
-    // Simulación
-    jefeVidaActual.value = jefeVidaMaxima;
-    añadirMensaje(`Estado del Jefe cargado: ${jefeVidaActual.value} HP.`, 'info--text');
-
-  } catch (error) {
-    console.error("Error de red al cargar el estado del jefe:", error);
-    añadirMensaje('ERROR DE RED: No se pudo cargar el estado inicial del Jefe.', 'error--text');
-  }
+  // Esta función ya no es necesaria, el estado del jefe viene por WebSocket
 }
 
 onMounted(() => {
@@ -850,5 +789,19 @@ onBeforeUnmount(() => {
     z-index: 5;
     filter: brightness(1.5);
     opacity: 1;
+}
+
+/* Lista de Participantes */
+.participants-list {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 8px;
+}
+
+.participant-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.participant-item:last-child {
+  border-bottom: none;
 }
 </style>
