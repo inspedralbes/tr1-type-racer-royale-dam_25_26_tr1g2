@@ -431,7 +431,7 @@ wss.on('connection', ws => {
             nombreCreador: data.nombre,
             jugadores: [],
             createdAt: new Date(),
-            maxJugadores: 10, // Límite para incursiones
+            maxJugadores: 16, // Límite para incursiones
             modo: 'incursion',
             partidaIniciada: false
           };

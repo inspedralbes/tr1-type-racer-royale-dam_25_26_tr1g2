@@ -1,13 +1,15 @@
 <template>
   <v-container fluid class="pa-4 incursion-background">
     
-    <v-row class="mb-4 align-center">
-      <v-btn color="error" rounded large to="/inicial">
+    <v-row class="mb-4 align-center justify-space-between">
+      <v-col cols="auto">
+        <v-btn color="error" rounded large to="/inicial">
               <v-icon left>mdi-arrow-left</v-icon>
               Volver
             </v-btn>
-      <v-col cols="12">
-        <h1 class="text-h4 text-sm-h3 font-weight-black text-center battle-title">
+      </v-col>
+      <v-col cols="auto" class="text-center">
+        <h1 class="text-h4 text-sm-h3 font-weight-black battle-title">
           INCURSIÓN CONTRA EL JEFE
         </h1>
         <div v-if="bossSessionId" class="text-center mt-2">
@@ -15,6 +17,11 @@
             <v-icon left small>mdi-account-group</v-icon>
             Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
           </v-chip>
+        </div>
+      </v-col>
+      <v-col cols="auto" class="text-right" v-if="bossSessionId">
+        <div class="reps-display">
+          REPS: <span class="text-h4">{{ repeticiones }}</span>
         </div>
       </v-col>
     </v-row>
@@ -109,9 +116,6 @@
               </div>
             </v-col>
 
-            <v-col v-if="bossSessionId" cols="12" sm="6" class="text-center">
-              <div class="reps-display">REPETICIONES: <span class="text-h5 text-sm-h4">{{ repeticiones }}</span></div>
-            </v-col>
           </v-row>
         </v-card>
       </v-col>
@@ -217,7 +221,7 @@ import {
 // --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---
 const jefeVidaMaxima = 100 // Usada como referencia visual, la real viene del servidor
 const jugadorVidaMaxima = 100 
-const DURACION_RULETA = 180 // 3 minutos
+const DURACION_RULETA = 60 // 1 minuto para pruebas
 const MAX_PARTICIPANTS = 10;
 const DAÑO_AL_JEFE_BASE = 8;
 const DAÑO_AL_JUGADOR_POR_FALLO = 5;
@@ -362,6 +366,7 @@ function seleccionarEjercicioRandom() {
     }
     
     ejercicioSeleccionado.value = nuevoEjercicio;
+    repeticiones.value = 0; // Reiniciar contador de repeticiones
     añadirMensaje(` ¡ATENCIÓN! El Jefe exige el ataque: ${nuevoEjercicio}`, 'warning--text');
 }
 
@@ -551,7 +556,7 @@ async function crearIncursion() {
     }
 
     bossSessionId.value = codigo;
-    añadirMensaje(`¡Sala creada! Código: ${codigo}. Comparte este código para que otros se unan.`, 'success--text');
+    añadirMensaje(`Sala ${codigo} creada. Esperando jugadores...`, 'success--text');
     
     conectarWebSocket();
     await cargarEstadoJefe();
