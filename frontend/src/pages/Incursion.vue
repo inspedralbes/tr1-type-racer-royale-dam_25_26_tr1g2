@@ -16,7 +16,7 @@
             <v-icon left small>mdi-account-group</v-icon>
             Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
           </v-chip>
-        </div>
+        </div> 
       </v-col>
       <v-col cols="auto" class="text-right" v-if="bossSessionId">
         <div class="reps-display">
@@ -59,8 +59,8 @@
             
             <!-- 2. Registro de Combate (Superpuesto en la cámara) -->
             <div class="combat-log-overlay">
-              <div class="message-log" ref="messageLogRef"> 
-                <p v-for="(msg, index) in logMensajes" :key="index" :class="msg.type">
+              <div class="message-log" ref="messageLogRef">
+                <p v-for="msg in logMensajes" :key="msg.id" :class="[msg.type, { 'fade-out': msg.leaving }]">
                   <strong>[{{ msg.time }}]</strong> {{ msg.text }}
                 </p>
               </div>
@@ -282,14 +282,25 @@ const tiempoFormateado = computed(() => {
 
 // --- MÉTODOS DE UTILIDAD ---
 function calcularColorVida(porcentaje) {
-    if (porcentaje <= 20) return 'error'; 
-    if (porcentaje <= 50) return 'warning'; 
-    return 'success'; 
+    if (porcentaje <= 20) return 'error';
+    if (porcentaje <= 50) return 'warning';
+    return 'success';
 }
 
+let messageIdCounter = 0;
 function añadirMensaje(text, type = '') {
-    const time = new Date().toLocaleTimeString('es-ES', { minute: '2-digit', second: '2-digit' })
-    logMensajes.value.push({ time, text, type })
+    const time = new Date().toLocaleTimeString('es-ES', { minute: '2-digit', second: '2-digit' });
+    const id = messageIdCounter++;
+    const message = { id, time, text, type, leaving: false };
+    logMensajes.value.push(message);
+
+    // Iniciar temporizador para eliminar el mensaje
+    setTimeout(() => {
+        const msgIndex = logMensajes.value.findIndex(m => m.id === id);
+        if (msgIndex !== -1) logMensajes.value[msgIndex].leaving = true;
+        setTimeout(() => logMensajes.value = logMensajes.value.filter(m => m.id !== id), 500); // Eliminar tras la animación
+    }, 10000); // El mensaje dura 10 segundos
+
     nextTick(() => {
         if (messageLogRef.value) {
             messageLogRef.value.scrollTop = messageLogRef.value.scrollHeight
@@ -717,12 +728,19 @@ onBeforeUnmount(() => {
     pointer-events: auto; /* Restaura la capacidad de desplazamiento (si lo hubiéramos activado) */
     animation: fadeIn 0.5s ease-out; /* Animación simple al aparecer */
 }
+.message-log p.fade-out {
+    animation: fadeOut 0.5s ease-out forwards;
+}
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}
 /* Colores de los mensajes */
 .success--text { color: #69F0AE !important; }
 .warning--text { color: #FFD600 !important; }
