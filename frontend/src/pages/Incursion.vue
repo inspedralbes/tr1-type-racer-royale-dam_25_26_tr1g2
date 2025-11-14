@@ -64,17 +64,28 @@
           
           <v-row align="center" class="mt-4">
             <v-col cols="12" sm="6">
-              <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
+              <div class="d-flex justify-center gap-2 flex-wrap" v-if="!buscandoPartida && !bossSessionId">
                 <v-btn
-                    color="success"
-                    small
-                    @click="mostrarDialogoUnirse = true"
-                    :disabled="!isPoseDetectorReady"
-                    class="action-btn btn-mobile-fix"
-                    block
+                  color="blue"
+                  small
+                  @click="crearIncursion"
+                  :disabled="!isPoseDetectorReady || buscandoPartida"
+                  :loading="buscandoPartida"
+                  class="action-btn btn-mobile-fix flex-grow-1"
                 >
-                    <v-icon left small>mdi-magnify</v-icon>
-                    <span class="text-wrap">BUSCAR INCURSIÓN</span>
+                  <v-icon left small>mdi-plus</v-icon>
+                  <span class="text-truncate">CREAR INCURSIÓN</span>
+                </v-btn>
+                <v-btn
+                  color="success"
+                  small
+                  @click="buscarIncursion"
+                  :disabled="!isPoseDetectorReady || buscandoPartida"
+                  :loading="buscandoPartida"
+                  class="action-btn btn-mobile-fix flex-grow-1"
+                >
+                  <v-icon left small>mdi-magnify</v-icon>
+                  <span class="text-truncate">BUSCAR INCURSIÓN</span>
                 </v-btn>
               </div>
               <div class="d-flex justify-center gap-2 flex-wrap" v-else>
@@ -177,30 +188,6 @@
       </v-col>
     </v-row>
 
-    <v-dialog v-model="mostrarDialogoUnirse" persistent max-width="400">
-      <v-card class="game-card">
-        <v-card-title class="text-h6 text-sm-h5 player-title text-wrap">¿Unirte a la Incursión?</v-card-title>
-        <v-card-text class="text-body-2">
-          Se buscará una sala de incursión abierta. Si no hay ninguna disponible, se creará una nueva para ti y otros jugadores.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="mostrarDialogoUnirse = false" class="text-truncate">
-            Cancelar
-          </v-btn>
-          <v-btn
-            color="success"
-            text
-            @click="unirseAIncursion"
-            :loading="buscandoPartida"
-            class="text-truncate"
-          >
-            Confirmar
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
   </v-container>
 </template>
 
@@ -234,7 +221,6 @@ const user = ref(JSON.parse(localStorage.getItem('user')) || {});
 // --- LÓGICA MULTIJUGADOR ---
 const bossSessionId = ref(null);
 const esCreador = ref(false);
-const mostrarDialogoUnirse = ref(false);
 const buscandoPartida = ref(false);
 const participantes = ref([]);
 
@@ -449,43 +435,61 @@ function onFeatures(payload) {
 
 
 // --- LÓGICA DE UNIÓN Y PARTIDA ---
-async function unirseAIncursion() {
+async function crearIncursion() {
   const userId = user.value?.id || user.value?.userId;
   if (!userId) {
     añadirMensaje('Debes iniciar sesión para unirte a una incursión.', 'error--text');
-    // Opcional: redirigir a login
-    // import { useRouter } from 'vue-router'; const router = useRouter(); router.push('/login');
-    mostrarDialogoUnirse.value = false;
     return;
   }
 
   buscandoPartida.value = true;
-  mostrarDialogoUnirse.value = false;
-  añadirMensaje('Buscando una incursión abierta...', 'info--text');
-
-
-  // Simulación de llamada a un backend que busca o crea una sala
-  // En un caso real, aquí harías:
-  // const response = await axios.post('/api/boss/join', { userId: user.value.id });
-  // const { sessionId, isCreator, participants } = response.data;
+  añadirMensaje('Creando una nueva sala de incursión...', 'info--text');
   
   // --- SIMULACIÓN ---
-  await new Promise(resolve => setTimeout(resolve, 1500)); // Simula espera de red
-  const sessionId = 1; // ID de sesión simulado
-  const isCreator = true; // Simula que este usuario es el creador
-  const initialParticipants = [user.value]; // Añadir al usuario actual a la lista
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  const sessionId = `B${Math.floor(Math.random() * 9000) + 1000}`;
+  const isCreator = true;
+  const initialParticipants = [user.value];
   // --- FIN SIMULACIÓN ---
 
   bossSessionId.value = sessionId;
   esCreador.value = isCreator;
   buscandoPartida.value = false;
   participantes.value = initialParticipants;
+  añadirMensaje(`¡Sala ${sessionId} creada! Esperando a otros jugadores...`, 'success--text');
+  
+  await cargarEstadoJefe();
+}
 
-  if (isCreator) {
-    añadirMensaje('¡Has creado una nueva sala de incursión! Esperando a otros jugadores...', 'success--text');
-  } else {
-    añadirMensaje('¡Te has unido a una incursión! Esperando al líder para iniciar.', 'success--text');
+async function buscarIncursion() {
+  const userId = user.value?.id || user.value?.userId;
+  if (!userId) {
+    añadirMensaje('Debes iniciar sesión para buscar una incursión.', 'error--text');
+    return;
   }
+
+  buscandoPartida.value = true;
+  añadirMensaje('Buscando una incursión abierta...', 'info--text');
+  
+  // --- SIMULACIÓN ---
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  const salaEncontrada = Math.random() > 0.3; // 70% de probabilidad de encontrar sala
+
+  if (salaEncontrada) {
+    const sessionId = `B${Math.floor(Math.random() * 9000) + 1000}`;
+    const isCreator = false;
+    const initialParticipants = [ {usuari: 'Lider'}, user.value ]; // Simula que ya hay un líder
+
+    bossSessionId.value = sessionId;
+    esCreador.value = isCreator;
+    participantes.value = initialParticipants;
+    añadirMensaje(`¡Te has unido a la incursión ${sessionId}! Esperando al líder para iniciar.`, 'success--text');
+  } else {
+    añadirMensaje('No se encontraron incursiones abiertas. ¡Intenta crear una!', 'warning--text');
+  }
+  // --- FIN SIMULACIÓN ---
+
+  buscandoPartida.value = false;
   
   await cargarEstadoJefe();
 }
