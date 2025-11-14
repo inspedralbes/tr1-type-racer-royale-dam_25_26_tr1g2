@@ -1,23 +1,22 @@
 # Usar la imagen oficial de Node
 FROM node:20-alpine
 
+# Directorio de trabajo
 WORKDIR /app
 
-# Copiar package.json y package-lock.json
+# 1. Copiar SÓLO los archivos de paquete
+# Esto permite que Docker cachee la capa de instalación
 COPY package*.json ./
 
-# Instalar dependencias
+# 2. Instalar dependencias
 RUN npm install
 
-# Copiar el resto de la app
-COPY . .
+# ¡IMPORTANTE! Hemos eliminado 'COPY . .'
+# El código fuente (el resto de los archivos) será proporcionado 
+# por el montaje de volumen definido en docker-compose.yml
 
-# Construir la app para producción
-RUN npm run build
-
-# Servir la app con un servidor ligero (http-server)
-RUN npm install -g serve
-
+# Exponer el puerto de desarrollo
 EXPOSE 3000
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Comando para iniciar la app (usando el volumen montado)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

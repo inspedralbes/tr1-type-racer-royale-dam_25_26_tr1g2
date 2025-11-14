@@ -336,7 +336,7 @@ async function loop() {
   const scores = keypoints.map(k => k?.score ?? 0).filter(Number.isFinite)
   const meanScore = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : 0
 
-  // EMET SEMPRE un objecte complet de features (mai “res”)
+  // ✅ EMET SEMPRE un objecte complet de features (mai “res”)
   const features = {
     fps: fpsNow,
     fpsSmooth,                 // NEW
@@ -469,17 +469,6 @@ watch(sourceMode, async (mode) => {
 watch(selectedId, (id) => {
   if (id && sourceMode.value === 'camera') startCamera(id)
 })
-import { checkPushupRep } from '@/utils/exercise-detection.js'
-
-let state = 'up'
-let reps = 0
-
-function updateReps(angles) {
-  const { newState, repCompleted } = checkPushupRep(angles, state)
-  state = newState
-  if (repCompleted) reps++
-}
-
 
 </script>
 
@@ -491,37 +480,6 @@ function updateReps(angles) {
       <video ref="videoEl" playsinline muted autoplay class="video"></video>
       <canvas ref="canvasRef" class="overlay"></canvas>
     </div>
-
-    <!-- Selector de càmera sota el vídeo -->
-    <div class="camera-select">
-      <select v-model="selectedId" class="select">
-        <option v-for="d in devices" :key="d.deviceId" :value="d.deviceId">
-          {{ d.label }}
-        </option>
-      </select>
-    </div>
- 
-
-<!-- NEW: selector d'origen i entrada de fitxer -->
-<div class="source-select" style="width: min(100%, 720px); display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="camera" v-model="sourceMode">
-    Càmera
-  </label>
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="file" v-model="sourceMode">
-    Vídeo local
-  </label>
-
-  <!-- Input de fitxer activat només en mode 'file' -->
-  <input
-    v-if="sourceMode === 'file'"
-    type="file"
-    accept="video/*"
-    @change="e => e.target.files?.[0] && startFileVideo(e.target.files[0])"
-    style="grid-column: 1 / -1;"
-  />
-</div>
   </div>
 </template>
 
