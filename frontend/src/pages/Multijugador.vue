@@ -1,8 +1,16 @@
 <script setup>
-import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, shallowRef, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PoseSkeleton from '../components/PoseSkeleton.vue' 
 import PoseFeatures from '../components/PoseFeatures.vue'
+import { 
+    checkSquatRep, 
+    checkPushupRep, 
+    checkSitupRep,    
+    checkLungeRep,
+    checkJumpingJacksRep,
+    checkMountainClimbersRep
+} from '../utils/exercise-detection.js' 
 import axios from 'axios'
 
 const route = useRoute()
@@ -22,60 +30,16 @@ const isPartidaActiva = ref(false)
 const ejercicioSeleccionado = ref('Sentadillas')
 const mostrarMensajeObjetivo = ref(false)
 const features = shallowRef(null)
+const ganador = ref(null)
 const maxReps = ref(5)
 const panelAbierto = ref([])
 
 const squatState = ref({}) 
 const pushupState = ref({}) 
-
-const MIN_SQUAT_ANGLE = 120
-const MAX_SQUAT_ANGLE = 165
-const MIN_PUSHUP_ANGLE = 100
-const MAX_PUSHUP_ANGLE = 160
-
-function checkRepeticion(jugadorId, angles) {
-  if (!isPartidaActiva.value || !angles) return;
-
-  const jugador = jugadores.value.find(j => j.id == jugadorId);
-  if (!jugador) return;
-  
-  let repeticionCompletada = false;
-  let currentStateRef = null;
-  let minAngle, maxAngle, avgAngle;
-  
-  if (ejercicioSeleccionado.value === 'Sentadillas') {
-    currentStateRef = squatState;
-    minAngle = MIN_SQUAT_ANGLE;
-    maxAngle = MAX_SQUAT_ANGLE;
-    if (!angles.leftKnee || !angles.rightKnee) return;
-    avgAngle = (angles.leftKnee + angles.rightKnee) / 2;
-  } else if (ejercicioSeleccionado.value === 'Flexiones') {
-    currentStateRef = pushupState;
-    minAngle = MIN_PUSHUP_ANGLE;
-    maxAngle = MAX_PUSHUP_ANGLE;
-    if (!angles.leftElbow || !angles.rightElbow) return;
-    avgAngle = (angles.leftElbow + angles.rightElbow) / 2;
-  } else {
-    return;
-  }
-
-  const jugadorState = currentStateRef.value[jugadorId];
-
-  if (avgAngle < minAngle && jugadorState === 'up') {
-    currentStateRef.value = { ...currentStateRef.value, [jugadorId]: 'down' };
-  } 
-  else if (avgAngle > maxAngle && jugadorState === 'down') {
-    currentStateRef.value = { ...currentStateRef.value, [jugadorId]: 'up' };
-    repeticionCompletada = true;
-  }
-
-  if (repeticionCompletada && ws.value && ws.value.readyState === WebSocket.OPEN) {
-    ws.value.send(JSON.stringify({
-      type: 'REPS_UPDATE',
-      reps: jugador.repeticiones + 1
-    }));
-  }
-}
+const situpState = ref({})
+const lungeState = ref({})
+const jumpingJacksState = ref({})
+const mountainClimbersState = ref({})
 
 const todosListos = computed(() =>
   jugadores.value.length > 0 && jugadores.value.every(j => j.ready)
@@ -87,8 +51,34 @@ function onFeatures(payload) {
     ? structuredClone(payload) 
     : JSON.parse(JSON.stringify(payload || {}));
 
-  if (isPartidaActiva.value && features.value?.poses?.[0]) {
-    checkRepeticion(userId.value, features.value.poses[0].angles);
+  if (!isPartidaActiva.value || !features.value?.angles) return;
+
+  const exerciseHandlers = {
+    'Sentadillas': { detect: checkSquatRep, state: squatState },
+    'Flexiones': { detect: checkPushupRep, state: pushupState },
+    'Abdominales': { detect: checkSitupRep, state: situpState },
+    'Zancadas': { detect: checkLungeRep, state: lungeState },
+    'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState },
+    'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState }
+  };
+
+  const handler = exerciseHandlers[ejercicioSeleccionado.value];
+  const jugador = jugadores.value.find(j => j.id == userId.value);
+
+  if (handler && jugador) {
+    const currentState = handler.state.value[userId.value] || (ejercicioSeleccionado.value === 'Jumping Jacks' ? 'down' : 'up');
+    const detectionInput = ejercicioSeleccionado.value === 'Jumping Jacks' ? features.value : features.value.angles;
+    const result = handler.detect(detectionInput, currentState);
+
+    // Actualizamos el estado del ejercicio para este jugador
+    handler.state.value = { ...handler.state.value, [userId.value]: result.newState };
+
+    if (result.repCompleted && ws.value && ws.value.readyState === WebSocket.OPEN) {
+      ws.value.send(JSON.stringify({
+        type: 'REPS_UPDATE',
+        reps: jugador.repeticiones + 1
+      }));
+    }
   }
 }
 
@@ -127,7 +117,11 @@ onMounted(() => {
       type: 'JOIN_SESSION',
       sessionId: salaId.value,
       userId: userId.value,
-      nombre: localStorage.getItem('username') || `Jugador ${userId.value}`
+      nombre: (() => {
+        const user = JSON.parse(localStorage.getItem('user'));
+        // El modelo Sequelize usa 'usuari', no 'username'
+        return user?.usuari || user?.username || `Jugador ${userId.value}`;
+      })()
     }));
   };
 
@@ -145,16 +139,48 @@ onMounted(() => {
         jugadores.value.forEach(jugador => {
           if (!squatState.value[jugador.id]) squatState.value[jugador.id] = 'up';
           if (!pushupState.value[jugador.id]) pushupState.value[jugador.id] = 'up';
+          if (!situpState.value[jugador.id]) situpState.value[jugador.id] = 'up';
+          if (!lungeState.value[jugador.id]) lungeState.value[jugador.id] = 'up';
+          if (!jumpingJacksState.value[jugador.id]) jumpingJacksState.value[jugador.id] = 'down';
+          if (!mountainClimbersState.value[jugador.id]) mountainClimbersState.value[jugador.id] = 'up';
         });
+        // Actualizar también la configuración de la sala
+        if (data.ejercicio) ejercicioSeleccionado.value = data.ejercicio;
+        if (data.maxReps) maxReps.value = data.maxReps;
+
         break;
       case 'SESSION_STARTED':
         isPartidaActiva.value = true;
         mostrarMensajeObjetivo.value = false;
+        ganador.value = null;
+        // Reiniciar estados de ejercicios para todos los jugadores
+        squatState.value = {};
+        pushupState.value = {};
+        situpState.value = {};
+        lungeState.value = {};
+        jumpingJacksState.value = {};
+        mountainClimbersState.value = {};
         jugadores.value.forEach(j => j.repeticiones = 0);
         break;
       case 'JOIN_ERROR':
         alert(`Error al unirse: ${data.message}`);
         router.push('/unirsala');
+        break;
+      case 'SETTINGS_UPDATED':
+        // El servidor nos informa de la nueva configuración
+        if (data.ejercicio) ejercicioSeleccionado.value = data.ejercicio;
+        if (data.maxReps) maxReps.value = data.maxReps;
+        break;
+      case 'LEADER_LEFT':
+        alert(data.message || 'El líder ha abandonado la sala. Serás redirigido.');
+        detenerPartida();
+        router.push('/inicial');
+        break;
+      case 'PLAYER_WINS':
+        ganador.value = data.winnerName || 'Un jugador';
+        mostrarMensajeObjetivo.value = true;
+        isPartidaActiva.value = false;
+        // Opcional: añadir un timeout para poder volver a jugar
         break;
     }
   };
@@ -167,6 +193,20 @@ onBeforeUnmount(() => {
   detenerPartida();
   if (ws.value) ws.value.close();
 })
+
+// Observar cambios en la configuración para enviarlos al servidor si eres el creador
+watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
+  if (esCreador.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({
+      type: 'SETTINGS_UPDATE',
+      ejercicio: newEjercicio,
+      maxReps: newReps
+    }));
+  }
+});
+
+
+
 </script>
 
 <template>
@@ -215,8 +255,7 @@ onBeforeUnmount(() => {
                     <div v-if="mostrarMensajeObjetivo" class="objetivo-overlay">
                       <v-icon size="64" color="amber lighten-1">mdi-trophy</v-icon>
                       <h2 class="mt-3 text-h5 font-weight-black text-amber-lighten-2">
-                        ¡Objetivo alcanzado! Ganador: 
-                        {{ jugadores.find(j => j.repeticiones >= maxReps)?.nombre || 'Jugador' }}
+                        ¡Objetivo alcanzado! Ganador: {{ ganador }}
                       </h2>
                     </div>
                   </transition>
@@ -308,13 +347,13 @@ onBeforeUnmount(() => {
                 <!-- Selector de ejercicio -->
                 <v-select
                   v-model="ejercicioSeleccionado"
-                  :items="['Sentadillas','Flexiones','Abdominales']"
+                  :items="['Sentadillas','Flexiones','Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']"
                   label="Ejercicio"
                   outlined
                   dense
                   dark
                   class="mb-4"
-                  :disabled="isPartidaActiva"
+                  :disabled="isPartidaActiva || !esCreador"
                 ></v-select>
 
                 <!-- Selector de repeticiones -->
@@ -328,7 +367,7 @@ onBeforeUnmount(() => {
                     thumb-label
                     dense
                     dark
-                    :disabled="isPartidaActiva"
+                    :disabled="isPartidaActiva || !esCreador"
                   ></v-slider>
                   <v-text-field
                     v-model="maxReps"
@@ -340,7 +379,7 @@ onBeforeUnmount(() => {
                     :min="1"
                     :max="20"
                     class="mt-2"
-                    :disabled="isPartidaActiva"
+                    :disabled="isPartidaActiva || !esCreador"
                   ></v-text-field>
                 </div>
 

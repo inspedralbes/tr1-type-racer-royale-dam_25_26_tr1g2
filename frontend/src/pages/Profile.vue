@@ -35,10 +35,6 @@
                     <v-td v-bind="props" class="white--text font-weight-bold">{{ item.id }}</v-td>
                   </template>
 
-                  <template v-slot:item.nom_rutina="{ item, props }">
-                    <v-td v-bind="props" class="white--text font-weight-bold">{{ item.nom_rutina }}</v-td>
-                  </template>
-
                   <template v-slot:item.descripcio="{ item, props }">
                     <v-td v-bind="props" class="white--text">{{ item.descripcio || '-' }}</v-td>
                   </template>
@@ -53,7 +49,7 @@
                     <v-td v-bind="props" class="white--text">
                       <ul class="routine-list">
                         <li v-for="ex in item.exercicis" :key="ex.id">
-                          {{ ex.nom_exercicis || ex.nom }} — {{ ex.n_repeticions || ex.repeticions }} reps
+                          {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} reps
                         </li>
                       </ul>
                     </v-td>
@@ -64,7 +60,7 @@
                <div class="d-sm-none pa-3">
   <v-card v-for="(routine, index) in routines" :key="index" class="mobile-routine-card mb-3">
     <v-card-title class="text-subtitle-1 pb-1 routine-title-mobile">
-      {{ routine.nom_rutina }}
+      {{ routine.nom }}
     </v-card-title>
     
     <v-card-text class="pt-1">
@@ -75,7 +71,7 @@
       <strong class="text-caption grey--text text--lighten-1">Ejercicios:</strong>
       <ul class="mobile-routine-list white--text">
         <li v-for="ex in routine.exercicis" :key="ex.id" class="text-body-2">
-          {{ ex.nom_exercicis || ex.nom }} — {{ ex.n_repeticions || ex.repeticions }} reps
+          {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} reps
         </li>
       </ul>
       <v-chip small class="mt-2" color="teal">Total: {{ routine.exercicis.length }} Ejercicios</v-chip>
@@ -181,8 +177,8 @@ const updateProfileState = () => {
   const newId = newUser?.id || newUser?.userId || null
   if (newId !== userId.value) {
     userId.value = newId
-    username.value = newUser?.usuari || 'Invitado'
-    selectedAvatar.value = newUser?.avatar_url || avatars[1].url
+    username.value = newUser?.usuari || newUser?.username || 'Invitado'
+    selectedAvatar.value = newUser?.avatar_url || 'https://cdn.vuetifyjs.com/images/john-smirk.png'
     level.value = newUser?.level || 1
     loadRoutines()
   } else if (newId && routines.value.length === 0) {

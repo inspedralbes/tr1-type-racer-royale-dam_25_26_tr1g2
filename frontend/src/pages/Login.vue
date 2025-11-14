@@ -108,7 +108,7 @@ const handleLogin = async () => {
       // Guardar datos del usuario en localStorage
       login(userData); // El composable useAuth recibe los nuevos datos
       localStorage.setItem('userId', userData.id); // Guardamos el ID
-      localStorage.setItem('username', userData.username); // Guardamos el nombre de usuario
+      localStorage.setItem('username', userData.usuari); // Guardamos el nombre de usuario (Sequelize usa 'usuari')
       localStorage.setItem('user', JSON.stringify(userData)); // Guardamos todo el objeto de usuario
       // Disparar evento para que otras partes de la app reaccionen
       window.dispatchEvent(new CustomEvent('user-logged-in'))

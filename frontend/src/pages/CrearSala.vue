@@ -58,15 +58,9 @@
 
             <!-- Contenedor adaptativo para selección y botón -->
             <div class="d-flex flex-wrap align-center justify-center mt-4 responsive-container">
-              <v-select
-                v-model="maxPersonas"
-                :items="personasOptions"
-                label="Máx. personas"
-                dense
-                outlined
-                class="mb-3 responsive-select"
-                :disabled="salaIniciada"
-              />
+              <div class="mb-3 mode-display">
+                <p class="text-subtitle-1 font-weight-bold">Modo: 2 vs 2</p>
+              </div>
               <v-btn
                 color="success"
                 class="button-shadow px-10 py-5 d-flex align-center justify-center mb-3 responsive-btn"
@@ -99,13 +93,16 @@ const codigoSala = ref('')
 const router = useRouter()
 const salaIniciada = ref(false)
 const maxPersonas = ref(2)
-const personasOptions = [2,3,4,5,6,7,8]
 
 const API_BASE_URL = 'http://localhost:9000'
-const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
+const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } });
 
 function obtenerCreadorId() { return localStorage.getItem('userId') || null }
-function obtenerNombreUsuario() { return localStorage.getItem('username') || 'Invitado' }
+function obtenerNombreUsuario() { 
+  const user = JSON.parse(localStorage.getItem('user'));
+  // El modelo Sequelize usa 'usuari', no 'username'
+  return user?.usuari || user?.username || 'Invitado';
+}
 
 async function generarCodigo() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -122,7 +119,8 @@ async function generarCodigo() {
     tipo: 'public',
     modo: '2vs2',
     jugadores: [{ id: String(creadorId), nombre, rol: 'host', conectado: true }],
-    opciones: {}
+    opciones: {},
+    maxJugadores: maxPersonas.value
   }
   try {
     const resp = await api.post('/api/salas/crear', payload)
@@ -204,6 +202,13 @@ async function iniciarSala() {
   flex: 1 1 auto;
   min-width: 140px;
 }
+.mode-display {
+  flex: 1 1 auto;
+  min-width: 140px;
+  max-width: 160px;
+  text-align: center;
+  color: #BDBDBD;
+}
 
 /* Ajustes móviles */
 @media (max-width: 600px) {
@@ -217,6 +222,9 @@ async function iniciarSala() {
   .button-shadow {
     font-size: 1rem;
     padding: 12px 10px;
+  }
+  .mode-display {
+    max-width: 100%;
   }
 }
 </style>

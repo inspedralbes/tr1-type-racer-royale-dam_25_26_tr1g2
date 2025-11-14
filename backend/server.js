@@ -48,15 +48,15 @@ const db_pool = require('./config/db').pool; // Mantenim el pool per a les altre
 const salasActivas = {};
 
 app.post('/api/salas/crear', async (req, res) => {
-  const { codigo, creadorId, nombreCreador, tipo, modo, jugadores, opciones } = req.body;
+  const { codigo, creadorId, nombreCreador, tipo, modo, jugadores, opciones, maxJugadores } = req.body;
 
   if (!codigo || !creadorId) {
     return res.status(400).json({ success: false, error: 'El código y el creadorId son obligatorios.' });
   }
 
   try {
-    // Guardar la sala en memoria para poder validarla después
-    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date() };
+    // Guardar la sala en memoria, incluyendo el máximo de jugadores
+    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date(), maxJugadores: maxJugadores || 2 };
 
     // Aquí iría la lógica para guardar la sala en la base de datos.
     // Por ahora, simulamos que se guarda y devolvemos el código como ID de sesión.
@@ -94,6 +94,10 @@ app.post('/api/sessions/start', (req, res) => {
 
   if (!codigo) {
     return res.status(400).json({ success: false, error: 'El código de la sala es obligatorio.' });
+  }
+
+  if (salasActivas[codigo]) {
+    salasActivas[codigo].partidaFinalizada = false; // Reiniciar estado al iniciar
   }
 
   // Aquí podrías actualizar el estado de la sala en la base de datos a 'iniciada'
@@ -366,6 +370,13 @@ wss.on('connection', ws => {
         if (!sessions.has(sessionId)) {
           sessions.set(sessionId, new Map());
         }
+        // Validar si la sala está llena
+        const sala = salasActivas[sessionId];
+        if (sala && sessions.get(sessionId).size >= sala.maxJugadores) {
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La sala está llena.' }));
+          ws.terminate();
+          return;
+        }
         const userMap = sessions.get(sessionId);
         // 2. Validar si el usuario ya está en la sesión.
         if (userMap.has(userId)) {
@@ -396,16 +407,38 @@ wss.on('connection', ws => {
         });
 
         const creatorId = salasActivas[sessionId]?.creadorId;
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
+        const salaSettings = salasActivas[sessionId] || {};
+        broadcastToSession(sessionId, { 
+          type: 'SESSION_STATE', 
+          state: sessionState, 
+          creatorId,
+          ejercicio: salaSettings.ejercicio,
+          maxReps: salaSettings.maxReps
+        });
         break;
       }
       case 'REPS_UPDATE': {
         const metadata = clientMetadata.get(clientId);
         if (!metadata || !metadata.sessionId) return;
+
+        const sala = salasActivas[metadata.sessionId];
+        if (!sala || sala.partidaFinalizada) return; // No procesar si la partida ya terminó
+
         // Actualizar las repeticiones del usuario
         metadata.reps = data.reps;
         clientMetadata.set(clientId, metadata);
         
+        // Comprobar si el jugador ha ganado
+        if (sala.maxReps && metadata.reps >= sala.maxReps) {
+          sala.partidaFinalizada = true; // Marcar la partida como finalizada
+          broadcastToSession(metadata.sessionId, {
+            type: 'PLAYER_WINS',
+            winnerId: metadata.userId,
+            winnerName: metadata.nombre
+          });
+          break; // Salir para no enviar un SESSION_STATE normal
+        }
+
         // Notificar a todos en la sesión
         const userMap = sessions.get(metadata.sessionId);
         const sessionState = {};
@@ -415,7 +448,14 @@ wss.on('connection', ws => {
         });
 
         const creatorId = salasActivas[metadata.sessionId]?.creadorId;
-        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
+        const salaSettings = salasActivas[metadata.sessionId] || {};
+        broadcastToSession(metadata.sessionId, { 
+          type: 'SESSION_STATE', 
+          state: sessionState, 
+          creatorId,
+          ejercicio: salaSettings.ejercicio,
+          maxReps: salaSettings.maxReps
+        });
         break;
       }
       case 'PLAYER_READY': {
@@ -437,7 +477,35 @@ wss.on('connection', ws => {
         });
 
         const creatorId = salasActivas[metadata.sessionId]?.creadorId;
-        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
+        const salaSettings = salasActivas[metadata.sessionId] || {};
+        broadcastToSession(metadata.sessionId, { 
+          type: 'SESSION_STATE', 
+          state: sessionState, 
+          creatorId,
+          ejercicio: salaSettings.ejercicio,
+          maxReps: salaSettings.maxReps
+        });
+        break;
+      }
+      case 'SETTINGS_UPDATE': {
+        const metadata = clientMetadata.get(clientId);
+        if (!metadata || !metadata.sessionId) return;
+
+        // Verificamos que quien envía el cambio es el creador de la sala
+        const creatorId = salasActivas[metadata.sessionId]?.creadorId;
+        if (String(metadata.userId) !== String(creatorId)) {
+          console.log(`Intento no autorizado de cambiar ajustes por ${metadata.userId} en sala ${metadata.sessionId}`);
+          return; // No hacer nada si no es el creador
+        }
+
+        // Guardamos la nueva configuración en la sala activa (en memoria)
+        if (salasActivas[metadata.sessionId]) {
+          salasActivas[metadata.sessionId].ejercicio = data.ejercicio;
+          salasActivas[metadata.sessionId].maxReps = data.maxReps;
+        }
+
+        // Retransmitimos la nueva configuración a todos en la sesión
+        broadcastToSession(metadata.sessionId, { type: 'SETTINGS_UPDATED', ejercicio: data.ejercicio, maxReps: data.maxReps });
         break;
       }
     }
@@ -445,27 +513,49 @@ wss.on('connection', ws => {
 
   ws.on('close', () => {
     const metadata = clientMetadata.get(clientId);
-    if (metadata && metadata.sessionId) {
-      const { sessionId, userId } = metadata;
-      const userMap = sessions.get(sessionId);
-      // Solo eliminar si el clientId coincide (para evitar eliminar una nueva conexión del mismo usuario)
-      if (userMap && userMap.get(userId) === clientId) {
-        userMap.delete(userId);
-      }
-      if (userMap && userMap.size === 0) {
+    if (!metadata || !metadata.sessionId) {
+      clientMetadata.delete(clientId);
+      return;
+    }
+
+    const { sessionId, userId } = metadata;
+    const sala = salasActivas[sessionId];
+    const userMap = sessions.get(sessionId);
+
+    if (!userMap || !sala) {
+      clientMetadata.delete(clientId);
+      return;
+    }
+
+    // Si el que se va es el creador, terminamos la sesión para todos.
+    if (String(sala.creadorId) === String(userId)) {
+      broadcastToSession(sessionId, { type: 'LEADER_LEFT', message: 'El creador ha abandonado la sala. La sesión ha terminado.' });
+      sessions.delete(sessionId);
+      delete salasActivas[sessionId];
+      console.log(`El creador ${userId} ha salido de la sala ${sessionId}. Sala cerrada.`);
+    } else {
+      // Si es un jugador normal, simplemente lo eliminamos.
+      userMap.delete(userId);
+      console.log(`Jugador ${userId} ha salido de la sala ${sessionId}.`);
+
+      // Si la sala queda vacía, la eliminamos.
+      if (userMap.size === 0) {
         sessions.delete(sessionId);
+        delete salasActivas[sessionId];
+        console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
       } else {
-        // Notificar a los restantes que alguien se fue
+        // Si aún quedan jugadores, actualizamos su estado.
         const sessionState = {};
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          sessionState[uId] = { nombre: meta?.nombre, reps: meta?.reps || 0, ready: meta?.ready || false };
+          if (meta) {
+            sessionState[uId] = { nombre: meta.nombre, reps: meta.reps || 0, ready: meta.ready || false };
+          }
         });
-
-        const creatorId = salasActivas[sessionId]?.creadorId;
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
+        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId: sala.creadorId, ejercicio: sala.ejercicio, maxReps: sala.maxReps });
       }
     }
+
     clientMetadata.delete(clientId);
   });
 });
