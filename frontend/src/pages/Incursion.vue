@@ -63,31 +63,37 @@
           </div>
           
           <v-row align="center" class="mt-4">
-            <v-col cols="12" sm="6">
-              <div class="d-flex justify-center gap-2 flex-wrap" v-if="!buscandoPartida && !bossSessionId">
-                <v-btn
-                  color="blue"
-                  small
-                  @click="crearIncursion"
-                  :disabled="!isPoseDetectorReady || buscandoPartida"
-                  :loading="buscandoPartida"
-                  class="action-btn btn-mobile-fix flex-grow-1"
-                >
-                  <v-icon left small>mdi-plus</v-icon>
-                  <span class="text-truncate">CREAR INCURSIÓN</span>
-                </v-btn>
-                <v-btn
-                  color="success"
-                  small
-                  @click="buscarIncursion"
-                  :disabled="!isPoseDetectorReady || buscandoPartida"
-                  :loading="buscandoPartida"
-                  class="action-btn btn-mobile-fix flex-grow-1"
-                >
-                  <v-icon left small>mdi-magnify</v-icon>
-                  <span class="text-truncate">BUSCAR INCURSIÓN</span>
-                </v-btn>
+            <v-col cols="12">
+              <!-- Lógica de creación y unión de sala -->
+              <div v-if="!bossSessionId" class="join-section">
+                <v-row>
+                  <!-- Crear Incursión -->
+                  <v-col cols="12" sm="6">
+                    <h3 class="text-subtitle-1 font-weight-bold mb-2">Crear una Incursión</h3>
+                    <v-btn color="blue" @click="crearIncursion" :loading="buscandoPartida" block>
+                      <v-icon left>mdi-plus-box</v-icon>
+                      Generar Código
+                    </v-btn>
+                  </v-col>
+                  <!-- Unirse a Incursión -->
+                  <v-col cols="12" sm="6">
+                    <h3 class="text-subtitle-1 font-weight-bold mb-2">Unirse a una Incursión</h3>
+                    <v-text-field
+                      v-model="codigoParaUnirse"
+                      label="Introduce el código"
+                      outlined dense dark
+                      hide-details
+                      class="mb-2"
+                    ></v-text-field>
+                    <v-btn color="success" @click="unirseAIncursion" :disabled="!codigoParaUnirse" block>
+                      <v-icon left>mdi-login-variant</v-icon>
+                      Unirse
+                    </v-btn>
+                  </v-col>
+                </v-row>
               </div>
+
+              <!-- Lógica de partida (una vez dentro de la sala) -->
               <div class="d-flex justify-center gap-2 flex-wrap" v-else>
                 <v-btn
                   v-if="esCreador"
@@ -116,8 +122,8 @@
                 </v-btn>
               </div>
             </v-col>
-            
-            <v-col cols="12" sm="6" class="text-center">
+
+            <v-col v-if="bossSessionId" cols="12" sm="6" class="text-center">
               <div class="reps-display">REPETICIONES: <span class="text-h5 text-sm-h4">{{ repeticiones }}</span></div>
             </v-col>
           </v-row>
@@ -224,6 +230,7 @@ const esCreador = ref(false);
 const buscandoPartida = ref(false);
 const participantes = ref([]);
 
+const codigoParaUnirse = ref(''); // Nuevo estado para el campo de texto
 // --- ESTADO DEL COMBATE ---
 const jefeVidaActual = ref(jefeVidaMaxima)
 const jugadorVidaActual = ref(jugadorVidaMaxima)
@@ -436,61 +443,50 @@ function onFeatures(payload) {
 
 // --- LÓGICA DE UNIÓN Y PARTIDA ---
 async function crearIncursion() {
-  const userId = user.value?.id || user.value?.userId;
-  if (!userId) {
-    añadirMensaje('Debes iniciar sesión para unirte a una incursión.', 'error--text');
+  const creadorId = user.value?.id || user.value?.userId;
+  if (!creadorId) {
+    añadirMensaje('Debes iniciar sesión para crear una incursión.', 'error--text');
     return;
   }
 
   buscandoPartida.value = true;
   añadirMensaje('Creando una nueva sala de incursión...', 'info--text');
   
-  // --- SIMULACIÓN ---
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const sessionId = `B${Math.floor(Math.random() * 9000) + 1000}`;
-  const isCreator = true;
-  const initialParticipants = [user.value];
-  // --- FIN SIMULACIÓN ---
+  try {
+    // Generamos un código aleatorio como en CrearSala.vue
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let codigo = '';
+    for (let i = 0; i < 6; i++) {
+      codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
 
-  bossSessionId.value = sessionId;
-  esCreador.value = isCreator;
-  buscandoPartida.value = false;
-  participantes.value = initialParticipants;
-  añadirMensaje(`¡Sala ${sessionId} creada! Esperando a otros jugadores...`, 'success--text');
-  
-  await cargarEstadoJefe();
+    // Simulamos la creación de la sala en el backend (no necesita API real para esto)
+    bossSessionId.value = codigo;
+    esCreador.value = true;
+    participantes.value = [user.value];
+    añadirMensaje(`¡Sala creada! Código: ${codigo}. Compártelo para que se unan.`, 'success--text');
+    await cargarEstadoJefe();
+
+  } catch (error) {
+    añadirMensaje('Error al intentar crear la sala.', 'error--text');
+  } finally {
+    buscandoPartida.value = false;
+  }
 }
 
-async function buscarIncursion() {
-  const userId = user.value?.id || user.value?.userId;
-  if (!userId) {
-    añadirMensaje('Debes iniciar sesión para buscar una incursión.', 'error--text');
+async function unirseAIncursion() {
+  const codigo = codigoParaUnirse.value.trim();
+  if (!codigo) {
+    añadirMensaje('Por favor, introduce un código de sala.', 'warning--text');
     return;
   }
 
-  buscandoPartida.value = true;
-  añadirMensaje('Buscando una incursión abierta...', 'info--text');
-  
-  // --- SIMULACIÓN ---
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  const salaEncontrada = Math.random() > 0.3; // 70% de probabilidad de encontrar sala
-
-  if (salaEncontrada) {
-    const sessionId = `B${Math.floor(Math.random() * 9000) + 1000}`;
-    const isCreator = false;
-    const initialParticipants = [ {usuari: 'Lider'}, user.value ]; // Simula que ya hay un líder
-
-    bossSessionId.value = sessionId;
-    esCreador.value = isCreator;
-    participantes.value = initialParticipants;
-    añadirMensaje(`¡Te has unido a la incursión ${sessionId}! Esperando al líder para iniciar.`, 'success--text');
-  } else {
-    añadirMensaje('No se encontraron incursiones abiertas. ¡Intenta crear una!', 'warning--text');
-  }
-  // --- FIN SIMULACIÓN ---
-
-  buscandoPartida.value = false;
-  
+  // Aquí no necesitamos una llamada a la API para "validar" la sala,
+  // simplemente nos unimos. El WebSocket se encargará de la lógica real.
+  // Si la sala no existe en el servidor de WS, la conexión fallará o no mostrará a nadie.
+  bossSessionId.value = codigo;
+  esCreador.value = false; // Quien se une nunca es el creador
+  añadirMensaje(`Intentando unirse a la sala ${codigo}...`, 'info--text');
   await cargarEstadoJefe();
 }
 
@@ -499,6 +495,7 @@ function salirDeLaIncursion() {
   esCreador.value = false;
   isPartidaActiva.value = false;
   participantes.value = [];
+  codigoParaUnirse.value = '';
   logMensajes.value = [{ time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
   detenerRuleta();
 }
@@ -562,6 +559,13 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #1d2630 0%, #313c4a 100%);
   min-height: 100vh;
   color: #f5f5f5;
+}
+.join-section {
+  background-color: rgba(0,0,0,0.2);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 1rem;
 }
 
 .battle-title {
