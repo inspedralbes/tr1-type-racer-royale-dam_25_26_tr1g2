@@ -89,6 +89,23 @@ app.get('/api/salas/check/:codigo', (req, res) => {
   }
 });
 
+app.get('/api/incursions/find', (req, res) => {
+  let openSessionId = null;
+
+  // Buscar una sala de incursión que no esté llena y no haya empezado
+  for (const sessionId in salasActivas) {
+    const sala = salasActivas[sessionId];
+    const userMap = sessions.get(sessionId) || new Map();
+
+    if (sala.modo === 'incursion' && !sala.partidaIniciada && userMap.size < sala.maxJugadores) {
+      openSessionId = sessionId;
+      break;
+    }
+  }
+
+  res.json({ success: true, sessionId: openSessionId });
+});
+
 app.post('/api/sessions/start', (req, res) => {
   const { codigo } = req.body;
 
