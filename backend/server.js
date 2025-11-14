@@ -98,6 +98,10 @@ app.post('/api/sessions/start', (req, res) => {
 
   if (salasActivas[codigo]) {
     salasActivas[codigo].partidaFinalizada = false; // Reiniciar estado al iniciar
+    // Para incursiones, marcamos la partida como iniciada para bloquearla
+    if (salasActivas[codigo].modo === 'incursion') {
+      salasActivas[codigo].partidaIniciada = true;
+    }
   }
 
   // Aquí podrías actualizar el estado de la sala en la base de datos a 'iniciada'
@@ -415,6 +419,53 @@ wss.on('connection', ws => {
           ejercicio: salaSettings.ejercicio,
           maxReps: salaSettings.maxReps
         });
+        break;
+      }
+      case 'INCURSION_JOIN': {
+        if (!sessionId || !userId) return;
+
+        // Si la sala no existe en memoria, la creamos (el primer jugador la crea)
+        if (!salasActivas[sessionId]) {
+          salasActivas[sessionId] = {
+            creadorId: userId,
+            nombreCreador: data.nombre,
+            jugadores: [],
+            createdAt: new Date(),
+            maxJugadores: 10, // Límite para incursiones
+            modo: 'incursion',
+            partidaIniciada: false
+          };
+          sessions.set(sessionId, new Map());
+        }
+
+        const sala = salasActivas[sessionId];
+        const userMap = sessions.get(sessionId);
+
+        // Rechazar si la partida ya ha comenzado
+        if (sala.partidaIniciada) {
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión ya ha comenzado.' }));
+          ws.terminate();
+          return;
+        }
+
+        // Añadir al jugador
+        userMap.set(userId, clientId);
+        clientMetadata.set(clientId, { ws, userId, sessionId, nombre: data.nombre });
+
+        // Notificar a todos los de la sala del nuevo estado
+        const participantes = [];
+        userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          if (meta) participantes.push({ id: uId, nombre: meta.nombre });
+        });
+
+        broadcastToSession(sessionId, {
+          type: 'INCURSION_STATE',
+          participantes: participantes,
+          creadorId: sala.creadorId,
+          message: `${data.nombre} se ha unido a la incursión.`
+        });
+
         break;
       }
       case 'REPS_UPDATE': {
