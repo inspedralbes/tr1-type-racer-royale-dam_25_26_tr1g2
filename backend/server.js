@@ -71,7 +71,7 @@ app.post('/api/salas/crear', async (req, res) => {
 
     // Simulación: devolvemos el código generado en el frontend como si fuera el ID.
     const sessionId = codigo;
-    res.json({ success: true, sessionId });
+    res.json({ success: true, sessionId: sessionId });
   } catch (err) {
     console.error('Error en /api/salas/crear:', err);
     res.status(500).json({ success: false, error: 'Error al crear la sala.' });
@@ -81,33 +81,11 @@ app.post('/api/salas/crear', async (req, res) => {
 app.get('/api/salas/check/:codigo', (req, res) => {
   const { codigo } = req.params;
   if (salasActivas[codigo]) {
+    // La sala existe en memoria
     res.json({ success: true, exists: true });
   } else {
+    // La sala no existe o el servidor se reinició
     res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
-  }
-});
-
-app.get('/api/boss/find', async (req, res) => {
-  try {
-    // Busca sesiones de boss 'abiertas' en la BDD que no estén llenas
-    const [rows] = await db_pool.query(
-      `SELECT bs.id, COUNT(bp.id) as num_participants, bs.max_participants
-       FROM Boss_Sessions bs
-       LEFT JOIN Boss_Participants bp ON bs.id = bp.id_boss_sessio
-       WHERE bs.estat = 'oberta'
-       GROUP BY bs.id
-       HAVING num_participants < bs.max_participants
-       LIMIT 1`
-    );
-
-    if (rows.length > 0) {
-      res.json({ success: true, sessionId: rows[0].id });
-    } else {
-      res.json({ success: true, sessionId: null });
-    }
-  } catch (err) {
-    console.error('Error en /api/boss/find:', err);
-    res.status(500).json({ success: false, error: 'Error del servidor al buscar incursión.' });
   }
 });
 
@@ -123,11 +101,6 @@ app.post('/api/sessions/start', (req, res) => {
     // Para incursiones, marcamos la partida como iniciada para bloquearla
     if (salasActivas[codigo].modo === 'incursion') {
       salasActivas[codigo].partidaIniciada = true;
-      // Actualizar estado en BDD
-      db_pool.query(
-        "UPDATE Boss_Sessions SET estat = 'en curs' WHERE id = ?",
-        [codigo]
-      ).catch(err => console.error("Error al actualizar estado de Boss_Session a 'en curs':", err));
     }
   }
 
@@ -201,7 +174,7 @@ app.post('/api/session/save', async (req, res) => {
 // Crear Boss
 app.post('/api/boss/create', async (req, res) => {
   const { jefeVidaMax = 300, maxParticipants = 10 } = req.body;
-  try { // La vida actual debe ser igual a la máxima al crear
+  try {
     const [result] = await db_pool.query(
       'INSERT INTO Boss_Sessions (jefe_vida_max, jefe_vida_actual, max_participants) VALUES (?,?,?)',
       [jefeVidaMax, jefeVidaMax, maxParticipants]
@@ -215,7 +188,7 @@ app.post('/api/boss/create', async (req, res) => {
 // Unirse al Boss
 app.post('/api/boss/join', async (req, res) => {
   const { bossId, usuariId } = req.body;
-  try { // Comprobar si el usuario ya está en la sesión
+  try {
     const [exists] = await db_pool.query(
       'SELECT * FROM Boss_Participants WHERE id_boss_sessio=? AND id_usuari=?',
       [bossId, usuariId]
@@ -226,7 +199,7 @@ app.post('/api/boss/join', async (req, res) => {
       'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
       [bossId, usuariId]
     );
-    res.json({ success: true, message: 'Participante agregado correctamente.' });
+    res.json({ success: true, message: 'Participante agregado' });
   } catch (err) {
     res.status(500).json({ error: 'Error al unirse a la sesión de boss' });
   }
@@ -458,7 +431,7 @@ wss.on('connection', ws => {
             nombreCreador: data.nombre,
             jugadores: [],
             createdAt: new Date(),
-            maxJugadores: 16,
+            maxJugadores: 16, // Límite para incursiones
             modo: 'incursion',
             partidaIniciada: false
           };
@@ -477,13 +450,6 @@ wss.on('connection', ws => {
 
         // Añadir al jugador
         userMap.set(userId, clientId);
-        // Guardar en BDD
-        db_pool.query(
-          'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?, ?) ON DUPLICATE KEY UPDATE id_usuari=id_usuari',
-          [sessionId, userId]
-        ).catch(err => {
-          console.error(`Error al registrar participante ${userId} en boss_session ${sessionId}:`, err);
-        });
         clientMetadata.set(clientId, { ws, userId, sessionId, nombre: data.nombre });
 
         // Notificar a todos los de la sala del nuevo estado

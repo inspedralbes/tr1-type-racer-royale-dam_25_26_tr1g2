@@ -19,6 +19,11 @@
           </v-chip>
         </div>
       </v-col>
+      <v-col cols="auto" class="text-right" v-if="bossSessionId">
+        <div class="reps-display">
+          REPS: <span class="text-h4">{{ repeticiones }}</span>
+        </div>
+      </v-col>
     </v-row>
     
     <v-row>
@@ -78,12 +83,6 @@
                 >
                   <v-icon left>mdi-magnify</v-icon>
                   Buscar Incursión
-                </v-btn>
-              </div>
-              <!-- Contador de Reps en la zona de acción -->
-              <div v-if="bossSessionId && isPartidaActiva" class="reps-display-action">
-                <v-btn text large class="reps-btn">
-                  REPS: <span class="text-h4 ml-2">{{ repeticiones }}</span>
                 </v-btn>
               </div>
 
@@ -520,23 +519,21 @@ async function gestionarUnionIncursion() {
   buscandoPartida.value = true;
   añadirMensaje('Buscando una incursión abierta...', 'info--text');
 
-  try {
-    const response = await fetch('http://localhost:9000/api/boss/find');
-    const data = await response.json();
+  // --- SIMULACIÓN DE BÚSQUEDA ---
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  const salaEncontrada = Math.random() < 0.3; // 30% de probabilidad de encontrar sala
 
-    if (data.sessionId) {
-      bossSessionId.value = data.sessionId;
-      añadirMensaje(`¡Sala encontrada! Uniéndose a ${data.sessionId}...`, 'success--text');
-      conectarWebSocket();
-    } else {
-      añadirMensaje('No se encontraron incursiones. ¿Quieres crear una nueva?', 'warning--text');
-      mostrarDialogoCrear.value = true;
-    }
-  } catch (error) {
-    añadirMensaje('Error al buscar incursión. No se pudo conectar con el servidor.', 'error--text');
-  } finally {
-    buscandoPartida.value = false;
+  if (salaEncontrada) {
+    // Simular que nos unimos a una sala existente
+    bossSessionId.value = `B${Math.floor(Math.random() * 9000) + 1000}`;
+    añadirMensaje(`¡Sala encontrada! Uniéndose a ${bossSessionId.value}...`, 'success--text');
+    conectarWebSocket();
+  } else {
+    // No se encontró sala, preguntamos si quiere crear una
+    añadirMensaje('No se encontraron incursiones. ¿Quieres crear una nueva?', 'warning--text');
+    mostrarDialogoCrear.value = true;
   }
+  buscandoPartida.value = false;
 }
 
 async function crearIncursion() {
@@ -551,15 +548,16 @@ async function crearIncursion() {
   añadirMensaje('Creando una nueva sala de incursión...', 'info--text');
   
   try {
-    // Llamada a la API para crear la sesión de Boss en la BDD
-    const response = await fetch('http://localhost:9000/api/boss/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maxParticipants: MAX_PARTICIPANTS })
-    });
-    const data = await response.json();
-    bossSessionId.value = data.bossId;
-    // El mensaje de "sala creada" lo enviará el servidor a través del WS para confirmación
+    // Generamos un código aleatorio como en CrearSala.vue
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let codigo = '';
+    for (let i = 0; i < 6; i++) {
+      codigo += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    bossSessionId.value = codigo;
+    añadirMensaje(`Sala ${codigo} creada. Esperando jugadores...`, 'success--text');
+    
     conectarWebSocket();
     await cargarEstadoJefe();
   } catch (error) {
@@ -717,18 +715,6 @@ onBeforeUnmount(() => {
   color: #fff;
   text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
   letter-spacing: 1px;
-}
-
-.reps-display-action {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-
-.reps-btn {
-  font-size: 1.5rem !important;
-  font-weight: 900;
 }
 
 /* --- ESTILOS DE LA CÁMARA/CHAT --- */

@@ -22,12 +22,6 @@
           </v-list-item-title>
         </v-list-item>
 
-        <v-list-item link to="/incursion" @click="drawer = false">
-          <v-list-item-title class="font-weight-medium">
-            <v-icon left>mdi-sword-cross</v-icon> Incursión
-          </v-list-item-title>
-        </v-list-item>
-
         <v-list-item link to="/ayuda" @click="drawer = false">
           <v-list-item-title class="font-weight-medium">
             <v-icon left>mdi-help-circle-outline</v-icon> Ayuda
