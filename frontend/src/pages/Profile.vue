@@ -35,8 +35,8 @@
                     <v-td v-bind="props" class="white--text font-weight-bold">{{ item.id }}</v-td>
                   </template>
 
-                  <template v-slot:item.nom_rutina="{ item, props }">
-                    <v-td v-bind="props" class="white--text font-weight-bold">{{ item.nom_rutina }}</v-td>
+                  <template v-slot:item.nom="{ item, props }">
+                    <v-td v-bind="props" class="white--text font-weight-bold">{{ item.nom }}</v-td>
                   </template>
 
                   <template v-slot:item.descripcio="{ item, props }">
@@ -64,7 +64,7 @@
                <div class="d-sm-none pa-3">
   <v-card v-for="(routine, index) in routines" :key="index" class="mobile-routine-card mb-3">
     <v-card-title class="text-subtitle-1 pb-1 routine-title-mobile">
-      {{ routine.nom_rutina }}
+      {{ routine.nom }}
     </v-card-title>
     
     <v-card-text class="pt-1">
@@ -177,7 +177,6 @@ const loadRoutines = async () => {
 }
 
 const updateProfileState = () => {
-<<<<<<< HEAD
     const newUser = JSON.parse(localStorage.getItem('user')) || {};
     const newId = newUser?.id || newUser?.userId || null;
     
@@ -190,19 +189,6 @@ const updateProfileState = () => {
         // Caso de recarga de página donde el ID no ha cambiado pero las rutinas están vacías (seguridad)
         loadRoutines();
     }
-=======
-  const newUser = JSON.parse(localStorage.getItem('user')) || {}
-  const newId = newUser?.id || newUser?.userId || null
-  if (newId !== userId.value) {
-    userId.value = newId
-    username.value = newUser?.usuari || 'Invitado'
-    selectedAvatar.value = newUser?.avatar_url || avatars[1].url
-    level.value = newUser?.level || 1
-    loadRoutines()
-  } else if (newId && routines.value.length === 0) {
-    loadRoutines()
-  }
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)
 }
 
 const openAvatarDialog = () => { previewAvatar.value = selectedAvatar.value; customAvatarUrl.value = ''; showAvatarDialog.value = true }

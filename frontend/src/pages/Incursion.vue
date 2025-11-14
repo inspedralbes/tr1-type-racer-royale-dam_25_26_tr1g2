@@ -63,14 +63,8 @@
           </div>
           
           <v-row align="center" class="mt-4">
-<<<<<<< HEAD
             <v-col cols="6">
               <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
-=======
-            
-            <v-col cols="12" sm="6">
-              <div class="d-flex justify-center gap-2" v-if="!bossSessionId">
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)
                 <v-btn
                     color="success"
                     small
@@ -469,15 +463,12 @@ async function unirseAIncursion() {
   mostrarDialogoUnirse.value = false;
   añadirMensaje('Buscando una incursión abierta...', 'info--text');
 
-<<<<<<< HEAD
 
   // Simulación de llamada a un backend que busca o crea una sala
   // En un caso real, aquí harías:
   // const response = await axios.post('/api/boss/join', { userId: user.value.id });
   // const { sessionId, isCreator, participants } = response.data;
   
-=======
->>>>>>> 78f464a (adaptación al telf y cambio paginas.)
   // --- SIMULACIÓN ---
   await new Promise(resolve => setTimeout(resolve, 1500)); // Simula espera de red
   const sessionId = 1; // ID de sesión simulado
