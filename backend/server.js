@@ -369,7 +369,7 @@ wss.on('connection', ws => {
     const { type, sessionId, userId } = data;
     switch (type) {
       case 'JOIN_SESSION': {
-        if (!sessionId || !userId) return;
+        if  (!userId) return;
         // 1. Crear la sesión si no existe
         if (!sessions.has(sessionId)) {
           sessions.set(sessionId, new Map());
@@ -619,7 +619,7 @@ wss.on('connection', ws => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close'), () => {
     const metadata = clientMetadata.get(clientId);
     if (!metadata || !metadata.sessionId) {
       clientMetadata.delete(clientId);
@@ -635,10 +635,6 @@ wss.on('connection', ws => {
       return;
     }
 
-    // Si el que se va es el creador, terminamos la sesión para todos.
-    if (String(sala.creadorId) === String(userId)) {
-      broadcastToSession(sessionId, { type: 'LEADER_LEFT', message: 'El creador ha abandonado la sala. La sesión ha terminado.' });
-      sessions.delete(sessionId);
       // Si la sala era una incursión, también la eliminamos de la BDD o la marcamos como finalizada
       if (sala.modo === 'incursion') {
         db_pool.query(
@@ -689,14 +685,14 @@ wss.on('connection', ws => {
               ejercicio: sala.ejercicio,
               maxReps: sala.maxReps
           }
-        });
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId: sala.creadorId, ejercicio: sala.ejercicio, maxReps: sala.maxReps });
+        }; // Cierre correcto de la definición de stateUpdate
+        broadcastToSession(sessionId, stateUpdate);
       }
     }
 
     clientMetadata.delete(clientId);
-  });
-});
+);
+
 
 // -------------------- INICIAR SERVIDOR --------------------
 let httpServer;
