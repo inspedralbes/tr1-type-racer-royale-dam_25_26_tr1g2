@@ -442,12 +442,13 @@ function conectarWebSocket() {
   }
   ws.value = new WebSocket('ws://localhost:8082');
 
-  ws.value.onopen = () => {
+ ws.value.onopen = () => {
     isConnected.value = true;
     const userData = JSON.parse(localStorage.getItem('user')) || {};
     ws.value.send(JSON.stringify({
       type: 'INCURSION_JOIN',
-      sessionId: bossSessionId.value,
+      // Enviamos el sessionId como NULL o lo que sea para forzar al servidor a buscar/crear
+      sessionId: bossSessionId.value, // Esto será null/undefined la primera vez, lo cual es manejado en el servidor
       userId: user.value?.id,
       nombre: userData.usuari || 'Invitado'
     }));
@@ -511,7 +512,7 @@ async function gestionarUnionIncursion() {
   buscandoPartida.value = true;
   añadirMensaje('Buscando o creando incursión...', 'info--text'); 
 
-  // La lógica ahora es simple: nos conectamos y el servidor decide.
+  // 1. Conectar WebSocket
   conectarWebSocket();
 
   setTimeout(() => { buscandoPartida.value = false; }, 4000); // Timeout de seguridad
