@@ -58,17 +58,6 @@ app.post('/api/salas/crear', async (req, res) => {
     // Guardar la sala en memoria, incluyendo el máximo de jugadores
     salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date(), maxJugadores: maxJugadores || 2 };
 
-    // Aquí iría la lógica para guardar la sala en la base de datos.
-    // Por ahora, simulamos que se guarda y devolvemos el código como ID de sesión.
-    // Ejemplo de inserción (deberás adaptarlo a tu tabla de salas/sesiones):
-    /*
-    const [result] = await db_pool.query(
-      'INSERT INTO Sesiones (codigo, creador_id, nombre_creador, tipo, modo, opciones) VALUES (?, ?, ?, ?, ?, ?)',
-      [codigo, creadorId, nombreCreador, tipo, modo, JSON.stringify(opciones)]
-    );
-    const sessionId = result.insertId;
-    */
-
     // Simulación: devolvemos el código generado en el frontend como si fuera el ID.
     const sessionId = codigo;
     res.json({ success: true, sessionId: sessionId });
@@ -104,9 +93,6 @@ app.post('/api/sessions/start', (req, res) => {
     }
   }
 
-  // Aquí podrías actualizar el estado de la sala en la base de datos a 'iniciada'
-  // Por ejemplo: await db_pool.query('UPDATE Sesiones SET estado = "iniciada" WHERE codigo = ?', [codigo]);
-
   // Notificar a todos los clientes en la sala que la partida ha comenzado
   if (sessions.has(codigo)) {
     broadcastToSession(codigo, { type: 'SESSION_STARTED' });
@@ -114,8 +100,6 @@ app.post('/api/sessions/start', (req, res) => {
 
   res.json({ success: true, message: `Sala ${codigo} iniciada.` });
 });
-
-// ...existing code...
 
 // Crear sesión Versus
 app.post('/api/session/save', async (req, res) => {
@@ -169,7 +153,7 @@ app.post('/api/session/save', async (req, res) => {
   }
 });
 
-// -------------------- BOSS --------------------
+// -------------------- BOSS (Mantenido para BDD, pero lógica principal en WS) --------------------
 
 // Crear Boss
 app.post('/api/boss/create', async (req, res) => {
@@ -204,8 +188,6 @@ app.post('/api/boss/join', async (req, res) => {
     res.status(500).json({ error: 'Error al unirse a la sesión de boss' });
   }
 });
-
-// -------------------- BOSS --------------------
 
 // 1. Obtener estado del Boss
 app.get('/api/boss/:bossId', async (req, res) => {
@@ -275,8 +257,6 @@ app.post('/api/exercicis_rutina', async (req, res) => {
   }
 });
 
-// ...existing code...
-
 // Endpoint: obtener rutinas del usuario con ejercicios
 app.get('/api/rutines/user/:id', async (req, res) => {
   const userId = req.params.id;
@@ -329,8 +309,6 @@ app.delete('/api/rutines/:id', async (req, res) => {
   }
 })
 
-// ...existing code...
-
 // -------------------- WEBSOCKET --------------------
 const wss = new WebSocket.Server({ port: WS_PORT });
 const clients = new Map();
@@ -359,7 +337,8 @@ wss.on('connection', ws => {
   clientMetadata.set(clientId, { ws }); // Almacenamiento inicial solo con el objeto ws
   ws.send(JSON.stringify({ type: 'welcome', clientId }));
 
-  ws.on('message', message => {
+  // CORRECCIÓN 1: Hacemos la función 'async' para poder usar await dentro de 'INCURSION_JOIN'
+  ws.on('message', async message => { 
     let data;
     try {
       data = JSON.parse(message);
@@ -422,13 +401,13 @@ wss.on('connection', ws => {
         break;
       }
     case 'INCURSION_JOIN': {
-        if (!sessionId || !userId) return; // NOTA: Aquí sessionId viene del cliente, pero lo ignoramos para forzar la búsqueda/creación.
+        // En incursiones, sessionId es opcional al inicio. userId es obligatorio.
+        if (!userId) return; 
 
         let incursionSessionId = null;
         let sala = null;
 
-        // Buscar la única sala de incursión activa que NO haya comenzado.
-        // Si no ha comenzado y queda al menos un jugador, la vida del jefe puede re-escalarse.
+        // 1. Buscar la única sala de incursión activa que NO haya comenzado.
         for (const id in salasActivas) {
           if (salasActivas[id].modo === 'incursion' && !salasActivas[id].partidaIniciada) {
             incursionSessionId = id;
@@ -437,17 +416,18 @@ wss.on('connection', ws => {
           }
         }
 
-        // Si no hay sala, el primer jugador la crea
+        // 2. Si no hay sala, el primer jugador la crea
         if (!incursionSessionId) {
-          // Crear un ID único para la nueva incursión
-          incursionSessionId = `BOSS-${uuidv4().slice(0, 6)}`; // Generamos un ID de sala único y persistente
+          incursionSessionId = `BOSS-${uuidv4().slice(0, 6)}`; 
           console.log(`Creando nueva sala de incursión: ${incursionSessionId}`);
           
-          // Lógica para crear un registro en la BDD para persistencia del Boss.
-          const jefeVidaBase = 250 + 50; // Base (250) + Escalado del primer jugador (+50)
-          const [result] = await db_pool.query(
+          // La vida base incluye el escalado del primer jugador
+          const jefeVidaBase = 250 + 50; 
+          
+          // Insertamos en BDD (await es posible por CORRECCIÓN 1)
+          await db_pool.query( 
             'INSERT INTO Boss_Sessions (id, jefe_vida_max, jefe_vida_actual, max_participants, estat) VALUES (?,?,?,?,?)',
-            [incursionSessionId, jefeVidaBase, jefeVidaBase, 10, 'esperant'] // Asumimos que la tabla Boss_Sessions tiene 'id'
+            [incursionSessionId, jefeVidaBase, jefeVidaBase, 10, 'esperant'] 
           ).catch(err => { console.error("Error BDD al crear Boss:", err); });
           
           sala = {
@@ -462,18 +442,49 @@ wss.on('connection', ws => {
           salasActivas[incursionSessionId] = sala;
           sessions.set(incursionSessionId, new Map());
           
-        } else {
-          // ESCALADO DE VIDA (+50)
-          // Solo si no es el creador, y no está ya en el mapa.
-          const isJoining = !sessions.get(incursionSessionId).has(userId);
+        }
+        
+        const userMap = sessions.get(incursionSessionId);
+        const isNewPlayer = !userMap.has(userId);
 
-          if (isJoining) {
+        // Rechazar si la sala está llena o la partida ya ha comenzado
+        if (sala.partidaIniciada || (isNewPlayer && userMap.size >= sala.maxJugadores)) {
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión está llena.' }));
+          ws.terminate();
+          return;
+        }
+
+        // 3. Escalar vida del jefe SÓLO si es un nuevo jugador uniéndose a una sala existente 
+        if (isNewPlayer && userMap.size > 0) {
             sala.jefeVidaMax += 50;
             sala.jefeVidaActual += 50;
-            // Opcional: Actualizar vida en la BDD (asumiendo Boss_Sessions tiene 'id')
-            // db_pool.query('UPDATE Boss_Sessions SET jefe_vida_max = ?, jefe_vida_actual = ? WHERE id = ?', [sala.jefeVidaMax, sala.jefeVidaActual, incursionSessionId]);
-          }
+            // Opcional: Actualizar vida en la BDD
+            // await db_pool.query('UPDATE Boss_Sessions SET jefe_vida_max = ?, jefe_vida_actual = ? WHERE id = ?', [sala.jefeVidaMax, sala.jefeVidaActual, incursionSessionId]);
         }
+
+        // 4. Añadir al jugador y metadatos
+        userMap.set(userId, clientId);
+        clientMetadata.set(clientId, { ws, userId, sessionId: incursionSessionId, nombre: data.nombre, damageDealt: 0 });
+
+        // 5. Notificar a todos los de la sala del nuevo estado
+        const participantes = [];
+        userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          if (meta) participantes.push({ id: uId, nombre: meta.nombre, damageDealt: meta.damageDealt || 0 });
+        });
+
+        broadcastToSession(incursionSessionId, {
+          sessionId: incursionSessionId, 
+          type: 'INCURSION_STATE',
+          participantes: participantes,
+          creadorId: sala.creadorId,
+          jefeVidaMax: sala.jefeVidaMax,
+          jefeVidaActual: sala.jefeVidaActual,
+          message: `${data.nombre} se ha unido a la incursión.`
+        });
+
+        break; // CORRECCIÓN 2: ¡Añadir el break aquí para evitar el fallthrough!
+      }
       case 'INCURSION_START': {
         const metadata = clientMetadata.get(clientId);
         if (!metadata || !metadata.sessionId) return;
@@ -602,10 +613,10 @@ wss.on('connection', ws => {
         break;
       }
     }
-  }
   });
 
-  ws.on('close', () => { // <--- CORREGIDO: Faltaba el paréntesis de la función de callback
+  // Lógica de cierre mejorada
+  ws.on('close', () => { 
   const metadata = clientMetadata.get(clientId);
   if (!metadata || !metadata.sessionId) {
  clientMetadata.delete(clientId);
@@ -621,89 +632,87 @@ const { sessionId, userId } = metadata;
  return;
  }
 
-    // 1. Eliminar al jugador de la sesión
-    userMap.delete(userId);
-    clientMetadata.delete(clientId); // Eliminar metadatos del cliente
-    console.log(`Jugador ${userId} ha salido de la sala ${sessionId}.`);
+  // 1. Eliminar al jugador de la sesión
+  userMap.delete(userId);
+  clientMetadata.delete(clientId); // Eliminar metadatos del cliente
+  console.log(`Jugador ${userId} ha salido de la sala ${sessionId}.`);
 
-    // 2. Lógica de cierre y re-escalado (solo si es incursión)
-    if (sala.modo === 'incursion') {
-      if (userMap.size === 0) {
-        // Si la sala queda vacía, la cerramos
-        sessions.delete(sessionId);
-        delete salasActivas[sessionId];
-        
-        // Opcional: Marcar Boss como finalizada en BDD (asumiendo que sessionId es el id de Boss_Sessions)
-        // db_pool.query("UPDATE Boss_Sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId]).catch(err => console.error("Error al cerrar Boss_Session en BDD:", err));
-        
-        broadcastToSession(sessionId, { type: 'LEADER_LEFT', message: 'El último jugador ha abandonado la incursión. Sesión cerrada.' });
-        console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
-        return; // Ya no hay que enviar el broadcast de estado
-      }
-
-      // Si la incursión NO ha empezado, re-escalamos la vida del jefe
-      if (!sala.partidaIniciada) {
-        sala.jefeVidaMax = Math.max(250, sala.jefeVidaMax - 50); // Mínimo 250
-        sala.jefeVidaActual = Math.max(250, sala.jefeVidaActual - 50);
-        console.log(`Vida de Boss re-escalada a: ${sala.jefeVidaActual}`);
-      }
-
-      // Actualizar creador si el anterior se fue y la partida NO ha iniciado
-      if (String(userId) === String(sala.creadorId) && !sala.partidaIniciada) {
-        const newCreatorId = userMap.keys().next().value; // El primer userId de la lista
-        if (newCreatorId) {
-          sala.creadorId = newCreatorId;
-          console.log(`Nuevo creador de incursión: ${newCreatorId}`);
-        }
-      }
-      
-      // 3. Reconstruir estado y notificar a los restantes (lógica de incursión)
-      const participantes = [];
-      userMap.forEach((cId, uId) => {
-        const meta = clientMetadata.get(cId);
-        if (meta) participantes.push({ id: uId, nombre: meta.nombre, damageDealt: meta.damageDealt || 0 });
-      });
-      
-      broadcastToSession(sessionId, {
-        type: 'INCURSION_STATE',
-        participantes: participantes,
-        creadorId: sala.creadorId,
-        jefeVidaMax: sala.jefeVidaMax,
-        jefeVidaActual: sala.jefeVidaActual,
-        message: `${metadata.nombre || 'Un jugador'} ha abandonado la incursión.`
-      });
-    } else {
-      // Lógica original para sesiones Versus
-      if (userMap.size === 0) {
-        sessions.delete(sessionId);
-        delete salasActivas[sessionId];
-        console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
-        return;
-      }
-
-      // Reconstruir estado y notificar a los restantes (lógica de Versus)
-      const participantesVersus = [];
-      userMap.forEach((cId, uId) => {
-        const meta = clientMetadata.get(cId);
-        if (meta) participantesVersus.push({ id: uId, nombre: meta.nombre, reps: meta.reps, ready: meta.ready });
-      });
-
-      const salaSettings = salasActivas[sessionId] || {};
-      broadcastToSession(sessionId, { 
-        type: 'SESSION_STATE', 
-        state: Object.fromEntries(participantesVersus.map(p => [p.id, { nombre: p.nombre, reps: p.reps, ready: p.ready }])),
-        creatorId: salaSettings.creadorId,
-        ejercicio: salaSettings.ejercicio,
-        maxReps: salaSettings.maxReps,
-        message: `${metadata.nombre || 'Un jugador'} ha abandonado la sala.`
-      });
-    }
-}); // <--- Cierre correcto de la función ws.on('close')
+  // 2. Lógica de cierre y re-escalado (solo si es incursión)
+  if (sala.modo === 'incursion') {
+    if (userMap.size === 0) {
+      // Si la sala queda vacía, la cerramos
+      sessions.delete(sessionId);
+      delete salasActivas[sessionId];
+      
+      // Opcional: Marcar Boss como finalizada en BDD (asumiendo que sessionId es el id de Boss_Sessions)
+      db_pool.query("UPDATE Boss_Sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId]).catch(err => console.error("Error al cerrar Boss_Session en BDD:", err));
+      
+      broadcastToSession(sessionId, { type: 'LEADER_LEFT', message: 'El último jugador ha abandonado la incursión. Sesión cerrada.' });
+      console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
+      return; 
     }
 
-    clientMetadata.delete(clientId);
-);
+    // Si la incursión NO ha empezado, re-escalamos la vida del jefe
+    if (!sala.partidaIniciada) {
+      // Re-escalamos restando los 50 de vida que aportó este jugador. Mínimo 250 (vida base) + 50 (del primer jugador restante) = 300
+      sala.jefeVidaMax = Math.max(300, sala.jefeVidaMax - 50); 
+      sala.jefeVidaActual = Math.max(300, sala.jefeVidaActual - 50);
+      console.log(`Vida de Boss re-escalada a: ${sala.jefeVidaActual}`);
+    }
 
+    // Actualizar creador si el anterior se fue y la partida NO ha iniciado
+    if (String(userId) === String(sala.creadorId) && !sala.partidaIniciada) {
+      const newCreatorId = userMap.keys().next().value; // El primer userId de la lista
+      if (newCreatorId) {
+        sala.creadorId = newCreatorId;
+        console.log(`Nuevo creador de incursión: ${newCreatorId}`);
+      }
+    }
+    
+    // 3. Reconstruir estado y notificar a los restantes (lógica de incursión)
+    const participantes = [];
+    userMap.forEach((cId, uId) => {
+      const meta = clientMetadata.get(cId);
+      if (meta) participantes.push({ id: uId, nombre: meta.nombre, damageDealt: meta.damageDealt || 0 });
+    });
+    
+    broadcastToSession(sessionId, {
+      type: 'INCURSION_STATE',
+      participantes: participantes,
+      creadorId: sala.creadorId,
+      jefeVidaMax: sala.jefeVidaMax,
+      jefeVidaActual: sala.jefeVidaActual,
+      message: `${metadata.nombre || 'Un jugador'} ha abandonado la incursión.`
+    });
+  } else {
+    // Lógica original para sesiones Versus
+    if (userMap.size === 0) {
+      sessions.delete(sessionId);
+      delete salasActivas[sessionId];
+      console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
+      return;
+    }
+
+    // Reconstruir estado y notificar a los restantes (lógica de Versus)
+    const participantesVersus = [];
+    userMap.forEach((cId, uId) => {
+      const meta = clientMetadata.get(cId);
+      if (meta) participantesVersus.push({ id: uId, nombre: meta.nombre, reps: meta.reps, ready: meta.ready });
+    });
+
+    const salaSettings = salasActivas[sessionId] || {};
+    broadcastToSession(sessionId, { 
+      type: 'SESSION_STATE', 
+      state: Object.fromEntries(participantesVersus.map(p => [p.id, { nombre: p.nombre, reps: p.reps, ready: p.ready }])),
+      creatorId: salaSettings.creadorId,
+      ejercicio: salaSettings.ejercicio,
+      maxReps: salaSettings.maxReps,
+      message: `${metadata.nombre || 'Un jugador'} ha abandonado la sala.`
+    });
+  }
+});
+
+}); // Cierre del wss.on('connection')
 
 // -------------------- INICIAR SERVIDOR --------------------
 let httpServer;
