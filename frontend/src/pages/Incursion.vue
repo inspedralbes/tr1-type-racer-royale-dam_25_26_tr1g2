@@ -521,7 +521,7 @@ async function gestionarUnionIncursion() {
   añadirMensaje('Buscando una incursión abierta...', 'info--text');
 
   try {
-    const response = await fetch('http://localhost:9000/api/incursions/find');
+    const response = await fetch('http://localhost:9000/api/boss/find');
     const data = await response.json();
 
     if (data.sessionId) {
@@ -551,16 +551,15 @@ async function crearIncursion() {
   añadirMensaje('Creando una nueva sala de incursión...', 'info--text');
   
   try {
-    // Generamos un código aleatorio como en CrearSala.vue
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let codigo = '';
-    for (let i = 0; i < 6; i++) {
-      codigo += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
-    bossSessionId.value = codigo;
+    // Llamada a la API para crear la sesión de Boss en la BDD
+    const response = await fetch('http://localhost:9000/api/boss/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maxParticipants: MAX_PARTICIPANTS })
+    });
+    const data = await response.json();
+    bossSessionId.value = data.bossId;
     // El mensaje de "sala creada" lo enviará el servidor a través del WS para confirmación
-    
     conectarWebSocket();
     await cargarEstadoJefe();
   } catch (error) {
