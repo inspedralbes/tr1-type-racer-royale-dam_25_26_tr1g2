@@ -70,33 +70,29 @@ const codigoSala = ref('')
 const API_BASE_URL = 'http://localhost:9000'
 
 function obtenerUsuarioId() {
-  return localStorage.getItem('userId') || null
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  return user?.id || null;
 }
 
 async function unirseSala() {
-  if (!codigoSala.value.trim()) return
+  const codigo = codigoSala.value.trim();
+  if (!codigo) return;
 
   try {
     const userId = obtenerUsuarioId();
     if (!userId) {
-      alert('Debes iniciar sesión para unirte a una sala.');
-      router.push({ name: 'login' });
+      console.error('Debes iniciar sesión para unirte a una sala.');
+      await router.push({ name: 'login' });
       return;
     }
 
-    const codigo = codigoSala.value.trim();
-    const res = await axios.get(`${API_BASE_URL}/api/salas/check/${codigo}`);
-
-    if (res.data.success && res.data.exists) {
-
-      router.push({ name: 'multijugador', query: { sala: codigo } });
-    } else {
-      alert(res.data.error || 'Error al validar la sala.');
-    }
+    // Redirigimos directamente a la página de incursión con el código.
+    // La lógica de unión y validación se manejará allí a través del WebSocket.
+    await router.push({ name: 'incursion', query: { sala: codigo } });
   } catch (err) {
     const errorMsg = err.response?.data?.error || 'No se pudo conectar al servidor o la sala no existe/expiró.';
-    alert(errorMsg);
     console.error('Error al unirse a la sala:', err)
+    console.error(errorMsg); // Mostrar el error en consola
   }
 }
 </script>

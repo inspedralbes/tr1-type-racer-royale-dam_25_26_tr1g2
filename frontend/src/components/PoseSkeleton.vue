@@ -24,8 +24,9 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
 // TensorFlow.js + backend WebGL
-import * as tf from '@tensorflow/tfjs-core'
-import '@tensorflow/tfjs-backend-webgl'
+import * as tf from '@tensorflow/tfjs'
+import '@tensorflow/tfjs-backend-webgl' // Importa el backend de WebGL
+import '@tensorflow/tfjs-backend-wasm'  // Importa el backend de WASM como fallback
 
 // Pose detection (MoveNet)
 import * as poseDetection from '@tensorflow-models/pose-detection'
@@ -400,27 +401,32 @@ async function startFileVideo(file) {
    CICLE DE VIDA
 ------------------------------*/
 onMounted(async () => {
-  // Inicialitza TF a WebGL
-  await tf.setBackend('webgl')
-  await tf.ready()
-
   try {
+    // 1. Inicializa el backend de TF.js de forma robusta
+    try {
+      await tf.setBackend('webgl');
+      console.log('Backend de TensorFlow.js inicializado con WebGL.');
+    } catch (e) {
+      console.warn('Fallo al inicializar WebGL, intentando con WASM...');
+      await tf.setBackend('wasm');
+      console.log('Backend de TensorFlow.js inicializado con WASM.');
+    }
+    await tf.ready();
+
+    // 2. Inicia la cámara
     await startCamera()
 
-    // Crea detector MoveNet (Lightning)
+    // 3. Crea el detector de pose MoveNet (Lightning)
     detector = await poseDetection.createDetector(
       poseDetection.SupportedModels.MoveNet,
-      {
-        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-        enableSmoothing: true
-      }
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, enableSmoothing: true }
     )
 
-    // Inicia el bucle
+    // 4. Inicia el bucle de renderizado
     rafId = requestAnimationFrame(loop)
   } catch (err) {
     console.error('Error inicialitzant càmera o detector:', err)
-    alert('No s’ha pogut inicialitzar la càmera o el model de posició.')
+    alert('No se ha podido inicializar la cámara o el modelo de detección de pose. Asegúrate de dar permisos a la cámara.')
   } finally {
     if (navigator.mediaDevices?.addEventListener) {
       onDeviceChange.value = async () => { await listVideoInputs() }
@@ -469,16 +475,6 @@ watch(sourceMode, async (mode) => {
 watch(selectedId, (id) => {
   if (id && sourceMode.value === 'camera') startCamera(id)
 })
-import { checkPushupRep } from '@/utils/exercise-detection.js'
-
-let state = 'up'
-let reps = 0
-
-function updateReps(angles) {
-  const { newState, repCompleted } = checkPushupRep(angles, state)
-  state = newState
-  if (repCompleted) reps++
-}
 
 
 </script>

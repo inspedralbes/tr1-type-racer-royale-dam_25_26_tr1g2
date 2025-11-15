@@ -16,6 +16,11 @@
             <v-icon left small>mdi-account-group</v-icon>
             Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
           </v-chip>
+          <!-- AÑADIR ESTE BLOQUE PARA MOSTRAR EL CÓDIGO -->
+          <v-chip color="secondary" small class="text-caption text-sm-body-2 ml-2" @click="copiarCodigo">
+            <v-icon left small>mdi-pound</v-icon>
+            Código: {{ bossSessionId }}
+          </v-chip>
         </div> 
       </v-col>
       <v-col cols="auto" class="text-right" v-if="bossSessionId">
@@ -202,6 +207,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import PoseSkeleton from '../components/PoseSkeleton.vue' // Asegúrate que la ruta sea correcta
+import { useRoute } from 'vue-router'
 import { 
     checkSquatRep, 
     checkPushupRep, 
@@ -233,7 +239,7 @@ const esCreador = ref(false);
 const buscandoPartida = ref(false);
 const participantes = ref([]);
 
-// --- ESTADO DEL COMBATE ---
+// --- ESTADO DEL COMBATE --- 
 const jefeVidaActual = ref(jefeVidaMaxima)
 const jugadorVidaActual = ref(jugadorVidaMaxima)
 const repeticiones = ref(0);
@@ -256,10 +262,6 @@ const isJefeGolpeado = ref(false)
 
 // --- ESTADO Y TIMERS DE LA RULETA ---
 const ejerciciosDisponibles = ref(['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']) 
-const ejercicioSeleccionado = ref(ejerciciosDisponibles.value[0]) // Inicial
-const timerRuleta = ref(null)
-const tiempoRestante = ref(DURACION_RULETA)
-let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
 
 // --- WEBSOCKET ---
 const ws = ref(null);
@@ -267,6 +269,18 @@ const isConnected = ref(false);
 
 // Vuetify Display (para breakpoints)
 const { xsOnly, smAndUp } = useDisplay();
+
+// --- ESTADO Y TIMERS DE LA RULETA (Controlado por el servidor) ---
+const ejercicioSeleccionado = ref('Esperando...'); // El ejercicio que te toca
+const tiempoRestante = ref(DURACION_RULETA);
+const ejercicioSeleccionado = ref(ejerciciosDisponibles.value[0]) // Inicial
+const timerRuleta = ref(null)
+const tiempoRestante = ref(DURACION_RULETA)
+let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
+
+
+// Vue Router (para leer parámetros de la URL)
+const route = useRoute();
 
 
 // --- COMPUTED ---
@@ -278,6 +292,17 @@ const tiempoFormateado = computed(() => {
     const sec = tiempoRestante.value % 60
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
 })
+
+// --- NUEVA FUNCIÓN PARA COPIAR CÓDIGO ---
+async function copiarCodigo() {
+  if (!bossSessionId.value) return;
+  try {
+    await navigator.clipboard.writeText(bossSessionId.value);
+    añadirMensaje('¡Código de la sala copiado!', 'info--text');
+  } catch (err) {
+    añadirMensaje('No se pudo copiar el código.', 'error--text');
+  }
+}
 
 
 // --- MÉTODOS DE UTILIDAD ---
@@ -293,6 +318,11 @@ function añadirMensaje(text, type = '') {
     const id = messageIdCounter++;
     const message = { id, time, text, type, leaving: false };
     logMensajes.value.push(message);
+
+    // Limitar el número de mensajes en el log para evitar sobrecargar el DOM
+    if (logMensajes.value.length > 25) {
+        logMensajes.value.shift(); // Elimina el mensaje más antiguo
+    }
 
     // Iniciar temporizador para eliminar el mensaje
     setTimeout(() => {
@@ -343,50 +373,6 @@ function aplicarDanoJefe(dano) {
     }, 200);
 }
 
-
-// --- LÓGICA DE RULETA ---
-function seleccionarEjercicioRandom() {
-    const ejercicios = ejerciciosDisponibles.value;
-    const randomIndex = Math.floor(Math.random() * ejercicios.length);
-    const nuevoEjercicio = ejercicios[randomIndex];
-    
-    // Simple chequeo para evitar seleccionar el mismo dos veces seguidas si hay más opciones
-    if (nuevoEjercicio === ejercicioSeleccionado.value && ejercicios.length > 1) {
-        seleccionarEjercicioRandom();
-        return;
-    }
-    
-    ejercicioSeleccionado.value = nuevoEjercicio;
-    repeticiones.value = 0; // Reiniciar contador de repeticiones
-    añadirMensaje(` ¡ATENCIÓN! El Jefe exige el ataque: ${nuevoEjercicio}`, 'warning--text');
-}
-
-function iniciarRuleta() {
-    if (timerRuleta.value) clearInterval(timerRuleta.value);
-    
-    timerRuleta.value = setInterval(() => {
-        if (!isPartidaActiva.value) {
-            clearInterval(timerRuleta.value);
-            timerRuleta.value = null;
-            return;
-        }
-
-        if (tiempoRestante.value > 0) {
-            tiempoRestante.value--;
-        } else {
-            seleccionarEjercicioRandom();
-            tiempoRestante.value = DURACION_RULETA; 
-        }
-    }, 1000);
-}
-
-function detenerRuleta() {
-    if (timerRuleta.value) {
-        clearInterval(timerRuleta.value);
-        timerRuleta.value = null;
-    }
-    tiempoRestante.value = DURACION_RULETA; 
-}
 
 
 // --- GESTIÓN DE LA DETECCIÓN (UNIFICADA) ---
@@ -451,7 +437,8 @@ function conectarWebSocket() {
   if (ws.value) {
     ws.value.close();
   }
-  ws.value = new WebSocket('ws://localhost:8082');
+  // Asegúrate de que la URL del WebSocket sea la correcta para tu entorno
+  ws.value = new WebSocket('ws://localhost:8082'); 
 
  ws.value.onopen = () => {
     isConnected.value = true;
@@ -459,8 +446,8 @@ function conectarWebSocket() {
     ws.value.send(JSON.stringify({
       type: 'INCURSION_JOIN',
       // Enviamos el sessionId como NULL o lo que sea para forzar al servidor a buscar/crear
-      sessionId: bossSessionId.value, // Esto será null/undefined la primera vez, lo cual es manejado en el servidor
-      userId: user.value?.id,
+      sessionId: bossSessionId.value, // Será el ID de la sala si vienes de UnirSala, o null si buscas una nueva
+      userId: userData.id,
       nombre: userData.usuari || 'Invitado'
     }));
   };
@@ -471,7 +458,7 @@ function conectarWebSocket() {
       case 'INCURSION_STATE':
         bossSessionId.value = data.sessionId; // Guardamos el ID de la sesión
         participantes.value = data.participantes;
-        esCreador.value = String(data.creadorId) === String(user.value.id);
+        esCreador.value = String(data.creadorId) === String(user.value?.id);
         jefeVidaMax.value = data.jefeVidaMax;
         jefeVidaActual.value = data.jefeVidaActual;
         if (data.message) {
@@ -479,11 +466,11 @@ function conectarWebSocket() {
         } 
         break;
       case 'INCURSION_STARTED':
-        jefeVidaActual.value = data.jefeVidaActual;
         iniciarPartida();
         break;
       case 'JOIN_ERROR':
         añadirMensaje(`Error al unirse: ${data.message}`, 'error--text');
+        buscandoPartida.value = false;
         salirDeLaIncursion(); // Volver al estado inicial
         break;
       case 'BOSS_HEALTH_UPDATE':
@@ -498,6 +485,17 @@ function conectarWebSocket() {
         añadirMensaje('El líder ha abandonado la incursión. La sesión ha terminado.', 'error--text');
         detenerPartida();
         salirDeLaIncursion();
+        break;
+      case 'TIMER_UPDATE':
+        tiempoRestante.value = data.tiempo;
+        break;
+      case 'NEW_EXERCISE':
+        // Si el ejercicio es para mí, lo actualizo
+        if (String(data.userId) === String(user.value?.id)) {
+            ejercicioSeleccionado.value = data.exercise;
+            repeticiones.value = 0; // Reiniciar contador
+            añadirMensaje(`¡NUEVO DESAFÍO! Ahora te toca: ${data.exercise}`, 'warning--text');
+        }
         break;
     }
   };
@@ -562,11 +560,13 @@ function iniciarPartida() {
   lungeState.value = 'up';
   jumpingJacksState.value = 'down'; // Estado inicial correcto para Jumping Jacks
   mountainClimbersState.value = 'up';
-  
+    
   seleccionarEjercicioRandom();
   tiempoRestante.value = DURACION_RULETA;
   
   isPartidaActiva.value = true;
+  añadirMensaje(`¡Comienza el combate! Esperando asignación de ejercicio...`, 'critical--text');
+  // La ruleta ahora la controla el servidor
   añadirMensaje(`¡Comienza el combate! El primer ataque es: ${ejercicioSeleccionado.value}.`, 'critical--text');
   
   iniciarRuleta();
@@ -586,7 +586,14 @@ async function cargarEstadoJefe() {
 }
 
 onMounted(() => {
-    // Ya no cargamos el jefe al montar, sino al unirnos a una sesión.
+    // Si la URL contiene un parámetro 'sala', significa que queremos unirnos a una incursión específica.
+    const salaDesdeUrl = route.query.sala;
+    if (salaDesdeUrl) {
+        bossSessionId.value = salaDesdeUrl; // Establecemos el ID de la sesión
+        gestionarUnionIncursion(); // Intentamos unirnos automáticamente
+    } else {
+        // Si no hay parámetro, el usuario deberá pulsar "Buscar Incursión"
+    }
 })
 
 onBeforeUnmount(() => {

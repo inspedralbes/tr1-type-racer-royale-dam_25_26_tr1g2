@@ -332,6 +332,86 @@ function broadcastToSession(sessionId, message) {
   });
 }
 
+async function broadcastIncursionState(sessionId) {
+  if (!sessions.has(sessionId)) {
+    console.log(`broadcastIncursionState: No se encontró la sesión en memoria: ${sessionId}`);
+    return;
+  }
+
+  try {
+    // 1. Obtener datos de la sesión del Boss desde la BDD
+    const [sessionRows] = await db_pool.query(
+      'SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat FROM Boss_Sessions WHERE id = ?',
+      [sessionId]
+    );
+
+    if (sessionRows.length === 0) {
+      console.log(`broadcastIncursionState: No se encontró la sesión ${sessionId} en la BDD.`);
+      return;
+    }
+    const bossSession = sessionRows[0];
+
+    // 2. Obtener la lista de participantes y sus nombres de la BDD
+    const [participantRows] = await db_pool.query(
+      'SELECT bp.id_usuari, u.usuari as nombre FROM Boss_Participants bp JOIN Usuaris u ON bp.id_usuari = u.id WHERE bp.id_boss_sessio = ?',
+      [sessionId]
+    );
+
+    const message = {
+      type: 'INCURSION_STATE',
+      sessionId: bossSession.id,
+      creadorId: bossSession.creador_id,
+      jefeVidaMax: bossSession.jefe_vida_max,
+      jefeVidaActual: bossSession.jefe_vida_actual,
+      participantes: participantRows.map(p => ({ id: p.id_usuari, nombre: p.nombre, damageDealt: 0 })), // Inicializamos damageDealt
+      message: 'Estado de la incursión actualizado.'
+    };
+
+    broadcastToSession(sessionId, message);
+  } catch (error) {
+    console.error('Error en broadcastIncursionState:', error);
+  }
+}
+
+// --- LÓGICA DE INCURSIÓN: RULETA DE EJERCICIOS (NUEVO) ---
+const INCURSION_TIMER_DURATION = 60; // 60 segundos por ronda
+const INCURSION_EXERCISES = ['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers'];
+
+function startIncursionRuleta(sessionId) {
+    const metadata = clientMetadata.get(sessions.get(sessionId)?.values().next().value);
+    if (!metadata) return;
+
+    // Si ya hay un timer, no crear otro
+    if (metadata.incursionTimer) {
+        clearInterval(metadata.incursionTimer);
+    }
+
+    let tiempoRestante = INCURSION_TIMER_DURATION;
+
+    const timer = setInterval(() => {
+        if (!sessions.has(sessionId) || sessions.get(sessionId).size === 0) {
+            clearInterval(timer);
+            return;
+        }
+
+        tiempoRestante--;
+
+        if (tiempoRestante <= 0) {
+            // Asignar un nuevo ejercicio a cada participante
+            const userMap = sessions.get(sessionId);
+            userMap.forEach(clientId => {
+                const randomExercise = INCURSION_EXERCISES[Math.floor(Math.random() * INCURSION_EXERCISES.length)];
+                broadcastToSession(sessionId, { type: 'NEW_EXERCISE', userId: clientMetadata.get(clientId).userId, exercise: randomExercise });
+            });
+            tiempoRestante = INCURSION_TIMER_DURATION; // Reiniciar timer
+        } else {
+            broadcastToSession(sessionId, { type: 'TIMER_UPDATE', tiempo: tiempoRestante });
+        }
+    }, 1000);
+
+    clientMetadata.forEach(meta => { if(meta.sessionId === sessionId) meta.incursionTimer = timer; });
+}
+
 wss.on('connection', ws => {
   const clientId = uuidv4();
   clientMetadata.set(clientId, { ws }); // Almacenamiento inicial solo con el objeto ws
@@ -400,103 +480,68 @@ wss.on('connection', ws => {
         });
         break;
       }
-    case 'INCURSION_JOIN': {
-        // En incursiones, sessionId es opcional al inicio. userId es obligatorio.
-        if (!userId) return; 
+      case 'INCURSION_JOIN':
+        try {
+          let sessionId = data.sessionId;
+          const userId = data.userId;
+          const nombreUsuario = data.nombre;
 
-        let incursionSessionId = null;
-        let sala = null;
-
-        // 1. Buscar la única sala de incursión activa que NO haya comenzado.
-        for (const id in salasActivas) {
-          if (salasActivas[id].modo === 'incursion' && !salasActivas[id].partidaIniciada) {
-            incursionSessionId = id;
-            sala = salasActivas[id];
-            break;
+          if (!userId) {
+            ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Se requiere un ID de usuario para unirse.' }));
+            return;
           }
+
+        // Si no se proporciona un sessionId, SIEMPRE creamos una nueva sala.
+          if (!sessionId) {
+            sessionId = `BOSS-${uuidv4().slice(0, 6)}`;
+            console.log(`Creando nueva sala de incursión: ${sessionId} por usuario ${userId}`);
+            await db_pool.query(
+              "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat) VALUES (?, ?, ?, ?, ?)",
+              [sessionId, userId, 300, 300, 'esperant']
+            );
+          }
+
+          // Añadimos al cliente a la estructura de sesiones en memoria
+          if (!sessions.has(sessionId)) {
+            sessions.set(sessionId, new Map());
+          }
+          const userMap = sessions.get(sessionId);
+          userMap.set(userId, clientId);
+
+          // Actualizamos los metadatos del cliente
+          clientMetadata.set(clientId, { ws, userId, sessionId, nombre: nombreUsuario, damageDealt: 0 });
+
+          // Añadimos al participante a la BDD si no está ya
+          const [existingParticipants] = await db_pool.query("SELECT id FROM Boss_Participants WHERE id_boss_sessio = ? AND id_usuari = ?", [sessionId, userId]);
+          if (existingParticipants.length === 0) {
+            await db_pool.query("INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?, ?)", [sessionId, userId]);
+          }
+
+          // Enviamos el estado actualizado a todos en la sala
+          await broadcastIncursionState(sessionId); // Esta llamada ahora funcionará
+        } catch (err) {
+          console.error('Error en INCURSION_JOIN:', err);
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Error del servidor al unirse a la incursión.' }));
         }
-
-        // 2. Si no hay sala, el primer jugador la crea
-        if (!incursionSessionId) {
-          incursionSessionId = `BOSS-${uuidv4().slice(0, 6)}`; 
-          console.log(`Creando nueva sala de incursión: ${incursionSessionId}`);
-          
-          // La vida base incluye el escalado del primer jugador
-          const jefeVidaBase = 250 + 50; 
-          
-          // Insertamos en BDD (await es posible por CORRECCIÓN 1)
-          await db_pool.query( 
-            'INSERT INTO Boss_Sessions (id, jefe_vida_max, jefe_vida_actual, max_participants, estat) VALUES (?,?,?,?,?)',
-            [incursionSessionId, jefeVidaBase, jefeVidaBase, 10, 'esperant'] 
-          ).catch(err => { console.error("Error BDD al crear Boss:", err); });
-          
-          sala = {
-            creadorId: userId,
-            createdAt: new Date(),
-            maxJugadores: 10,
-            modo: 'incursion',
-            partidaIniciada: false,
-            jefeVidaMax: jefeVidaBase,
-            jefeVidaActual: jefeVidaBase
-          };
-          salasActivas[incursionSessionId] = sala;
-          sessions.set(incursionSessionId, new Map());
-          
-        }
-        
-        const userMap = sessions.get(incursionSessionId);
-        const isNewPlayer = !userMap.has(userId);
-
-        // Rechazar si la sala está llena o la partida ya ha comenzado
-        if (sala.partidaIniciada || (isNewPlayer && userMap.size >= sala.maxJugadores)) {
-          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión está llena.' }));
-          ws.terminate();
-          return;
-        }
-
-        // 3. Escalar vida del jefe SÓLO si es un nuevo jugador uniéndose a una sala existente 
-        if (isNewPlayer && userMap.size > 0) {
-            sala.jefeVidaMax += 50;
-            sala.jefeVidaActual += 50;
-            // Opcional: Actualizar vida en la BDD
-            // await db_pool.query('UPDATE Boss_Sessions SET jefe_vida_max = ?, jefe_vida_actual = ? WHERE id = ?', [sala.jefeVidaMax, sala.jefeVidaActual, incursionSessionId]);
-        }
-
-        // 4. Añadir al jugador y metadatos
-        userMap.set(userId, clientId);
-        clientMetadata.set(clientId, { ws, userId, sessionId: incursionSessionId, nombre: data.nombre, damageDealt: 0 });
-
-        // 5. Notificar a todos los de la sala del nuevo estado
-        const participantes = [];
-        userMap.forEach((cId, uId) => {
-          const meta = clientMetadata.get(cId);
-          if (meta) participantes.push({ id: uId, nombre: meta.nombre, damageDealt: meta.damageDealt || 0 });
-        });
-
-        broadcastToSession(incursionSessionId, {
-          sessionId: incursionSessionId, 
-          type: 'INCURSION_STATE',
-          participantes: participantes,
-          creadorId: sala.creadorId,
-          jefeVidaMax: sala.jefeVidaMax,
-          jefeVidaActual: sala.jefeVidaActual,
-          message: `${data.nombre} se ha unido a la incursión.`
-        });
-
-        break; // CORRECCIÓN 2: ¡Añadir el break aquí para evitar el fallthrough!
-      }
+      break;
       case 'INCURSION_START': {
         const metadata = clientMetadata.get(clientId);
-        if (!metadata || !metadata.sessionId) return;
-        const sala = salasActivas[metadata.sessionId];
+        if (metadata && metadata.sessionId) {
+            const sessionId = metadata.sessionId;
+            const [sessionRows] = await db_pool.query('SELECT creador_id FROM Boss_Sessions WHERE id = ?', [sessionId]);
 
-        // Solo el creador puede iniciar
-        if (sala && String(sala.creadorId) === String(metadata.userId) && !sala.partidaIniciada) {
-          sala.partidaIniciada = true;
-          broadcastToSession(metadata.sessionId, {
-            type: 'INCURSION_STARTED',
-            jefeVidaActual: sala.jefeVidaActual
-          });
+            if (sessionRows.length > 0 && String(sessionRows[0].creador_id) === String(metadata.userId)) {
+                console.log(`Partida ${sessionId} iniciada por el creador ${metadata.userId}`);
+                await db_pool.query("UPDATE Boss_Sessions SET estat = 'en curs' WHERE id = ?", [sessionId]);
+
+                // Notificar a todos los jugadores en la sala que la partida ha comenzado
+                broadcastToSession(sessionId, { type: 'INCURSION_STARTED' }); 
+
+                // Iniciar la ruleta de ejercicios en el servidor
+                startIncursionRuleta(sessionId);
+            } else {
+                console.log(`Intento no autorizado de iniciar partida por ${metadata.userId}`);
+            }
         }
         break;
       }
