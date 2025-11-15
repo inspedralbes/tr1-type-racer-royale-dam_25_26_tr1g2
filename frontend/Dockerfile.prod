@@ -1,0 +1,21 @@
+# -----------------------------------------------------------------
+# STAGE 1: Build the Vue application (Using node:20-alpine as the base image)
+# -----------------------------------------------------------------
+    FROM node:20-alpine AS build
+    WORKDIR /app
+    
+    # 1. Define el argumento de compilación para la URL de la API (para Vite)
+    ARG VITE_API_URL
+    
+    # Copia los archivos del paquete e instala dependencias
+    COPY package*.json ./
+    RUN npm install
+    
+    # Copia el código fuente
+    COPY . .
+    
+    # 2. Configura la variable de entorno que Vite usa durante el 'npm run build'
+    ENV VITE_API_URL=$VITE_API_URL
+    
+    # Ejecuta el build, generando los estáticos en /app/dist
+    RUN npm run build
