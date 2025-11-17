@@ -56,7 +56,13 @@ app.post('/api/salas/crear', async (req, res) => {
 
   try {
     // Guardar la sala en memoria, incluyendo el máximo de jugadores
-    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date(), maxJugadores: maxJugadores || 2 };
+    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date(), maxJugadores: maxJugadores || 2, modo };
+
+    // --- CORRECCIÓN: Guardar la sala en la tabla correcta 'SessionsVersus' ---
+    await db_pool.query(
+      'INSERT INTO SessionsVersus (codi_acces, creador_id, estat) VALUES (?, ?, ?)',
+      [codigo, creadorId, 'oberta']
+    );
 
     // Simulación: devolvemos el código generado en el frontend como si fuera el ID.
     const sessionId = codigo;
@@ -520,6 +526,8 @@ wss.on('connection', ws => {
               "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
               [sessionId, userId, 300, 300, 'esperant', 10]
             );
+            // CORRECCIÓN: Añadir al creador como primer participante en la BDD
+            await db_pool.query("INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?, ?)", [sessionId, userId]);
           }
 
           // Validar si la sala está llena ANTES de añadir al nuevo participante
@@ -676,21 +684,28 @@ wss.on('connection', ws => {
         const metadata = clientMetadata.get(clientId);
         if (!metadata || !metadata.sessionId) return;
 
-        const sala = salasActivas[metadata.sessionId];
-        if (!sala || !sala.partidaIniciada) return;
+        const { sessionId, nombre: attackerName } = metadata;
+        const { damage } = data;
 
-        // Actualizar vida del jefe
-        sala.jefeVidaActual = Math.max(0, sala.jefeVidaActual - data.damage);
+        try {
+            // 1. Obtener vida actual y actualizarla en la BDD
+            const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM Boss_Sessions WHERE id = ?', [sessionId]);
+            if (rows.length === 0) return;
 
-        // Registrar daño del jugador
-        metadata.damageDealt = (metadata.damageDealt || 0) + data.damage;
+            const vidaActual = rows[0].jefe_vida_actual;
+            const nuevaVida = Math.max(0, vidaActual - damage);
 
-        // Notificar a todos del nuevo estado del jefe
-        broadcastToSession(metadata.sessionId, {
-          type: 'BOSS_HEALTH_UPDATE',
-          jefeVidaActual: sala.jefeVidaActual,
-          attackerName: metadata.nombre
-        });
+            await db_pool.query('UPDATE Boss_Sessions SET jefe_vida_actual = ? WHERE id = ?', [nuevaVida, sessionId]);
+
+            // 2. Notificar a todos del nuevo estado del jefe
+            broadcastToSession(sessionId, {
+                type: 'BOSS_HEALTH_UPDATE',
+                jefeVidaActual: nuevaVida,
+                attackerName: attackerName
+            });
+        } catch (err) {
+            console.error('Error en INCURSION_ATTACK:', err);
+        }
         break;
       }
     }

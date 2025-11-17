@@ -39,18 +39,19 @@ CREATE TABLE Exercicis_Rutina (
 
 -- Showdown
 CREATE TABLE Boss_Sessions (
-    id VARCHAR(255) PRIMARY KEY,
+    id VARCHAR(255) NOT NULL PRIMARY KEY,
     creador_id INT,
     jefe_vida_max INT DEFAULT 300,
     jefe_vida_actual INT,
     max_participants INT DEFAULT 10,
-    estat ENUM('oberta','en curs','finalitzada', 'esperant') DEFAULT 'oberta',
-    data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP
+    estat ENUM('oberta','en curs','finalitzada') DEFAULT 'oberta',
+    data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creador_id) REFERENCES Usuaris(id)
 );
 
 CREATE TABLE Boss_Participants (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_boss_sessio VARCHAR(255),
+    id_boss_sessio INT,
     id_usuari INT,
     damage INT DEFAULT 8,
     FOREIGN KEY (id_boss_sessio) REFERENCES Boss_Sessions(id),
