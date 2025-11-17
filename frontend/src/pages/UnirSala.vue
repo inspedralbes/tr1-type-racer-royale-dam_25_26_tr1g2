@@ -68,6 +68,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const codigoSala = ref('')  
 const API_BASE_URL = 'http://localhost:9000'
+const api = axios.create({ baseURL: API_BASE_URL });
 
 function obtenerUsuarioId() {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -86,13 +87,22 @@ async function unirseSala() {
       return;
     }
 
-    // Redirigimos directamente a la página de incursión con el código.
-    // La lógica de unión y validación se manejará allí a través del WebSocket.
-    await router.push({ name: 'incursion', query: { sala: codigo } });
+    // 1. Comprobar el tipo de sala (Incursión o Versus)
+    const response = await api.get(`/api/salas/check/${codigo}`);
+    const salaInfo = response.data;
+
+    if (salaInfo.exists) {
+      if (salaInfo.modo === 'incursion') {
+        await router.push({ name: 'incursion', query: { sala: codigo } });
+      } else { // Por defecto o si es '2vs2', etc.
+        await router.push({ name: 'multijugador', query: { sala: codigo } });
+      }
+    } else {
+      throw new Error('La sala no existe o ha expirado.');
+    }
   } catch (err) {
-    const errorMsg = err.response?.data?.error || 'No se pudo conectar al servidor o la sala no existe/expiró.';
-    console.error('Error al unirse a la sala:', err)
-    console.error(errorMsg); // Mostrar el error en consola
+    const errorMsg = err.response?.data?.error || err.message || 'No se pudo conectar al servidor o la sala no existe.';
+    console.error('Error al unirse a la sala:', errorMsg);
   }
 }
 </script>

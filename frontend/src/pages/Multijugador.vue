@@ -17,7 +17,12 @@ const route = useRoute()
 const router = useRouter()
 
 const salaId = ref(route.query.sala || null)
-const userId = ref(localStorage.getItem('userId') || null)
+const userId = ref(null); // Se inicializa a null y se obtiene en onMounted
+
+function obtenerUsuarioId() {
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  return user?.id || null;
+}
 const creadorId = ref(null)
 const esCreador = computed(() => userId.value && creadorId.value && String(userId.value) === String(creadorId.value))
 
@@ -103,6 +108,8 @@ function detenerPartida() {
 }
 
 onMounted(() => {
+  userId.value = obtenerUsuarioId();
+
   if (!salaId.value || !userId.value) {
     alert("No se ha especificado una sala o no has iniciado sesión.");
     router.push('/inicial');

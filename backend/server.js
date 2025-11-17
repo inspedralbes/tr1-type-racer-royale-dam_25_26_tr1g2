@@ -69,13 +69,25 @@ app.post('/api/salas/crear', async (req, res) => {
 
 app.get('/api/salas/check/:codigo', (req, res) => {
   const { codigo } = req.params;
+  // Primero, revisamos las salas activas de "Versus"
   if (salasActivas[codigo]) {
-    // La sala existe en memoria
-    res.json({ success: true, exists: true });
-  } else {
-    // La sala no existe o el servidor se reinició
-    res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+    return res.json({ success: true, exists: true, modo: salasActivas[codigo].modo || '2vs2' });
   }
+
+  // Si no está en las salas activas, podría ser una sala de "Incursión" de la BDD
+  db_pool.query('SELECT id FROM Boss_Sessions WHERE id = ?', [codigo])
+    .then(([rows]) => {
+      if (rows.length > 0) {
+        res.json({ success: true, exists: true, modo: 'incursion' });
+      } else {
+        // Si no está en ningún lado, no existe.
+        res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+      }
+    })
+    .catch(err => {
+      console.error('Error en /api/salas/check/:codigo consultando la BDD:', err);
+      res.status(500).json({ success: false, error: 'Error del servidor al verificar la sala.' });
+    });
 });
 
 app.post('/api/sessions/start', (req, res) => {
@@ -388,6 +400,14 @@ function startIncursionRuleta(sessionId) {
 
     let tiempoRestante = INCURSION_TIMER_DURATION;
 
+    // Asignación inicial de ejercicios al empezar
+    const userMapOnStart = sessions.get(sessionId);
+    if (userMapOnStart) {
+        userMapOnStart.forEach(clientId => {
+            const randomExercise = INCURSION_EXERCISES[Math.floor(Math.random() * INCURSION_EXERCISES.length)];
+            broadcastToSession(sessionId, { type: 'NEW_EXERCISE', userId: clientMetadata.get(clientId).userId, exercise: randomExercise });
+        });
+    }
     const timer = setInterval(() => {
         if (!sessions.has(sessionId) || sessions.get(sessionId).size === 0) {
             clearInterval(timer);
@@ -488,6 +508,7 @@ wss.on('connection', ws => {
 
           if (!userId) {
             ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Se requiere un ID de usuario para unirse.' }));
+            ws.terminate();
             return;
           }
 
@@ -496,9 +517,24 @@ wss.on('connection', ws => {
             sessionId = `BOSS-${uuidv4().slice(0, 6)}`;
             console.log(`Creando nueva sala de incursión: ${sessionId} por usuario ${userId}`);
             await db_pool.query(
-              "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat) VALUES (?, ?, ?, ?, ?)",
-              [sessionId, userId, 300, 300, 'esperant']
+              "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+              [sessionId, userId, 300, 300, 'esperant', 10]
             );
+          }
+
+          // Validar si la sala está llena ANTES de añadir al nuevo participante
+          const [sessionInfo] = await db_pool.query("SELECT max_participants FROM Boss_Sessions WHERE id = ?", [sessionId]);
+          const maxParticipants = sessionInfo[0]?.max_participants || 10; // Usar 10 como fallback
+
+          const [participantCount] = await db_pool.query("SELECT COUNT(*) as count FROM Boss_Participants WHERE id_boss_sessio = ?", [sessionId]);
+          const currentParticipants = participantCount[0].count;
+
+          const [existingParticipant] = await db_pool.query("SELECT id FROM Boss_Participants WHERE id_boss_sessio = ? AND id_usuari = ?", [sessionId, userId]);
+
+          if (currentParticipants >= maxParticipants && existingParticipant.length === 0) {
+            ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La sala de incursión está llena.' }));
+            ws.terminate();
+            return;
           }
 
           // Añadimos al cliente a la estructura de sesiones en memoria

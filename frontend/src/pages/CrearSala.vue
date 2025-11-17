@@ -97,7 +97,10 @@ const maxPersonas = ref(2)
 const API_BASE_URL = 'http://localhost:9000'
 const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } });
 
-function obtenerCreadorId() { return localStorage.getItem('userId') || null }
+function obtenerCreadorId() { 
+  const user = JSON.parse(localStorage.getItem('user'));
+  return user?.id || null;
+}
 function obtenerNombreUsuario() { 
   const user = JSON.parse(localStorage.getItem('user'));
   // El modelo Sequelize usa 'usuari', no 'username'
