@@ -120,7 +120,7 @@ async function generarCodigo() {
     creadorId,
     nombreCreador: nombre,
     tipo: 'public',
-    modo: '2vs2',
+    modo: 'multijugador',
     jugadores: [{ id: String(creadorId), nombre, rol: 'host', conectado: true }],
     opciones: {},
     maxJugadores: maxPersonas.value
