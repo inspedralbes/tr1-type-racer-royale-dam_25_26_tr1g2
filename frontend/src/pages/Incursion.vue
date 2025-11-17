@@ -86,7 +86,7 @@
                   class="action-btn"
                 >
                   <v-icon left>mdi-magnify</v-icon>
-                  Buscar Incursión
+                  Crear Incursión
                 </v-btn>
               </div>
 
@@ -190,7 +190,7 @@
               :key="p.id"
               class="participant-item"
             >
-              <v-list-item-title class="font-weight-bold">{{ p.nombre }}</v-list-item-title>
+              <v-list-item-title class="font-weight-bold">{{ p.nombre }} {{ String(p.id) === String(user.id) ? '(Tú)' : '' }}</v-list-item-title>
               <v-list-item-subtitle>Daño: {{ p.damageDealt || 0 }}</v-list-item-subtitle>
               <template v-slot:append>
                 <v-icon v-if="p.id === esCreador" color="amber">mdi-star</v-icon>
@@ -219,7 +219,7 @@ import {
 import { useDisplay } from 'vuetify'
 
 // --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---
-let jefeVidaMaxima = ref(300); // Vida base, se actualizará desde el servidor
+const jefeVidaMaxima = ref(300); // Vida base, se actualizará desde el servidor
 const jugadorVidaMaxima = 100;
 const DURACION_RULETA = 60 // 1 minuto para pruebas
 const MAX_PARTICIPANTS = 10;
@@ -241,7 +241,7 @@ const participantes = ref([]);
 
 // --- ESTADO DEL COMBATE --- 
 const jefeVidaActual = ref(jefeVidaMaxima)
-const jugadorVidaActual = ref(jugadorVidaMaxima)
+const jugadorVidaActual = ref(jugadorVidaMaxima);
 const repeticiones = ref(0);
 
 // Máquinas de estado para cada ejercicio
@@ -271,17 +271,13 @@ const isConnected = ref(false);
 const { xsOnly, smAndUp } = useDisplay();
 
 // --- ESTADO Y TIMERS DE LA RULETA (Controlado por el servidor) ---
-const ejercicioSeleccionado = ref('Esperando...'); // El ejercicio que te toca
-const tiempoRestante = ref(DURACION_RULETA);
-const ejercicioSeleccionado = ref(ejerciciosDisponibles.value[0]) // Inicial
-const timerRuleta = ref(null)
-const tiempoRestante = ref(DURACION_RULETA)
+const ejercicioSeleccionado = ref('Esperando...'); // El ejercicio que te toca, se inicializa a un valor neutral.
+const tiempoRestante = ref(DURACION_RULETA); // El tiempo restante para la ronda actual.
 let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
 
 
 // Vue Router (para leer parámetros de la URL)
 const route = useRoute();
-
 
 // --- COMPUTED ---
 const jefeVidaPorcentaje = computed(() => (jefeVidaActual.value / jefeVidaMaxima) * 100);
@@ -532,8 +528,7 @@ function salirDeLaIncursion() {
   esCreador.value = false; 
   isPartidaActiva.value = false;
   participantes.value = [];
-  logMensajes.value = [{ time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
-  detenerRuleta();
+  logMensajes.value = [{ id: 0, time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
   if (ws.value) {
     ws.value.close();
     ws.value = null;
@@ -561,28 +556,17 @@ function iniciarPartida() {
   jumpingJacksState.value = 'down'; // Estado inicial correcto para Jumping Jacks
   mountainClimbersState.value = 'up';
     
-  seleccionarEjercicioRandom();
   tiempoRestante.value = DURACION_RULETA;
   
   isPartidaActiva.value = true;
   añadirMensaje(`¡Comienza el combate! Esperando asignación de ejercicio...`, 'critical--text');
-  // La ruleta ahora la controla el servidor
-  añadirMensaje(`¡Comienza el combate! El primer ataque es: ${ejercicioSeleccionado.value}.`, 'critical--text');
-  
-  iniciarRuleta();
 }
 
 function detenerPartida() {
   if (!isPartidaActiva.value) return;
   isPartidaActiva.value = false;
-  detenerRuleta();
   if (dañoJugadorTimeout) clearTimeout(dañoJugadorTimeout);
   añadirMensaje('Combate detenido.', 'warning--text');
-}
-
-// --- LLAMADA INICIAL AL MONTAR ---
-async function cargarEstadoJefe() {
-  // Esta función ya no es necesaria, el estado del jefe viene por WebSocket
 }
 
 onMounted(() => {
