@@ -37,18 +37,34 @@
               class="mb-4"
             ></v-text-field>
 
-            <v-btn
-              color="success"
-              class="button-shadow px-10 py-5 d-flex align-center justify-center"
-              rounded
-              @click="unirseSala"
-              elevation="10"
-              :disabled="!codigoSala"
-              block
-            >
-              <v-icon left size="28">mdi-login-variant</v-icon>
-              Unirse a Sala
-            </v-btn>
+            <!-- NUEVOS BOTONES PARA SELECCIONAR MODO -->
+            <div class="d-flex flex-column ga-4">
+              <v-btn
+                color="primary"
+                class="button-shadow px-10 py-5"
+                rounded
+                @click="unirseSala('multijugador')"
+                elevation="10"
+                :disabled="!codigoSala"
+                block
+              >
+                <v-icon left size="28">mdi-sword-cross</v-icon>
+                Unirse a Multijugador (2vs2)
+              </v-btn>
+
+              <v-btn
+                color="amber"
+                class="button-shadow px-10 py-5"
+                rounded
+                @click="unirseSala('incursion')"
+                elevation="10"
+                :disabled="!codigoSala"
+                block
+              >
+                <v-icon left size="28">mdi-robot-angry</v-icon>
+                Unirse a Incursión (Jefe)
+              </v-btn>
+            </div>
 
             <p class="caption mt-4 grey--text text--lighten-1">
               Projecte col·laboratiu.
@@ -75,30 +91,27 @@ function obtenerUsuarioId() {
   return user?.id || null;
 }
 
-async function unirseSala() {
+async function unirseSala(modo) {
   const codigo = codigoSala.value.trim();
   if (!codigo) return;
 
   try {
     const userId = obtenerUsuarioId();
     if (!userId) {
-      console.error('Debes iniciar sesión para unirte a una sala.');
+      alert('Debes iniciar sesión para unirte a una sala.');
       await router.push({ name: 'login' });
       return;
     }
 
-    // 1. Comprobar el tipo de sala (Incursión o Versus)
-    const response = await api.get(`/api/salas/check/${codigo}`);
-    const salaInfo = response.data;
-
-    if (salaInfo.exists) {
-      if (salaInfo.modo === 'incursion') {
-        await router.push({ name: 'incursion', query: { sala: codigo } });
-      } else { // Por defecto o si es '2vs2', etc.
-        await router.push({ name: 'multijugador', query: { sala: codigo } });
-      }
+    // Redirigir directamente según el modo seleccionado por el usuario
+    if (modo === 'incursion') {
+      await router.push({ name: 'incursion', query: { sala: codigo } });
+    } else if (modo === 'multijugador') {
+      await router.push({ name: 'multijugador', query: { sala: codigo } });
     } else {
-      throw new Error('La sala no existe o ha expirado.');
+      // Fallback por si se llama sin modo
+      console.error("Modo de juego no especificado.");
+      alert("Por favor, selecciona un modo de juego.");
     }
   } catch (err) {
     const errorMsg = err.response?.data?.error || err.message || 'No se pudo conectar al servidor o la sala no existe.';

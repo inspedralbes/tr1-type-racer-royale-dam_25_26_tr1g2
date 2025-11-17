@@ -635,7 +635,7 @@ wss.on('connection', ws => {
         const sessionState = {};
         userMap.forEach((cId, uId) => {
           const meta = clientMetadata.get(cId);
-          if (meta) {
+          if (meta) { // CORRECCIÓN: Asegurarse de que meta existe
             sessionState[uId] = { nombre: meta.nombre, reps: meta.reps, ready: meta.ready };
           }
         });
