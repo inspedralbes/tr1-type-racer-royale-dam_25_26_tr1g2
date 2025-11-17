@@ -98,24 +98,31 @@ async function unirseSala(modo) {
   try {
     const userId = obtenerUsuarioId();
     if (!userId) {
-      alert('Debes iniciar sesión para unirte a una sala.');
+      alert('Debes iniciar sesión para unirte a una sala.'); // Usamos alert para notificaciones simples
       await router.push({ name: 'login' });
       return;
     }
 
-    // Redirigir directamente según el modo seleccionado por el usuario
-    if (modo === 'incursion') {
-      await router.push({ name: 'incursion', query: { sala: codigo } });
-    } else if (modo === 'multijugador') {
-      await router.push({ name: 'multijugador', query: { sala: codigo } });
+    // 1. Comprobar si la sala existe y su modo en el servidor
+    const response = await api.get(`/api/salas/check/${codigo}`);
+    const salaInfo = response.data;
+
+    // 2. Validar que la sala existe y el modo coincide
+    if (salaInfo.exists && salaInfo.modo === modo) {
+      // 3. Redirigir si todo es correcto
+      if (modo === 'incursion') {
+        await router.push({ name: 'incursion', query: { sala: codigo } });
+      } else { // modo === 'multijugador'
+        await router.push({ name: 'multijugador', query: { sala: codigo } });
+      }
     } else {
-      // Fallback por si se llama sin modo
-      console.error("Modo de juego no especificado.");
-      alert("Por favor, selecciona un modo de juego.");
+      // La sala existe pero no es del modo correcto, o no existe en absoluto
+      throw new Error(`La sala no existe o no es una sala de ${modo}.`);
     }
   } catch (err) {
     const errorMsg = err.response?.data?.error || err.message || 'No se pudo conectar al servidor o la sala no existe.';
     console.error('Error al unirse a la sala:', errorMsg);
+    alert(errorMsg); // Mostramos el error al usuario
   }
 }
 </script>
