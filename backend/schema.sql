@@ -39,7 +39,7 @@ CREATE TABLE Exercicis_Rutina (
 
 -- Showdown
 CREATE TABLE Boss_Sessions (
-    id INT NOT NULL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     creadorId INT,
     jefe_vida_max INT DEFAULT 300,
     jefe_vida_actual INT,

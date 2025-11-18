@@ -119,7 +119,19 @@ function marcarListo() {
 async function iniciarPartida() {
   if (!esCreador.value || jugadores.value.length < 2 || !todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return;
   try {
-    await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value });
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = user?.token;
+
+    if (!token) {
+      alert("No estás autenticado.");
+      router.push('/login');
+      return;
+    }
+
+    await axios.post('http://localhost:9000/api/sessions/start', 
+      { codigo: salaId.value, iniciadorId: userId.value },
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
   } catch (error) {
     console.error("Error al iniciar la partida:", error);
     alert("No se pudo iniciar la partida.");
