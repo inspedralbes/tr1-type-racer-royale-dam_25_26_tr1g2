@@ -13,7 +13,7 @@
     <!-- Navegación escritorio -->
     <v-btn text to="/" class="hidden-sm-and-down">
       <v-icon left>mdi-home</v-icon>
-      Inicio
+      Inici
     </v-btn>
     <v-btn text to="/crearrutina" class="hidden-sm-and-down">
       <v-icon left>mdi-dumbbell</v-icon>
@@ -21,20 +21,20 @@
     </v-btn>
     <v-btn text to="/ayuda" class="hidden-sm-and-down">
       <v-icon left>mdi-help-circle-outline</v-icon>
-      Ayuda
+      Ajuda
     </v-btn>
 
     <v-spacer></v-spacer>
 
     <!-- Refrescar página -->
-    <v-btn icon title="Refrescar página" @click="refreshPage">
+    <v-btn icon title="Refrescar pàgina" @click="refreshPage">
       <v-icon color="white">mdi-refresh</v-icon>
     </v-btn>
 
     <!-- Perfil y Cerrar sesión escritorio -->
     <v-btn text to="/profile" color="green" class="font-weight-bold mr-2 hidden-sm-and-down">
       <v-icon left>mdi-account</v-icon>
-      PROFILE
+      PERFIL
     </v-btn>
 
     <v-btn
@@ -44,7 +44,7 @@
       class="font-weight-bold hidden-sm-and-down"
     >
       <v-icon left>mdi-logout</v-icon>
-      CERRAR SESIÓN
+      TANCAR SESSIÓ
     </v-btn>
   </v-app-bar>
 
@@ -59,7 +59,7 @@
     <v-list dense nav>
       <v-list-item to="/" @click="drawer = false">
         <v-icon left>mdi-home</v-icon>
-        Inicio
+        Inici
       </v-list-item>
 
       <v-list-item to="/crearrutina" @click="drawer = false">
@@ -69,7 +69,7 @@
 
       <v-list-item to="/ayuda" @click="drawer = false">
         <v-icon left>mdi-help-circle-outline</v-icon>
-        Ayuda
+        Ajuda
       </v-list-item>
 
       <v-list-item to="/profile" @click="drawer = false">
@@ -80,8 +80,7 @@
       <!-- Botón de cerrar sesión en el drawer -->
       <v-list-item @click="handleLogout">
         <v-icon left color="error">mdi-logout</v-icon>
-        Cerrar sesión
-      </v-list-item>
+Tancar sessió      </v-list-item>
     </v-list>
   </v-navigation-drawer>
 </template>

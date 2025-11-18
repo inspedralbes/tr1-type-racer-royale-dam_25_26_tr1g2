@@ -4,7 +4,7 @@
       <v-col cols="12" md="8">
         <v-card class="elevation-2">
           <v-card-title class="text-h4 text-center py-6 primary--text">
-            Guía de Ayuda
+Guia d'Ajuda
           </v-card-title>
           
           <v-card-text class="pa-6">
@@ -13,25 +13,22 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon start color="primary" class="mr-2">mdi-information</v-icon>
-                  ¿Qué es Train AI?
-                </v-expansion-panel-title>
+Què és Train AI?                </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  Train AI es una aplicación educativa que combina el aprendizaje con la diversión. Te permite mejorar tus habilidades mientras compites con otros usuarios en tiempo real.
-                </v-expansion-panel-text>
+Train AI és una aplicació educativa que combina l'aprenentatge amb la diversió. Et permet millorar les teves habilitats mentre competeixes amb altres usuaris en temps real.                </v-expansion-panel-text>
               </v-expansion-panel>
 
               <!-- Cómo Empezar -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon start color="primary" class="mr-2">mdi-play-circle</v-icon>
-                  Cómo Empezar
-                </v-expansion-panel-title>
+Com Començar                </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <ol class="ml-4">
-                    <li class="mb-2">Regístrate en la plataforma usando el botón "SIGN UP"</li>
-                    <li class="mb-2">Inicia sesión con tus credenciales</li>
-                    <li class="mb-2">Únete a una sala existente o crea una nueva</li>
-                    <li>¡Comienza a jugar y aprender!</li>
+                    <li class="mb-2">Registra't a la plataforma utilitzant el botó "REGISTRE"</li>
+                    <li class="mb-2">Inicia la sessió amb les teves credencials</li>
+                    <li class="mb-2">Uneix-te a una sala existent o crea una de nova</li>
+                    <li>Comença a jugar i a aprendre!</li>
                   </ol>
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -40,23 +37,22 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon start color="primary" class="mr-2">mdi-star</v-icon>
-                  Funcionalidades Principales
-                </v-expansion-panel-title>
+Funcionalitats Principals                </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-list>
                     <v-list-item>
                       <v-list-item-title class="font-weight-bold">Crear Sala</v-list-item-title>
-                      <v-list-item-subtitle>Configura una nueva sala de juego con tus preferencias</v-list-item-subtitle>
+                      <v-list-item-subtitle>Configura una nova sala de joc amb les teves preferències</v-list-item-subtitle>
                     </v-list-item>
 
                     <v-list-item>
-                      <v-list-item-title class="font-weight-bold">Unirse a Sala</v-list-item-title>
-                      <v-list-item-subtitle>Únete a salas existentes y compite con otros jugadores</v-list-item-subtitle>
+                      <v-list-item-title class="font-weight-bold">Unir-se a Sala</v-list-item-title>
+                      <v-list-item-subtitle>Uneix-te a sales existents i competeix amb altres jugadors</v-list-item-subtitle>
                     </v-list-item>
 
                     <v-list-item>
                       <v-list-item-title class="font-weight-bold">Jugar</v-list-item-title>
-                      <v-list-item-subtitle>Participa en las competencias y mejora tus habilidades</v-list-item-subtitle>
+                      <v-list-item-subtitle>Participa en les competicions i millora les teves habilitats</v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
                 </v-expansion-panel-text>
@@ -66,14 +62,13 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon start color="primary" class="mr-2">mdi-gavel</v-icon>
-                  Reglas del Juego
-                </v-expansion-panel-title>
+Regles del Joc                </v-expansion-panel-title>
                 <v-expansion-panel-text>
-                  <ul class="ml-4">
-                    <li class="mb-2">Sé respetuoso con todos los participantes</li>
-                    <li class="mb-2">No uses herramientas de auto-completado o bots</li>
-                    <li class="mb-2">Espera a que la partida comience antes de empezar</li>
-                    <li>¡Diviértete y aprende!</li>
+                 <ul class="ml-4">
+                    <li class="mb-2">Sigues respectuós amb tots els participants</li>
+                    <li class="mb-2">No utilitzis eines d'autocompleció o bots</li>
+                    <li class="mb-2">Espera que la partida comenci abans de començar</li>
+                    <li>Diverteix-te i aprèn!</li>
                   </ul>
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -82,23 +77,22 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon start color="primary" class="mr-2">mdi-help-circle</v-icon>
-                  Solución de Problemas
-                </v-expansion-panel-title>
+Solució de Problemes                </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-list>
                     <v-list-item>
-                      <v-list-item-title class="font-weight-bold">Problemas de Conexión</v-list-item-title>
-                      <v-list-item-subtitle>Verifica tu conexión a internet y recarga la página</v-list-item-subtitle>
+                      <v-list-item-title class="font-weight-bold">Problemes de Connexió</v-list-item-title>
+                      <v-list-item-subtitle>Verifica la teva connexió a internet i recarrega la pàgina</v-list-item-subtitle>
                     </v-list-item>
 
                     <v-list-item>
-                      <v-list-item-title class="font-weight-bold">Error al Crear Sala</v-list-item-title>
-                      <v-list-item-subtitle>Intenta cerrar sesión y volver a iniciar</v-list-item-subtitle>
+                      <v-list-item-title class="font-weight-bold">Error en Crear Sala</v-list-item-title>
+                      <v-list-item-subtitle>Intenta tancar la sessió i tornar a iniciar</v-list-item-subtitle>
                     </v-list-item>
 
                     <v-list-item>
-                      <v-list-item-title class="font-weight-bold">Otros Problemas</v-list-item-title>
-                      <v-list-item-subtitle>Contacta con el soporte técnico</v-list-item-subtitle>
+                      <v-list-item-title class="font-weight-bold">Altres Problemes</v-list-item-title>
+                      <v-list-item-subtitle>Contacta amb el suport tècnic</v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
                 </v-expansion-panel-text>

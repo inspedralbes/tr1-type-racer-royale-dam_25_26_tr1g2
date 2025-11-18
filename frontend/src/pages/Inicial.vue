@@ -43,7 +43,7 @@
                   @click="goJoinRoom"
                 >
                   <v-icon left large>mdi-account-multiple-plus</v-icon>
-                  Unirse a Sala
+Unir-se a Sala
                 </v-btn>
               </v-col>
 
@@ -57,8 +57,8 @@
                   @click="goSoloMode"
                 >
                   <v-icon left large>mdi-run-fast</v-icon>
-                  Modo Individual
-                </v-btn>
+            Mode Individual                
+              </v-btn>
               </v-col>
 
               <v-col cols="12" class="mb-3">
@@ -71,8 +71,8 @@
                   @click="goRaidMode"
                 >
                   <v-icon left large>mdi-fire</v-icon>
-                  Modo Incursión
-                </v-btn>
+            Mode Incursió                
+              </v-btn>
               </v-col>
             </v-row>
           </v-card-text>

@@ -47,6 +47,7 @@ let rafId = 0                     // requestAnimationFrame id per al loop
 
 // NEW: mode d'origen i URL de vídeo local
 const sourceMode = ref('camera')   // 'camera' | 'file'
+const fileUrl = ref(null)          // <--- AFEGEIX AQUESTA LÍNIA
 
 /* -----------------------------
    HELPERS (angles, distàncies, normalització, velocitats) - NEW

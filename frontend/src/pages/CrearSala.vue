@@ -9,7 +9,7 @@
           dark
         >
           <v-card-title class="justify-center pt-0 pb-4">
-            <h2 class="text-h5 font-weight-black">Crear Sala de Juego</h2>
+            <h2 class="text-h5 font-weight-black">Crear Sala de Joc</h2>
           </v-card-title>
 
           <v-card-text>
@@ -22,14 +22,13 @@
               block
             >
               <v-icon left>mdi-arrow-left</v-icon>
-              Volver
+              Tornar
             </v-btn>
 
             <v-divider class="my-4"></v-divider>
 
             <p class="text-body-1 mb-4 grey--text text--lighten-1">
-              Genera un código único para tu sala, compártelo con tus amigos y empieza a jugar.
-            </p>
+Genera un codi únic per a la teva sala, comparteix-lo amb els teus amics i comença a jugar.            </p>
 
             <v-btn
               color="primary"
@@ -38,12 +37,11 @@
               @click="generarCodigo"
             >
               <v-icon left size="28">mdi-plus-box</v-icon>
-              Generar Código
-            </v-btn>
+Generar Codi            </v-btn>
 
             <v-text-field
               v-model="codigoSala"
-              label="Código de Sala"
+              label="Codi de Sala"
               readonly
               outlined
               dense
@@ -59,7 +57,7 @@
             <!-- Contenedor adaptativo para selección y botón -->
             <div class="d-flex flex-wrap align-center justify-center mt-4 responsive-container">
               <div class="mb-3 mode-display">
-                <p class="text-subtitle-1 font-weight-bold">Modo: 2 vs 2</p>
+                <p class="text-subtitle-1 font-weight-bold">Mode: 2 vs 2</p>
               </div>
               <v-btn
                 color="success"
@@ -75,7 +73,7 @@
             </div>
 
             <p class="caption mt-4 grey--text text--lighten-1">
-              Projecte col·laboratiu.
+Projecte col·laboratiu.
             </p>
           </v-card-text>
         </v-card>
@@ -129,10 +127,10 @@ async function generarCodigo() {
     const resp = await api.post('/api/salas/crear', payload)
     const sid = resp.data?.sessionId ?? resp.data?.id ?? resp.data?.insertId ?? null
     if (sid) codigoSala.value = sid
-    else alert('Sala creada en servidor (id no devuelto por el API)')
+    else alert('Sala creada al servidor (id no retornat per l\'API)')
   } catch (err) {
-    console.error('Error guardando sala -', err)
-    alert('No se pudo guardar la sala.')
+    console.error('Error guardant sala -', err)
+    alert('No s\'ha pogut guardar la sala.')
   }
 }
 
@@ -140,20 +138,20 @@ async function copiarCodigo() {
   if (!codigoSala.value) return
   try {
     await navigator.clipboard.writeText(codigoSala.value)
-    alert('Código copiado al portapapeles.')
+    alert('Codi copiat al porta-retalls.')
   } catch (err) {
-    alert('No se pudo copiar el código.')
+    alert('No s\'ha pogut copiar el codi.')
   }
 }
 
 async function iniciarSala() {
-  if (!codigoSala.value) return alert('Genera la sala antes de iniciar.')
+  if (!codigoSala.value) return alert('Genera la sala abans d\'iniciar.')
   salaIniciada.value = true
   try {
     await api.post('/api/sessions/start', { codigo: codigoSala.value, iniciadorId: obtenerCreadorId() || 'invitado' })
     router.push({ name: 'multijugador', query: { sala: codigoSala.value } })
   } catch (err) {
-    alert('No se pudo iniciar la sala.')
+    alert('No s\'ha pogut iniciar la sala.')
   }
 }
 </script>

@@ -10,7 +10,7 @@ const repeticiones = ref(0)
 const features = shallowRef(null)
 const isPartidaActiva = ref(false)
 const isPoseDetectorReady = ref(false)
-const ejercicioSeleccionado = ref('Sentadillas')
+const ejercicioSeleccionado = ref('Sentadilles')
 const intervalRef = ref(null)
 
 // Rutinas de usuario
@@ -19,9 +19,9 @@ const selectedRoutineId = ref(null)
 
 // Ejercicios disponibles
 const allExercises = [
-  'Sentadillas','Flexiones','Abdominales','Burpees','Dominadas','Fondos',
-  'Zancadas','Plancha','Jumping Jacks','Mountain Climbers','Curl de Bíceps',
-  'Press de Hombros','Peso Muerto','Press de Banca','Remo'
+  'Sentadilles','Flexions','Abdominals','Burpees','Dominades','Fons',
+  'Zancades','Planxa','Jumping Jacks','Mountain Climbers','Rínxol de Bíceps',
+  'Press d\'Espatlles','Pes Mort','Press de Banca','Rem'
 ]
 
 const ejerciciosDisponibles = computed(() => {
@@ -73,8 +73,8 @@ function onFeatures(payload) {
     ? structuredClone(payload)
     : JSON.parse(JSON.stringify(payload))
   if (isPartidaActiva.value && features.value?.angles) {
-    if (ejercicioSeleccionado.value === 'Sentadillas') checkSquatRep(features.value.angles)
-    else if (ejercicioSeleccionado.value === 'Flexiones') checkPushupRep(features.value.angles)
+    if (ejercicioSeleccionado.value === 'Sentadilles') checkSquatRep(features.value.angles)
+    else if (ejercicioSeleccionado.value === 'Flexions') checkPushupRep(features.value.angles)
   }
 }
 
@@ -133,7 +133,7 @@ watch(selectedRoutineId, (newRoutineId) => {
     const routine = userRoutines.value.find(r => r.id === newRoutineId)
     if (routine && routine.exercicis.length > 0) ejercicioSeleccionado.value = routine.exercicis[0].nom_exercicis
   } else {
-    ejercicioSeleccionado.value = 'Sentadillas'
+    ejercicioSeleccionado.value = 'Sentadilles'
   }
 })
 </script>
@@ -145,13 +145,13 @@ watch(selectedRoutineId, (newRoutineId) => {
         <v-card elevation="16" class="pa-6 rounded-xl card-elevated card-full-width" dark>
        <v-card-title class="justify-center pb-4 title-card">
   <h2 class="title-text">
-    Modo Individual - {{ ejercicioSeleccionado }}
+    Mode Individual - {{ ejercicioSeleccionado }}
   </h2>
 </v-card-title>
 
           <v-btn color="error" class="mb-4 button-shadow back-button white--text" rounded to="/inicial" block dark>
             <v-icon left class="white--text">mdi-arrow-left</v-icon>
-            Volver al Inicio
+            Tornar a l'Inici
           </v-btn>
 
           <v-card-text>
@@ -162,19 +162,19 @@ watch(selectedRoutineId, (newRoutineId) => {
                   <PoseSkeleton class="video-feed" @features="onFeatures" />
                   <div v-if="!isPoseDetectorReady" class="webcam-overlay white--text">
                     <v-progress-circular indeterminate color="primary" />
-                    <p class="mt-3">Cargando detector de pose...</p>
+                    <p class="mt-3">Carregant detector de pose...</p>
                   </div>
                 </div>
 
                 <div class="d-flex gap-4 flex-wrap justify-center mb-4">
                   <v-btn color="primary" large rounded class="button-shadow button-pulse white--text" @click="iniciarPartida" :disabled="isPartidaActiva || !isPoseDetectorReady">
                     <v-icon left class="white--text">mdi-run-fast</v-icon>
-                    {{ isPoseDetectorReady ? 'Iniciar Partida' : 'Esperando Cámara...' }}
+                    {{ isPoseDetectorReady ? 'Iniciar Partida' : 'Esperant Càmera...' }}
                   </v-btn>
 
                   <v-btn color="red darken-1" large rounded class="button-shadow button-stop white--text" @click="detenerPartida" :disabled="!isPartidaActiva">
                     <v-icon left class="white--text">mdi-stop</v-icon>
-                    Detener Partida
+                    Aturar Partida
                   </v-btn>
                 </div>
               </v-col>
@@ -196,20 +196,20 @@ watch(selectedRoutineId, (newRoutineId) => {
                 <v-select
                   v-model="ejercicioSeleccionado"
                   :items="ejerciciosDisponibles"
-                  label="Selecciona Ejercicio"
+                  label="Selecciona Exercici"
                   outlined dense dark
                   class="mb-4 exercise-select white--text"
                   prepend-inner-icon="mdi-dumbbell"
                   :disabled="isPartidaActiva"
                 />
                 <v-card elevation="8" class="pa-6 rounded-lg repetitions-card" dark>
-                  <div class="text-h7 font-weight-bold mb-2 white--text">Repeticiones</div>
+                  <div class="text-h7 font-weight-bold mb-2 white--text">Repeticions</div>
                   <div class="text-h4 font-weight-black white--text">{{ repeticiones }}</div>
-                  <div class="mt-2 text-caption font-weight-bold white--text">Estado: {{ squatState }}</div>
+                  <div class="mt-2 text-caption font-weight-bold white--text">Estat: {{ squatState }}</div>
                 </v-card>
 
                 <v-card elevation="8" class="pa-4 rounded-lg features-card mt-4" dark>
-                  <div class="text-caption font-weight-bold mb-2 text-center text-primary white--text">DATOS DEL SENSOR (Ángulos Clave)</div>
+                  <div class="text-caption font-weight-bold mb-2 text-center text-primary white--text">DADES DEL SENSOR (Angles Clau)</div>
                   <PoseFeatures :features="features" />
                 </v-card>
               </v-col>

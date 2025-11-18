@@ -9,7 +9,7 @@
           dark
         >
           <v-card-title class="justify-center pt-0 pb-4">
-            <h2 class="text-h5 font-weight-black">Unirse a Sala</h2>
+            <h2 class="text-h5 font-weight-black">Unir-se a Sala</h2>
           </v-card-title>
           
           <v-btn
@@ -21,23 +21,22 @@
             block
           >
             <v-icon left>mdi-arrow-left</v-icon>
-            Volver
+            Tornar
           </v-btn>
 
           <v-card-text>
             <p class="text-body-1 mb-4 grey--text text--lighten-1">
-              Introduce el código de la sala que recibiste y únete al juego.
+              Introdueix el codi de la sala que vas rebre i uneix-te al joc.
             </p>
 
             <v-text-field
               v-model="codigoSala"
-              label="Código de Sala"
+              label="Codi de Sala"
               outlined
               dense
               class="mb-4"
             ></v-text-field>
 
-            <!-- NUEVOS BOTONES PARA SELECCIONAR MODO -->
             <div class="d-flex flex-column ga-4">
               <v-btn
                 color="primary"
@@ -49,7 +48,7 @@
                 block
               >
                 <v-icon left size="28">mdi-sword-cross</v-icon>
-                Unirse a Multijugador (2vs2)
+                Unir-se a Multijugador (2vs2)
               </v-btn>
 
               <v-btn
@@ -62,7 +61,7 @@
                 block
               >
                 <v-icon left size="28">mdi-robot-angry</v-icon>
-                Unirse a Incursión (Jefe)
+                Unir-se a Incursió (Boss)
               </v-btn>
             </div>
 

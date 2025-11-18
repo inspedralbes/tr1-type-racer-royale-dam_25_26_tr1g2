@@ -1,6 +1,5 @@
 <template>
   <v-app>
-    <!-- 1. Menú Lateral (v-navigation-drawer) para Móviles -->
     <v-navigation-drawer 
       v-model="drawer" 
       app 
@@ -9,10 +8,9 @@
       dark
     >
       <v-list nav dense>
-        <!-- Ítems del Menú Lateral -->
         <v-list-item link to="/" @click="drawer = false">
           <v-list-item-title class="font-weight-medium">
-            <v-icon left>mdi-home</v-icon> Inicio
+            <v-icon left>mdi-home</v-icon> Inici
           </v-list-item-title>
         </v-list-item>
 
@@ -24,7 +22,7 @@
 
         <v-list-item link to="/ayuda" @click="drawer = false">
           <v-list-item-title class="font-weight-medium">
-            <v-icon left>mdi-help-circle-outline</v-icon> Ayuda
+            <v-icon left>mdi-help-circle-outline</v-icon> Ajuda
           </v-list-item-title>
         </v-list-item>
         
@@ -32,23 +30,19 @@
         
         <v-list-item link to="/profile" color="green" @click="drawer = false">
           <v-list-item-title class="font-weight-bold green--text text--lighten-1">
-            <v-icon left color="green">mdi-account</v-icon> PROFILE
+            <v-icon left color="green">mdi-account</v-icon> PERFIL
           </v-list-item-title>
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
 
-    <!-- 2. Header condicional y escucha de evento -->
     <AppHeader v-if="!isAuthenticated" />
-    <!-- Cuando el usuario está autenticado, AppHeader2 emite 'toggleDrawer' -->
     <AppHeader2 v-else @toggleDrawer="drawer = !drawer" />
 
-    <!-- Contenido de cada página -->
     <v-main>
       <router-view />
     </v-main>
 
-    <!-- Footer global -->
     <AppFooter />
   </v-app>
 </template>

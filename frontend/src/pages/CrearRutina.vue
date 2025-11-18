@@ -4,13 +4,12 @@
       <v-container class="py-8">
         <v-card elevation="12" class="pa-6 rounded-xl">
           <v-card-title class="text-h5 font-weight-bold justify-center">
-            Crear Nueva Rutina
-          </v-card-title>
+Crear Nova Rutina          </v-card-title>
 
           <v-card-text>
             <v-text-field
               v-model="nombreRutina"
-              label="Nombre de la rutina"
+              label="Nom de la rutina"
               outlined
               dense
               prepend-inner-icon="mdi-pencil"
@@ -27,7 +26,7 @@
                 <v-select
                   v-model="ex.nom_exercicis"
                   :items="ejerciciosDisponibles"
-                  label="Ejercicio"
+                  label="Exercici"
                   outlined
                   dense
                   prepend-inner-icon="mdi-dumbbell"
@@ -39,7 +38,7 @@
               <v-col cols="8" sm="4" md="5" class="py-1 pr-2">
                 <v-text-field
                   v-model="ex.n_repeticions"
-                  label="Repeticiones"
+                  label="Repeticions"
                   outlined
                   dense
                   type="number"
@@ -63,7 +62,7 @@
             </v-row>
 
             <v-btn color="primary" class="mt-2" @click="agregarEjercicio" rounded>
-              <v-icon left>mdi-plus</v-icon> Añadir ejercicio
+              <v-icon left>mdi-plus</v-icon> Afegir exercici
             </v-btn>
           </v-card-text>
 
@@ -76,12 +75,12 @@
               @click="guardarRutina"
             >
               <v-icon left>mdi-content-save</v-icon>
-              Guardar Rutina
+Desar Rutina
             </v-btn>
 
             <v-btn color="error" rounded large to="/inicial">
               <v-icon left>mdi-arrow-left</v-icon>
-              Volver
+              Tornar
             </v-btn>
           </v-card-actions>
 
@@ -114,9 +113,9 @@ const mensaje = ref('')
 const idRutinaCreada = ref(null)
 
 const ejerciciosDisponibles = [
-  'Sentadillas', 'Flexiones', 'Abdominales', 'Burpees', 'Dominadas',
-  'Fondos', 'Zancadas', 'Plancha', 'Jumping Jacks', 'Mountain Climbers',
-  'Curl de Bíceps', 'Press de Hombros', 'Peso Muerto', 'Press de Banca', 'Remo'
+  'Sentadilles','Flexions','Abdominals','Burpees','Dominades','Fons',
+  'Zancades','Planxa','Jumping Jacks','Mountain Climbers','Rínxol de Bíceps',
+  'Press d\'Espatlles','Pes Mort','Press de Banca','Rem'
 ]
 
 function agregarEjercicio() {
@@ -129,7 +128,7 @@ function eliminarEjercicio(index) {
 
 async function guardarRutina() {
   if (!nombreRutina.value.trim()) {
-    mensaje.value = 'Por favor, ponle un nombre a tu rutina.'
+    mensaje.value = 'Si us plau, posa un nom a la teva rutina.'
     return
   }
 
@@ -155,19 +154,18 @@ async function guardarRutina() {
     })
 
     if (response.data?.success) {
-      mensaje.value = 'Rutina creada correctamente.'
+      mensaje.value = 'Rutina creada correctament.'
       // opcional: guardar ID creada
       idRutinaCreada.value = response.data.rutinaId
-      setTimeout(() => router.push('/individual'), 1500)
     } else {
-      mensaje.value = 'Error al guardar la rutina.'
+      mensaje.value = 'Error en desar la rutina.'
     }
   } catch (error) {
     console.error('Error en guardarRutina:', error)
     if (error.response?.data?.error) {
       mensaje.value = `Error: ${error.response.data.error}`
     } else {
-      mensaje.value = 'Error al guardar la rutina.'
+      mensaje.value = 'Error en desar la rutina.'
     }
   } finally {
     cargando.value = false

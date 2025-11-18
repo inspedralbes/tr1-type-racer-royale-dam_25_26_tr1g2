@@ -78,8 +78,8 @@ function onFeatures(payload) {
     'Flexions': { detect: checkPushupRep, state: pushupState },
     'Abdominals': { detect: checkSitupRep, state: situpState },
     'Zancades': { detect: checkLungeRep, state: lungeState }, // Zancadas -> Fetes
-    'Salts de Tisora': { detect: checkJumpingJacksRep, state: jumpingJacksState }, // Jumping Jacks -> Salts de Tisora
-    'Escaladors': { detect: checkMountainClimbersRep, state: mountainClimbersState } // Mountain Climbers -> Escaladors
+    'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState }, // Jumping Jacks -> Salts de Tisora
+    'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState } // Mountain Climbers -> Escaladors
   };
 
   const handler = exerciseHandlers[ejercicioSeleccionado.value];

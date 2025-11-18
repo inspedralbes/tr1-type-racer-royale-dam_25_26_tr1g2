@@ -4,13 +4,13 @@
       <v-col cols="12" sm="8" md="6" lg="4">
         <v-card class="elevation-12 pa-6">
           <v-card-title class="text-h5 text-center mb-4">
-            Registro de Usuario
+Registre d'Usuari
           </v-card-title>
           <v-form @submit.prevent="handleRegister" v-model="isFormValid">
             <v-text-field
               v-model="username"
               :rules="usernameRules"
-              label="Nombre de usuario"
+              label="Nom d'usuari"
               required
               prepend-icon="mdi-account"
               variant="outlined"
@@ -20,7 +20,7 @@
             <v-text-field
               v-model="email"
               :rules="emailRules"
-              label="Email"
+              label="Correu electrònic"
               type="email"
               required
               prepend-icon="mdi-email"
@@ -31,7 +31,7 @@
             <v-text-field
               v-model="password"
               :rules="passwordRules"
-              label="Contraseña"
+              label="Contrasenya"
               type="password"
               required
               prepend-icon="mdi-lock"
@@ -47,7 +47,7 @@
               :disabled="!isFormValid"
               :loading="loading"
             >
-              Registrarse
+              Registrar-se
             </v-btn>
 
             <v-alert
@@ -61,9 +61,9 @@
           </v-form>
 
           <div class="text-center mt-4">
-            ¿Ya tienes una cuenta?
+Ja tens un compte?
             <router-link to="/login" class="text-decoration-none">
-              Iniciar sesión
+Inicia la sessió
             </router-link>
           </div>
         </v-card>
@@ -89,18 +89,17 @@ const password = ref('')
 
 // Reglas de validación
 const usernameRules = [
-  v => !!v || 'El nombre de usuario es requerido',
-  v => v.length >= 3 || 'El nombre de usuario debe tener al menos 3 caracteres'
+  v => !!v || 'El nom d\'usuari és obligatori',
+  v => v.length >= 3 || 'El nom d\'usuari ha de tenir almenys 3 caràcters'
 ]
-
 const emailRules = [
-  v => !!v || 'El email es requerido',
-  v => /.+@.+\..+/.test(v) || 'El email debe ser válido'
+  v => !!v || 'El correu electrònic és obligatori',
+  v => /.+@.+\..+/.test(v) || 'El correu electrònic ha de ser vàlid'
 ]
 
 const passwordRules = [
-  v => !!v || 'La contraseña es requerida',
-  v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
+  v => !!v || 'La contrasenya és obligatòria',
+  v => v.length >= 6 || 'La contrasenya ha de tenir almenys 6 caràcters'
 ]
 
 const API_URL = 'http://localhost:9000';
@@ -127,14 +126,12 @@ const handleRegister = async () => {
       error.value = data.error || 'Error al registrar el usuario.'
     }
   } catch (err) {
-    error.value = 'Error al registrar el usuario. Por favor, inténtalo de nuevo.'
+    error.value = 'Error en registrar l\'usuari. Si us plau, intenta-ho de nou.' // Traduït
     console.error('Error de registro:', err)
   } finally {
     loading.value = false
   }
 }
-
-
 </script>
 
 <style scoped>

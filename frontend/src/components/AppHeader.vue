@@ -13,21 +13,21 @@
     <!-- Navegación escritorio -->
     <v-btn text to="/" class="hidden-sm-and-down">
       <v-icon left>mdi-home</v-icon>
-      Inicio
+      Inici
     </v-btn>
     <v-btn text to="/ayuda" class="hidden-sm-and-down">
       <v-icon left>mdi-help-circle-outline</v-icon>
-      Ayuda
+      Ajuda
     </v-btn>
 
     <v-spacer></v-spacer>
 
     <!-- Botones de login/registro escritorio -->
     <v-btn text to="/login" color="white" class="font-weight-bold mr-2 hidden-sm-and-down">
-      LOGIN
+      INICI DE SESSIÓ
     </v-btn>
     <v-btn color="primary" to="/register" class="font-weight-bold hidden-sm-and-down">
-      SIGN UP
+REGISTRE
     </v-btn>
   </v-app-bar>
 
@@ -42,18 +42,17 @@
     <v-list dense nav>
       <v-list-item to="/" @click="drawer = false">
         <v-icon left>mdi-home</v-icon>
-        Inicio
+        Inici
       </v-list-item>
 
       <v-list-item to="/ayuda" @click="drawer = false">
         <v-icon left>mdi-help-circle-outline</v-icon>
-        Ayuda
+        Ajuda
       </v-list-item>
 
       <v-list-item to="/login" @click="drawer = false">
         <v-icon left>mdi-login</v-icon>
-        Iniciar sesión
-      </v-list-item>
+        Iniciar sessió      </v-list-item>
     </v-list>
   </v-navigation-drawer>
 </template>

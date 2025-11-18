@@ -12,7 +12,7 @@
                   <v-icon class="edit-icon" size="40">mdi-camera-plus</v-icon>
                 </v-avatar>
                 <h2 class="mt-4 white--text">{{ username }}</h2>
-                <v-chip color="primary" small class="mt-2">Nivel {{ level }}</v-chip>
+                <v-chip color="primary" small class="mt-2">Nivell {{ level }}</v-chip>
               </v-card-title>
             </v-card>
           </v-col>
@@ -20,7 +20,7 @@
           <!-- Rutinas -->
           <v-col cols="12" md="8">
             <v-card class="profile-card" elevation="10">
-              <v-card-title class="white--text">Mis Rutinas Creadas</v-card-title>
+              <v-card-title class="white--text">Les Meves Rutines Creades</v-card-title>
 
               <v-card-text class="pa-0">
                 <!-- Tabla Desktop -->
@@ -35,10 +35,7 @@
                     <v-td v-bind="props" class="white--text font-weight-bold">{{ item.id }}</v-td>
                   </template>
 
-                  <template v-slot:item.descripcio="{ item, props }">
-                    <v-td v-bind="props" class="white--text">{{ item.descripcio || '-' }}</v-td>
-                  </template>
-
+                 
                   <template v-slot:item.data_creacio="{ item, props }">
                     <v-td v-bind="props">
                       <span class="text-caption grey--text text--lighten-2">{{ formatDate(item.data_creacio) }}</span>
@@ -49,7 +46,7 @@
                     <v-td v-bind="props" class="white--text">
                       <ul class="routine-list">
                         <li v-for="ex in item.exercicis" :key="ex.id">
-                          {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} reps
+                          {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} repeticions
                         </li>
                       </ul>
                     </v-td>
@@ -65,20 +62,18 @@
     
     <v-card-text class="pt-1">
       <div class="mb-1"><strong>ID:</strong> {{ routine.id }}</div>
-      
-      <div class="mb-1"><strong>Descripción:</strong> {{ routine.descripcio || '-' }}</div>
       <div class="mb-1"><strong>Creada:</strong> {{ formatDate(routine.data_creacio) }}</div>
-      <strong class="text-caption grey--text text--lighten-1">Ejercicios:</strong>
+      <strong class="text-caption grey--text text--lighten-1">Exercicis:</strong>
       <ul class="mobile-routine-list white--text">
         <li v-for="ex in routine.exercicis" :key="ex.id" class="text-body-2">
-          {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} reps
+          {{ ex.nom_exercicis }} — {{ ex.n_repeticions }} repeticions
         </li>
       </ul>
-      <v-chip small class="mt-2" color="teal">Total: {{ routine.exercicis.length }} Ejercicios</v-chip>
+      <v-chip small class="mt-2" color="teal">Total: {{ routine.exercicis.length }} Exercicis</v-chip>
     </v-card-text>
   </v-card>
   <p v-if="routines.length === 0" class="text-center mt-4 grey--text">
-    Aún no tienes rutinas creadas.
+Encara no tens rutines creades.
   </p>
 </div>
               </v-card-text>
@@ -89,10 +84,10 @@
         <!-- Dialogo Avatar -->
         <v-dialog v-model="showAvatarDialog" max-width="500px">
           <v-card class="profile-card">
-            <v-card-title class="white--text text-h6">Seleccionar Icono de Perfil</v-card-title>
+            <v-card-title class="white--text text-h6">Seleccionar Icona de Perfil</v-card-title>
             <v-card-text>
               <v-text-field
-                label="Pegar URL de imagen personalizada"
+                label="Enganxar URL d'imatge personalitzada"
                 v-model="customAvatarUrl"
                 @input="updatePreviewFromUrl"
                 clearable
@@ -101,7 +96,7 @@
               ></v-text-field>
 
               <v-divider class="mb-4"></v-divider>
-              <p class="white--text text-subtitle-2 mb-3">O elige uno de nuestros avatares:</p>
+              <p class="white--text text-subtitle-2 mb-3">O tria un dels nostres avatars:</p>
 
               <v-row>
                 <v-col v-for="avatar in avatars" :key="avatar.id" cols="4" sm="3" class="d-flex justify-center">
@@ -117,8 +112,8 @@
             </v-card-text>
             <v-card-actions>
               <v-spacer />
-              <v-btn color="grey" text @click="showAvatarDialog = false">Cancelar</v-btn>
-              <v-btn color="success" @click="saveAvatarChange" :disabled="!previewAvatar || previewAvatar === selectedAvatar">Guardar</v-btn>
+              <v-btn color="grey" text @click="showAvatarDialog = false">Cancel·lar</v-btn>
+              <v-btn color="success" @click="saveAvatarChange" :disabled="!previewAvatar || previewAvatar === selectedAvatar">Desar</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
@@ -151,10 +146,9 @@ const avatars = reactive([
 
 const routineHeaders = reactive([
   { title: 'ID', align: 'start', key: 'id' },
-  { title: 'Nombre', align: 'start', key: 'nom' },
-  { title: 'Descripción', align: 'start', key: 'descripcio' },
+  { title: 'Nom', align: 'start', key: 'nom' },
   { title: 'Creada', align: 'end', key: 'data_creacio' },
-  { title: 'Ejercicios', align: 'start', key: 'exercicis' },
+  { title: 'Exercicis', align: 'start', key: 'exercicis' },
 ])
 
 function formatDate(dateString) {

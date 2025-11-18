@@ -47,7 +47,7 @@ const salasActivas = {};
 
 // --- CONSTANTES DE INCURSIÓN ---
 const INCURSION_TIMER_DURATION = 60; 
-const INCURSION_EXERCISES = ['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers'];
+const INCURSION_EXERCISES = ['Sentadilles', 'Flexions', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers'];
 
 // Función para enviar mensajes a todos los clientes de una sesión
 function broadcastToSession(sessionId, message) {
@@ -395,7 +395,7 @@ app.get('/api/rutines/user/:id', async (req, res) => {
                 map.set(row.rutina_id, { id: row.rutina_id, nom: row.nom, descripcio: row.descripcio, data_creacio: row.data_creacio, exercicis: [] });
             }
             if (row.ejercicio_id) {
-                map.get(row.rutina_id).exercicis.push({ id: row.ejercicio_id, nom_exercicis: row.nom_exercicis, n_repeticiones: row.n_repeticiones });
+                map.get(row.rutina_id).exercicis.push({ id: row.ejercicio_id, nom_exercicis: row.nom_exercicis, n_repeticions: row.n_repeticions });
             }
         }
         const rutines = Array.from(map.values());

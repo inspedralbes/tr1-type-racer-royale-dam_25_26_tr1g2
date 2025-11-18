@@ -4,28 +4,28 @@
       <v-col cols="auto">
         <v-btn color="error" rounded large to="/inicial">
               <v-icon left>mdi-arrow-left</v-icon>
-              Volver
+              Tornar
             </v-btn>
       </v-col>
       <v-col cols="auto" class="text-center">
         <h1 class="text-h4 text-sm-h3 font-weight-black battle-title">
-          INCURSIÓN CONTRA EL JEFE
+INCURSIÓ CONTRA EL BOSS
         </h1>
         <div v-if="bossSessionId" class="text-center mt-2">
           <v-chip color="primary" small class="text-caption text-sm-body-2">
             <v-icon left small>mdi-account-group</v-icon>
-            Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
+            Jugadors: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
           </v-chip> 
           <!-- AÑADIR ESTE BLOQUE PARA MOSTRAR EL CÓDIGO -->
           <v-chip color="secondary" small class="text-caption text-sm-body-2 ml-2" @click="copiarCodigo">
             <v-icon left small>mdi-pound</v-icon>
-            Código: {{ bossSessionId }}
+            Codi: {{ bossSessionId }}
           </v-chip>
         </div> 
       </v-col>
       <v-col cols="auto" class="text-right" v-if="bossSessionId">
         <div class="reps-display">
-          REPS: <span class="text-h4">{{ repeticiones }}</span>
+          Repeticions: <span class="text-h4">{{ repeticiones }}</span>
         </div>
       </v-col>
     </v-row> 
@@ -34,11 +34,11 @@
       
       <v-col cols="12" md="6" order-md="1">
         <v-card class="pa-3 pa-sm-4 game-card player-card fill-height">
-          <h2 class="text-h6 text-sm-h5 font-weight-bold mb-3 text-center player-title">TU ENTRENADOR</h2>
+          <h2 class="text-h6 text-sm-h5 font-weight-bold mb-3 text-center player-title">EL TEU ENTRENADOR</h2>
 
           <div class="mb-4">
             <div class="d-flex align-center justify-space-between mb-1">
-                <div class="text-caption font-weight-bold text-truncate">TU HP</div>
+                <div class="text-caption font-weight-bold text-truncate">LA TEVA VIDA (HP)</div>
                 <div class="text-caption font-weight-bold">
                     {{ jugadorVidaActual }} / {{ jugadorVidaMaxima }}
                 </div>
@@ -59,7 +59,7 @@
             <PoseSkeleton @features="onFeatures" />
             <div v-if="!isPoseDetectorReady" class="loader-overlay">
                 <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                <p class="mt-2 text-caption">Cargando detector de pose...</p>
+                <p class="mt-2 text-caption">Carregant detector de pose...</p>
             </div>
             
             <!-- 2. Registro de Combate (Superpuesto en la cámara) -->
@@ -86,7 +86,7 @@
                   class="action-btn"
                 >
                   <v-icon left>mdi-magnify</v-icon>
-                  Crear Incursión
+Crear Incursió
                 </v-btn>
               </div>
 
@@ -115,7 +115,7 @@
                   :class="{'flex-grow-1': smAndUp}"
                 >
                   <v-icon left small>{{ isPartidaActiva ? 'mdi-shield-off' : 'mdi-exit-run' }}</v-icon>
-                  <span class="text-truncate">{{ isPartidaActiva ? 'DETENER' : 'SALIR' }}</span>
+                  <span class="text-truncate">{{ isPartidaActiva ? 'ATURAR' : 'SORTIR' }}</span>
                 </v-btn> 
               </div>
             </v-col>
@@ -128,7 +128,7 @@
         
         <v-card class="pa-3 pa-sm-4 game-card mb-4 ruleta-card" dark>
             <div class="d-flex align-center justify-space-between">
-                <h3 class="text-subtitle-1 font-weight-bold text-truncate">PRÓXIMO ATAQUE EN:</h3>
+                <h3 class="text-subtitle-1 font-weight-bold text-truncate">PROPER ATAC EN:</h3>
                 <div class="text-h5 text-sm-h4 font-weight-black" :class="{'error--text': tiempoRestante < 15}">
                     {{ tiempoFormateado }}
                 </div>
@@ -137,7 +137,7 @@
             <v-divider class="my-2"></v-divider>
             
             <div class="text-center">
-                <p class="mb-1 text-caption text-sm-subtitle-1">¡El Jefe exige!</p>
+                <p class="mb-1 text-caption text-sm-subtitle-1">El BOSS exigeix!</p>
                 <h2 class="text-h5 text-sm-h3 font-weight-black exercise-demand text-truncate">
                     {{ ejercicioSeleccionado.toUpperCase() }}
                 </h2>
@@ -156,7 +156,7 @@
             :class="{'hit-animation': isJefeGolpeado}"
         >
           <div class="d-flex align-center justify-space-between mb-3">
-            <h2 class="text-h6 text-sm-h5 font-weight-bold enemy-title text-truncate">JEFE DE GIMNASIO</h2>
+            <h2 class="text-h6 text-sm-h5 font-weight-bold enemy-title text-truncate">BOSS DE GIMNÀS</h2>
             <div class="text-subtitle-2 font-weight-bold">
               HP: {{ jefeVidaActual }} / {{ jefeVidaMaxima }}
             </div>
@@ -184,14 +184,14 @@
 
           <!-- Lista de Participantes -->
           <v-list dense class="participants-list mt-4">
-            <v-list-subheader>PARTICIPANTES</v-list-subheader>
+            <v-list-subheader>PARTICIPANTS</v-list-subheader>
             <v-list-item
               v-for="p in participantes"
               :key="p.id"
               class="participant-item"
             >
-              <v-list-item-title class="font-weight-bold">{{ p.nombre }} {{ String(p.id) === String(user.id) ? '(Tú)' : '' }}</v-list-item-title>
-              <v-list-item-subtitle>Daño: {{ p.damageDealt || 0 }}</v-list-item-subtitle>
+              <v-list-item-title class="font-weight-bold">{{ p.nombre }} {{ String(p.id) === String(user.id) ? '(Tu)' : '' }}</v-list-item-title>
+              <v-list-item-subtitle>Dany: {{ p.damageDealt || 0 }}</v-list-item-subtitle>
               <template v-slot:append>
                 <v-icon v-if="p.id === esCreador" color="amber">mdi-star</v-icon>
               </template>
@@ -254,7 +254,7 @@ const jumpingJacksState = ref('down');
 const mountainClimbersState = ref('up');
 
 const logMensajes = ref([
-    { time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }
+    { time: '00:00', text: 'Benvingut! Cerca una incursió per començar.', type: '' }
 ])
 const messageLogRef = ref(null)
 
@@ -262,7 +262,7 @@ const messageLogRef = ref(null)
 const isJefeGolpeado = ref(false) 
 
 // --- ESTADO Y TIMERS DE LA RULETA ---
-const ejerciciosDisponibles = ref(['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']) 
+const ejerciciosDisponibles = ref(['Sentadilles', 'Flexions', 'Abdominals', 'Zancades', 'Jumping Jacks', 'Mountain Climbers']) 
 
 // --- WEBSOCKET ---
 const ws = ref(null);
@@ -295,9 +295,9 @@ async function copiarCodigo() {
   if (!bossSessionId.value) return;
   try {
     await navigator.clipboard.writeText(bossSessionId.value);
-    añadirMensaje('¡Código de la sala copiado!', 'info--text');
+    añadirMensaje('Codi de la sala copiat!', 'info--text');
   } catch (err) {
-    añadirMensaje('No se pudo copiar el código.', 'error--text');
+    añadirMensaje('No s\'ha pogut copiar el codi.', 'error--text');
   }
 }
 
@@ -343,11 +343,11 @@ function aplicarDanoJugador(dano, razon) {
 
     jugadorVidaActual.value = Math.max(0, jugadorVidaActual.value - dano);
     
-    añadirMensaje(` ¡FALLO! (${razon}) Pierdes ${dano} HP.`, 'error--text');
+    añadirMensaje(` FALLADA!! (${razon}) Perds ${dano} HP.`, 'error--text');
 
     if (jugadorVidaActual.value === 0) {
         detenerPartida();
-        añadirMensaje(` ¡DERROTA! Tu HP ha llegado a 0. ¡El Jefe ha ganado!`, 'critical--text');
+        añadirMensaje(` DERROTA! La teva HP ha arribat a 0. El BOSS ha guanyat!`, 'critical--text');
     }
     
     // Invulnerabilidad temporal de 3 segundos
@@ -377,7 +377,7 @@ function aplicarDanoJefe(dano) {
 function onFeatures(payload) {
     if (payload && !isPoseDetectorReady.value) {
         isPoseDetectorReady.value = true
-        añadirMensaje('Detector de pose cargado. ¡Listo para empezar!', 'info--text')
+        añadirMensaje('Detector de pose carregat. A punt per començar!', 'info--text')
     }
 
     features.value = payload ? structuredClone(payload) : null
@@ -385,7 +385,7 @@ function onFeatures(payload) {
 
     // 1. CHEQUEO DE CALIDAD DE POSE (Daño al jugador si es pobre)
     if (features.value?.score < UMBRAL_POBRE_SCORE) {
-        aplicarDanoJugador(DAÑO_AL_JUGADOR_POR_FALLO, "Mala Pose / Pérdida de Puntos Clave");
+        aplicarDanoJugador(DAÑO_AL_JUGADOR_POR_FALLO, "Mala Pose / Pèrdua de Punts Clau");
         return 
     }
 
@@ -415,13 +415,13 @@ function onFeatures(payload) {
 
                 if (jugadorVidaActual.value < jugadorVidaMaxima) {
                     jugadorVidaActual.value = Math.min(jugadorVidaMaxima, jugadorVidaActual.value + 5);
-                    añadirMensaje(`¡BIEN HECHO! Recuperas 5 HP.`, 'success--text');
+                    añadirMensaje(`BÉ FET! Recuperes 5 HP.`, 'success--text');
                 }
 
                 const damageModifiers = {
-                    'Flexiones': 10,
-                    'Abdominales': 7,
-                    'Zancadas': 9,
+                    'Flexions': 10,
+                    'Abdominals': 7,
+                    'Zancades': 9,
                     'Jumping Jacks': 6,
                     'Mountain Climbers': 8
                 };
@@ -470,20 +470,20 @@ function conectarWebSocket() {
         iniciarPartida();
         break;
       case 'JOIN_ERROR':
-        añadirMensaje(`Error al unirse: ${data.message}`, 'error--text');
+        añadirMensaje(`Error en unir-se: ${data.message}`, 'error--text');
         buscandoPartida.value = false;
         salirDeLaIncursion(); // Volver al estado inicial
         break;
       case 'BOSS_HEALTH_UPDATE':
         jefeVidaActual.value = data.jefeVidaActual;
-        añadirMensaje(`¡${data.attackerName} ha atacado! Vida del jefe: ${data.jefeVidaActual}`, 'success--text'); 
+        añadirMensaje(`${data.attackerName} ha atacat! Vida del Boss: ${data.jefeVidaActual}`, 'success--text'); 
         if (jefeVidaActual.value <= 0) {
             detenerPartida();
-            añadirMensaje(`🥳 ¡FELICIDADES! ¡Habéis derrotado al Jefe!`, 'critical--text');
+            añadirMensaje(`🥳 FELICITATS! Heu derrotat al Boss!`, 'critical--text');
         }
         break;
       case 'LEADER_LEFT':
-        añadirMensaje('El líder ha abandonado la incursión. La sesión ha terminado.', 'error--text');
+        añadirMensaje('El líder ha abandonat la incursió. La sessió ha acabat.', 'error--text');
         detenerPartida();
         salirDeLaIncursion();
         break;
@@ -495,7 +495,7 @@ function conectarWebSocket() {
         if (String(data.userId) === String(user.value?.id)) {
             ejercicioSeleccionado.value = data.exercise;
             repeticiones.value = 0; // Reiniciar contador
-            añadirMensaje(`¡NUEVO DESAFÍO! Ahora te toca: ${data.exercise}`, 'warning--text');
+            añadirMensaje(`NOU REPTE! Ara et toca: ${data.exercise}`, 'warning--text');
         }
         break;
     }
@@ -506,12 +506,12 @@ function conectarWebSocket() {
     // Si la partida estaba activa y nos desconectamos, la detenemos localmente.
     if (isPartidaActiva.value) detenerPartida();
     if (bossSessionId.value) { // Solo si estábamos en una sesión activa
-      añadirMensaje('Desconectado del servidor de incursión.', 'warning--text');
+      añadirMensaje('Desconnectat del servidor d\'incursió.', 'warning--text');
     }
   };
 
   ws.value.onerror = () => {
-    añadirMensaje('Error de conexión con el servidor de incursión.', 'error--text');
+    añadirMensaje('Error de connexió amb el servidor d\'incursió.', 'error--text');
   };
 }
 
@@ -520,25 +520,25 @@ const api = axios; // Usamos la instancia global
 
 async function gestionarUnionIncursion() {
   if (!user.value?.id) {
-    añadirMensaje('Debes iniciar sesión para buscar una incursión.', 'error--text');
+    añadirMensaje('Has d\'iniciar sessió per buscar una incursió.', 'error--text');
     return;
   }
   buscandoPartida.value = true;
 
   // Si ya tenemos un ID de sala (por URL), nos unimos directamente.
   if (bossSessionId.value) {
-    añadirMensaje(`Intentando unirse a la incursión ${bossSessionId.value}...`, 'info--text');
+    añadirMensaje(`Intentant unir-se a la incursió ${bossSessionId.value}...`, 'info--text');
     conectarWebSocket();
   } else {
     // Si no, creamos una nueva.
-    añadirMensaje('Creando nueva incursión...', 'info--text');
+    añadirMensaje('Creant nova incursió...', 'info--text');
     try {
       const response = await api.post('/api/incursiones/crear', { creadorId: user.value.id });
       bossSessionId.value = response.data.sessionId;
       conectarWebSocket(); // Ahora nos conectamos con el ID de la sala recién creada.
     } catch (error) {
-      añadirMensaje('Error al crear la incursión. Inténtalo de nuevo.', 'error--text');
-      console.error('Error creando incursión:', error);
+      añadirMensaje('Error al crear la incursió. Intenta-ho de nou.', 'error--text');
+      console.error('Error creant incursió:', error);
     }
   }
   buscandoPartida.value = false;
@@ -549,8 +549,8 @@ function salirDeLaIncursion() {
   esCreador.value = false; 
   isPartidaActiva.value = false;
   participantes.value = [];
-  logMensajes.value = [{ id: 0, time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
-  
+  logMensajes.value = [{ id: 0, time: '00:00', text: 'Benvingut! Cerca una incursió per començar.', type: '' }];
+
   // Reiniciar la vida del jefe a los valores iniciales para evitar datos corruptos entre sesiones
   jefeVidaMaxima.value = jefeVidaMaximaInicial.value;
   jefeVidaActual.value = jefeVidaMaximaInicial.value;
@@ -585,14 +585,14 @@ function iniciarPartida() {
   tiempoRestante.value = DURACION_RULETA;
   
   isPartidaActiva.value = true;
-  añadirMensaje(`¡Comienza el combate! Esperando asignación de ejercicio...`, 'critical--text');
+  añadirMensaje(`Comença el combat! Esperant assignació d'exercici...`, 'critical--text');
 }
 
 function detenerPartida() {
   if (!isPartidaActiva.value) return;
   isPartidaActiva.value = false;
   if (dañoJugadorTimeout) clearTimeout(dañoJugadorTimeout);
-  añadirMensaje('Combate detenido.', 'warning--text');
+  añadirMensaje('Combat aturat.', 'warning--text');
 }
 
 onMounted(() => {
