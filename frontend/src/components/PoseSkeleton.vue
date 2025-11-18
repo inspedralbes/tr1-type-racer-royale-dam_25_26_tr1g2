@@ -129,7 +129,7 @@ const emitFeaturesThrottled = (() => {
 /* -----------------------------
    UTILITATS DE CÀMERA
 ------------------------------*/
-async function listVideoInputs () {
+async function listVideoInputs (initialLoad = false) {
   if (!navigator.mediaDevices?.enumerateDevices) return
   const all = await navigator.mediaDevices.enumerateDevices()
   const cams = all.filter(d => d.kind === 'videoinput')
@@ -139,7 +139,7 @@ async function listVideoInputs () {
     label: d.label || `Camera ${idx + 1}`
   }))
 
-  if (!selectedId.value && devices.value.length) {
+  if (initialLoad && !selectedId.value && devices.value.length) {
     selectedId.value = devices.value[0].deviceId
   }
 }
@@ -168,7 +168,7 @@ async function startCamera (deviceId = '') {
   }
 
   // Un cop concedit el permís, els labels ja són llegibles
-  await listVideoInputs()
+  await listVideoInputs(true) // Indicar que es la carga inicial
 }
 
 /* -----------------------------
@@ -429,7 +429,7 @@ onMounted(async () => {
     alert('No se ha podido inicializar la cámara o el modelo de detección de pose. Asegúrate de dar permisos a la cámara.')
   } finally {
     if (navigator.mediaDevices?.addEventListener) {
-      onDeviceChange.value = async () => { await listVideoInputs() }
+      onDeviceChange.value = async () => { await listVideoInputs(false) } // No es carga inicial
       navigator.mediaDevices.addEventListener('devicechange', onDeviceChange.value)
     }
   }

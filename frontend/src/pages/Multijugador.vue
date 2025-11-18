@@ -50,6 +50,18 @@ const todosListos = computed(() =>
   jugadores.value.length > 0 && jugadores.value.every(j => j.ready)
 )
 
+const startButtonText = computed(() => {
+  if (jugadores.value.length < 2) {
+    return 'Se necesitan al menos 2 jugadores';
+  }
+  if (!todosListos.value) {
+    const faltan = jugadores.value.filter(j => !j.ready).length;
+    return `Esperando a ${faltan} jugador(es)`;
+  }
+  return 'Iniciar Partida';
+});
+
+
 function onFeatures(payload) {
   if (payload && !isPoseDetectorReady.value) isPoseDetectorReady.value = true;
   features.value = (typeof structuredClone === 'function') 
@@ -94,7 +106,7 @@ function marcarListo() {
 }
 
 async function iniciarPartida() {
-  if (!esCreador.value || !todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return;
+  if (!esCreador.value || jugadores.value.length < 2 || !todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return;
   try {
     await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value });
   } catch (error) {
@@ -276,10 +288,10 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                     class="button-shadow button-pulse"
                     v-if="esCreador"
                     @click="iniciarPartida"
-                    :disabled="!todosListos || !isPoseDetectorReady || isPartidaActiva"
+                    :disabled="jugadores.length < 2 || !todosListos || !isPoseDetectorReady || isPartidaActiva"
                   >
                     <v-icon left>mdi-play</v-icon>
-                    {{ todosListos ? 'Iniciar Partida' : `Esperando ${jugadores.filter(j => !j.ready).length} jugador(es)...` }}
+                    {{ startButtonText }}
                   </v-btn>
 
                   <v-btn
@@ -302,11 +314,14 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                   v-for="jugador in jugadores"
                   :key="jugador.id"
                   class="pa-3 mb-3 rounded-lg repetitions-card"
-                  :style="{borderColor: jugador.id === 1 ? '#2196F3' : '#FF9800'}"
+                  :class="{ 'creator-card': String(jugador.id) === String(creadorId), 'self-card': String(jugador.id) === String(userId) }"
                   elevation="8"
                   dark
                 >
-                  <div class="text-h6 font-weight-bold mb-2">{{ jugador.nombre }}</div>
+                  <div class="d-flex align-center justify-center text-h6 font-weight-bold mb-2">
+                    <span>{{ jugador.nombre }}</span>
+                    <v-icon v-if="String(jugador.id) === String(creadorId)" color="amber" small right>mdi-crown</v-icon>
+                  </div>
                   <div class="text-h5 font-weight-black mb-2">
                     Reps: {{ jugador.repeticiones }} / {{ maxReps }}
                   </div>
@@ -319,7 +334,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                   </div>
 
                   <v-btn
-                    v-if="!jugador.ready && !isPartidaActiva && jugador.id === userId"
+                    v-if="!jugador.ready && !isPartidaActiva && String(jugador.id) === String(userId)"
                     color="green"
                     block
                     rounded
@@ -422,7 +437,21 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
 .custom-container { max-width: 1000px !important; }
 .webcam-container { position: relative; width: 100%; padding-top: 0%; min-height: 500px; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
 @media (max-width: 768px) { .webcam-container { min-height: 300px; } }
-.repetitions-card { width: 100%; max-width: 250px; background-color: #2c2c2c !important; text-align: center; color: #fff !important; }
+.repetitions-card { 
+  width: 100%; 
+  max-width: 250px; 
+  background-color: #2c2c2c !important; 
+  text-align: center; 
+  color: #fff !important;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+.creator-card {
+  border-color: #FFD700; /* Gold border for creator */
+}
+.self-card {
+  box-shadow: 0 0 15px #03A9F4; /* Glow for self */
+}
 .webcam-overlay, .objetivo-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #fff; }
 .webcam-overlay { background-color: rgba(0,0,0,0.7); z-index: 10; }
 .objetivo-overlay { background-color: rgba(255,193,7,0.1); backdrop-filter: blur(2px); z-index: 20; text-align: center; animation: scaleIn 0.6s ease; }

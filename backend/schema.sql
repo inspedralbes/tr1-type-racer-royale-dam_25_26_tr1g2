@@ -16,17 +16,17 @@ CREATE TABLE Rutines (
     nom VARCHAR(100) NOT NULL,
     descripcio TEXT,
     data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_usuari) REFERENCES Usuaris(id)
+    FOREIGN KEY (id_usuari) REFERENCES Usuaris(id) ON DELETE CASCADE
 );
 
 -- Mode 2v2
 CREATE TABLE SessionsVersus (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    codi_acces CHAR(8) UNIQUE NOT NULL,
-    estat ENUM('oberta','en curs','finalitzada') DEFAULT 'oberta',
+    codi_acces VARCHAR(10) UNIQUE,
+    estat VARCHAR(20) DEFAULT 'oberta',
     data_creacio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     creador_id INT,
-    FOREIGN KEY (creador_id) REFERENCES Usuaris(id)
+    FOREIGN KEY (creador_id) REFERENCES Usuaris(id) ON DELETE CASCADE
 );
 
 CREATE TABLE Exercicis_Rutina (
@@ -34,7 +34,7 @@ CREATE TABLE Exercicis_Rutina (
     id_rutina INT,
     nom_exercicis VARCHAR(100) NOT NULL,
     n_repeticions VARCHAR(100),
-    FOREIGN KEY (id_rutina) REFERENCES Rutines(id)
+    FOREIGN KEY (id_rutina) REFERENCES Rutines(id) ON DELETE CASCADE
 );
 
 -- Showdown
@@ -44,16 +44,16 @@ CREATE TABLE Boss_Sessions (
     jefe_vida_max INT DEFAULT 300,
     jefe_vida_actual INT,
     max_participants INT DEFAULT 10,
-    estat ENUM('oberta','en curs','finalitzada') DEFAULT 'oberta',
+    estat VARCHAR(20) DEFAULT 'oberta',
     data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (creador_id) REFERENCES Usuaris(id)
+    FOREIGN KEY (creador_id) REFERENCES Usuaris(id) ON DELETE CASCADE
 );
 
 CREATE TABLE Boss_Participants (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_boss_sessio INT,
+    id_boss_sessio VARCHAR(255),
     id_usuari INT,
     damage INT DEFAULT 8,
-    FOREIGN KEY (id_boss_sessio) REFERENCES Boss_Sessions(id),
-    FOREIGN KEY (id_usuari) REFERENCES Usuaris(id)
+    FOREIGN KEY (id_boss_sessio) REFERENCES Boss_Sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuari) REFERENCES Usuaris(id) ON DELETE CASCADE
 );

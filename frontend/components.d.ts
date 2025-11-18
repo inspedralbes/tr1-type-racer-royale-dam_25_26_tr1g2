@@ -15,7 +15,6 @@ declare module 'vue' {
     AppHeader: typeof import('./src/components/AppHeader.vue')['default']
     AppHeader2: typeof import('./src/components/AppHeader2.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
-    Joc: typeof import('./src/components/Joc.vue')['default']
     PoseFeatures: typeof import('./src/components/PoseFeatures.vue')['default']
     PoseSkeleton: typeof import('./src/components/PoseSkeleton.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

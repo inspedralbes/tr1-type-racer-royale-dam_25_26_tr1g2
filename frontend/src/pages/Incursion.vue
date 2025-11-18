@@ -15,7 +15,7 @@
           <v-chip color="primary" small class="text-caption text-sm-body-2">
             <v-icon left small>mdi-account-group</v-icon>
             Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
-          </v-chip>
+          </v-chip> 
           <!-- AÑADIR ESTE BLOQUE PARA MOSTRAR EL CÓDIGO -->
           <v-chip color="secondary" small class="text-caption text-sm-body-2 ml-2" @click="copiarCodigo">
             <v-icon left small>mdi-pound</v-icon>
@@ -220,12 +220,13 @@ import { useDisplay } from 'vuetify'
 
 // --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---
 const jefeVidaMaxima = ref(300); // Vida base, se actualizará desde el servidor
+const jefeVidaMaximaInicial = ref(300); // Vida máxima para la UI, no disminuye
 const jugadorVidaMaxima = 100;
 const DURACION_RULETA = 60 // 1 minuto para pruebas
 const MAX_PARTICIPANTS = 10;
-const DAÑO_AL_JEFE_BASE = 8;
+const DAÑO_AL_JEFE_BASE = 5;
 const DAÑO_AL_JUGADOR_POR_FALLO = 5;
-const UMBRAL_POBRE_SCORE = 0.65; // Calidad mínima de la pose para no recibir daño
+const UMBRAL_POBRE_SCORE = 0.25; // Calidad mínima de la pose para no recibir daño
 
 // --- ESTADO GENERAL Y SENSORES ---
 const features = ref(null)
@@ -240,7 +241,7 @@ const buscandoPartida = ref(false);
 const participantes = ref([]);
 
 // --- ESTADO DEL COMBATE --- 
-const jefeVidaActual = ref(jefeVidaMaxima)
+const jefeVidaActual = ref(jefeVidaMaxima.value)
 const jugadorVidaActual = ref(jugadorVidaMaxima);
 const repeticiones = ref(0);
 
@@ -280,7 +281,7 @@ let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
 const route = useRoute();
 
 // --- COMPUTED ---
-const jefeVidaPorcentaje = computed(() => (jefeVidaActual.value / jefeVidaMaxima) * 100);
+const jefeVidaPorcentaje = computed(() => (jefeVidaActual.value / jefeVidaMaxima.value) * 100);
 const jugadorVidaPorcentaje = computed(() => (jugadorVidaActual.value / jugadorVidaMaxima) * 100);
 
 const tiempoFormateado = computed(() => {
@@ -412,6 +413,11 @@ function onFeatures(payload) {
             if (result.repCompleted) {
                 repeticiones.value++;
 
+                if (jugadorVidaActual.value < jugadorVidaMaxima) {
+                    jugadorVidaActual.value = Math.min(jugadorVidaMaxima, jugadorVidaActual.value + 5);
+                    añadirMensaje(`¡BIEN HECHO! Recuperas 5 HP.`, 'success--text');
+                }
+
                 const damageModifiers = {
                     'Flexiones': 10,
                     'Abdominales': 7,
@@ -441,8 +447,7 @@ function conectarWebSocket() {
     const userData = JSON.parse(localStorage.getItem('user')) || {};
     ws.value.send(JSON.stringify({
       type: 'INCURSION_JOIN',
-      // Enviamos el sessionId como NULL o lo que sea para forzar al servidor a buscar/crear
-      sessionId: bossSessionId.value, // Será el ID de la sala si vienes de UnirSala, o null si buscas una nueva
+      sessionId: bossSessionId.value, // Ahora siempre tendremos un ID de sesión válido aquí.
       userId: userData.id,
       nombre: userData.usuari || 'Invitado'
     }));
@@ -455,7 +460,7 @@ function conectarWebSocket() {
         bossSessionId.value = data.sessionId; // Guardamos el ID de la sesión
         participantes.value = data.participantes;
         esCreador.value = String(data.creadorId) === String(user.value?.id);
-        jefeVidaMax.value = data.jefeVidaMax;
+        jefeVidaMaxima.value = Math.max(jefeVidaMaxima.value, data.jefeVidaMax);
         jefeVidaActual.value = data.jefeVidaActual;
         if (data.message) {
           añadirMensaje(data.message, 'info--text');
@@ -498,6 +503,8 @@ function conectarWebSocket() {
 
   ws.value.onclose = () => {
     isConnected.value = false;
+    // Si la partida estaba activa y nos desconectamos, la detenemos localmente.
+    if (isPartidaActiva.value) detenerPartida();
     if (bossSessionId.value) { // Solo si estábamos en una sesión activa
       añadirMensaje('Desconectado del servidor de incursión.', 'warning--text');
     }
@@ -508,19 +515,33 @@ function conectarWebSocket() {
   };
 }
 
+import axios from 'axios'; // Importamos la instancia global de axios
+const api = axios; // Usamos la instancia global
+
 async function gestionarUnionIncursion() {
   if (!user.value?.id) {
     añadirMensaje('Debes iniciar sesión para buscar una incursión.', 'error--text');
     return;
   }
-
   buscandoPartida.value = true;
-  añadirMensaje('Buscando o creando incursión...', 'info--text'); 
 
-  // 1. Conectar WebSocket
-  conectarWebSocket();
-
-  setTimeout(() => { buscandoPartida.value = false; }, 4000); // Timeout de seguridad
+  // Si ya tenemos un ID de sala (por URL), nos unimos directamente.
+  if (bossSessionId.value) {
+    añadirMensaje(`Intentando unirse a la incursión ${bossSessionId.value}...`, 'info--text');
+    conectarWebSocket();
+  } else {
+    // Si no, creamos una nueva.
+    añadirMensaje('Creando nueva incursión...', 'info--text');
+    try {
+      const response = await api.post('/api/incursiones/crear', { creadorId: user.value.id });
+      bossSessionId.value = response.data.sessionId;
+      conectarWebSocket(); // Ahora nos conectamos con el ID de la sala recién creada.
+    } catch (error) {
+      añadirMensaje('Error al crear la incursión. Inténtalo de nuevo.', 'error--text');
+      console.error('Error creando incursión:', error);
+    }
+  }
+  buscandoPartida.value = false;
 }
 
 function salirDeLaIncursion() {
@@ -529,6 +550,11 @@ function salirDeLaIncursion() {
   isPartidaActiva.value = false;
   participantes.value = [];
   logMensajes.value = [{ id: 0, time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
+  
+  // Reiniciar la vida del jefe a los valores iniciales para evitar datos corruptos entre sesiones
+  jefeVidaMaxima.value = jefeVidaMaximaInicial.value;
+  jefeVidaActual.value = jefeVidaMaximaInicial.value;
+
   if (ws.value) {
     ws.value.close();
     ws.value = null;
@@ -592,118 +618,51 @@ onBeforeUnmount(() => {
 <style scoped>
 /* Estilos del Esqueleto de la Batalla (Adaptados de tu código anterior) */
 .incursion-background {
-  background: linear-gradient(135deg, #1d2630 0%, #313c4a 100%);
-  min-height: 100vh;
-  color: #f5f5f5;
-}
-.join-section {
-  background-color: rgba(0,0,0,0.2);
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  margin-bottom: 1rem;
+    background: linear-gradient(135deg, #1d2630 0%, #313c4a 100%);
+    min-height: 100vh;
+    color: #f5f5f5;
 }
 
+/* ... (Otros estilos generales sin cambios) ... */
+
 .battle-title {
-    color: #FFD700; /* Oro */
+    color: #FFD700;
     text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
     letter-spacing: 1.5px;
 }
 
 .game-card {
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-  background-color: rgba(40, 50, 60, 0.8) !important; 
-  color: white;
-  position: relative; 
-  backdrop-filter: blur(5px);
-}
-
-.enemy-card {
-  border-color: rgba(255, 82, 82, 0.5);
-}
-
-.enemy-title {
-  color: #FF5252; /* Rojo brillante */
-}
-
-.player-card {
-  border-color: rgba(66, 165, 245, 0.5);
-}
-
-.player-title {
-  color: #42A5F5; /* Azul brillante */
-}
-
-.health-text {
-  color: white;
-  text-shadow: 1px 1px 2px black;
-}
-
-.ruleta-card {
-  border-color: rgba(255, 171, 0, 0.5);
-  color: white;
-}
-
-.exercise-demand {
-  color: #FFAB00; /* Naranja ámbar */
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
-
-.reps-display {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-  letter-spacing: 1px;
-}
-
-/* --- ESTILOS DE LA CÁMARA/CHAT --- */
-.webcam-stage {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    background: #000;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.webcam-stage .loader-overlay {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+    background-color: rgba(40, 50, 60, 0.8) !important; 
     color: white;
-    z-index: 10;
+    position: relative; 
+    backdrop-filter: blur(5px);
 }
 
-/* El nuevo contenedor de la superposición de chat */
+/* --- ESTILOS DE CHAT (LÓGICA 'message-log' CORREGIDA) --- */
+
 .combat-log-overlay {
     position: absolute;
-    top: 10px; /* Separación de la parte superior */
-    left: 10px; /* Separación de la izquierda */
-    width: 95%; /* Ocupa casi todo el ancho */
+    top: 10px;
+    left: 10px;
+    width: 95%;
     height: 100%;
-    pointer-events: none; /* Permite clicks a través de él si fuera necesario */
-    z-index: 5; /* Asegura que esté sobre la webcam */
+    pointer-events: none;
+    z-index: 5;
 }
 
 .message-log {
-    /* Altura solo para la zona del chat (parte superior izquierda) */
     max-height: 40%; 
     width: 70%;
-    overflow-y: hidden; /* Ocultamos el scrollbar, solo mostramos las últimas líneas */
+    overflow-y: hidden;
     display: flex;
-    flex-direction: column-reverse; /* Muestra el mensaje más nuevo abajo, pero la caja está arriba */
+    flex-direction: column-reverse;
     background-color: transparent;
     padding-right: 8px;
     color: #eee;
     word-break: break-word;
-    /* Efecto de desvanecimiento en la parte superior */
     mask-image: linear-gradient(to bottom, transparent 0%, black 50%, black 100%);
 }
 
@@ -712,106 +671,68 @@ onBeforeUnmount(() => {
     line-height: 1.3;
     font-size: 0.8rem;
     padding: 2px 5px;
-    background-color: rgba(0, 0, 0, 0.4); /* Fondo semi-transparente para cada mensaje */
+    background-color: rgba(0, 0, 0, 0.4);
     border-radius: 4px;
     width: fit-content;
     max-width: 100%;
-    pointer-events: auto; /* Restaura la capacidad de desplazamiento (si lo hubiéramos activado) */
-    animation: fadeIn 0.5s ease-out; /* Animación simple al aparecer */
+    pointer-events: auto;
+    animation: fadeIn 0.5s ease-out;
 }
 .message-log p.fade-out {
     animation: fadeOut 0.5s ease-out forwards;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(-10px); }
-}
-/* Colores de los mensajes */
+/* Colores de los mensajes - Aseguramos la prioridad */
 .success--text { color: #69F0AE !important; }
 .warning--text { color: #FFD600 !important; }
 .critical--text { color: #FF1744 !important; font-weight: bold; }
 .info--text { color: #40C4FF !important; }
 
-/* --- ADAPTACIONES PARA MÓVIL --- */
-@media (max-width: 600px) {
-  .battle-title {
-    font-size: 1.5rem !important; 
-  }
-  
-  .exercise-demand {
-    font-size: 1.8rem !important;
-  }
 
-  /* Ajuste de chat en móvil */
-  .combat-log-overlay {
-    top: 5px; 
-    left: 5px;
-  }
-  
-  .message-log {
-    max-height: 50%; /* Más alto en móvil */
-    width: 90%;
-  }
+/* --- ESTILOS DE PARTICIPANTES (USO DE ::v-deep PARA VUETIFY) --- */
 
-  .message-log p {
-    font-size: 0.75rem;
-  }
-}
-
-/* --- ESTILOS DE ANIMACIÓN DE GOLPE --- */
-@keyframes shake {
-  0% { transform: translate(1px, 1px) rotate(0deg); }
-  25% { transform: translate(-1px, -2px) rotate(-1deg); }
-  50% { transform: translate(-3px, 0px) rotate(1deg); }
-  75% { transform: translate(1px, 2px) rotate(-1deg); }
-  100% { transform: translate(1px, -1px) rotate(0deg); }
-}
-
-.hit-animation {
-  animation: shake 0.2s ease-in-out;
-}
-
-.boss-image-area {
-    min-height: 150px; 
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.boss-icon {
-  color: #BDBDBd;
-  text-shadow: 0 0 15px rgba(0,0,0,0.8);
-}
-
-.hit-indicator {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-    filter: brightness(1.5);
-    opacity: 1;
-}
-
-/* Lista de Participantes */
 .participants-list {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-  border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 8px;
 }
 
 .participant-item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.participant-item:last-child {
-  border-bottom: none;
+/* Usamos ::v-deep para modificar elementos inyectados por v-list */
+.participant-item ::v-deep .v-list-item__content {
+    padding: 8px 0 !important; /* Ajuste de padding si es necesario */
 }
+
+.participant-item ::v-deep .v-list-item-title {
+    font-weight: bold;
+    color: #fff; /* Asegurar color */
+}
+
+/* Si quieres que el último elemento no tenga borde (v-list lo hace por defecto, pero por si acaso) */
+.participant-item:last-child {
+    border-bottom: none;
+}
+
+/* --- ADAPTACIONES PARA MÓVIL (Mantenidas) --- */
+@media (max-width: 600px) {
+    .battle-title { font-size: 1.5rem !important; }
+    .exercise-demand { font-size: 1.8rem !important; }
+    .combat-log-overlay { top: 5px; left: 5px; }
+    .message-log { max-height: 50%; width: 90%; }
+    .message-log p { font-size: 0.75rem; }
+}
+
+/* --- ANIMACIONES (Mantenidas) --- */
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    25% { transform: translate(-1px, -2px) rotate(-1deg); }
+    50% { transform: translate(-3px, 0px) rotate(1deg); }
+    75% { transform: translate(1px, 2px) rotate(-1deg); }
+    100% { transform: translate(1px, -1px) rotate(0deg); }
+}
+
+.hit-animation { animation: shake 0.2s ease-in-out; }
+
 </style>

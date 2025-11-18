@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: mariadb:12
@@ -31,8 +29,8 @@ services:
     build: ./backend
     container_name: tr1-backend
     ports:
-      - "8082:8082"
-      - "9000:9000"
+      - "9000:9000" # Exponer el puerto de la API
+      - "8082:8082" # Mantener el puerto de WebSockets
     environment:
       DB_HOST: db
       DB_PORT: 3306
@@ -56,9 +54,6 @@ services:
       - ./frontend:/app
       - /app/node_modules
     command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
-
-
-
 
 volumes:
   db_data:
