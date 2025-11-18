@@ -37,23 +37,23 @@ CREATE TABLE Exercicis_Rutina (
     FOREIGN KEY (id_rutina) REFERENCES Rutines(id) ON DELETE CASCADE
 );
 
--- Showdown
-CREATE TABLE Boss_Sessions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    creadorId INT,
+-- Incursión (Boss)
+CREATE TABLE boss_sessions (
+    id INT PRIMARY KEY,
+    creador_id INT,
     jefe_vida_max INT DEFAULT 300,
-    jefe_vida_actual INT,
-    max_participants INT DEFAULT 10,
+    jefe_vida_actual INT DEFAULT 300,
     estat VARCHAR(20) DEFAULT 'oberta',
-    data_creacio DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (creadorId) REFERENCES Usuaris(id) ON DELETE CASCADE
+    max_participants INT DEFAULT 10,
+    data_creacio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creador_id) REFERENCES Usuaris(id) ON DELETE SET NULL
 );
 
-CREATE TABLE Boss_Participants (
+CREATE TABLE boss_participants (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_boss_sessio INT,
     id_usuari INT,
-    damage INT DEFAULT 8,
-    FOREIGN KEY (id_boss_sessio) REFERENCES Boss_Sessions(id) ON DELETE CASCADE,
+    damage INT DEFAULT 0,
+    FOREIGN KEY (id_boss_sessio) REFERENCES boss_sessions(id) ON DELETE CASCADE,
     FOREIGN KEY (id_usuari) REFERENCES Usuaris(id) ON DELETE CASCADE
 );

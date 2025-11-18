@@ -35,8 +35,10 @@ app.set('etag', false);
 // Compatibilidad: normalizar campos recibidos en snake_case a camelCase
 app.use((req, res, next) => {
     if (req.body && typeof req.body === 'object') {
-        if (req.body.creador_id && !req.body.creadorId) req.body.creadorId = req.body.creador_id;
-        if (req.body.usuario_id && !req.body.usuarioId) req.body.usuarioId = req.body.usuario_id;
+        // Aseguramos que creadorId siempre exista si se envía creador_id
+        if (req.body.creador_id) {
+            req.body.creadorId = req.body.creador_id;
+        }
         // Añade más mapeos si encuentras otras inconsistencias
     }
     next();
@@ -94,10 +96,11 @@ app.post('/api/incursiones/crear', async (req, res) => {
         if (users.length === 0) {
             return res.status(400).json({ error: `El creador amb ID ${creadorId} no existeix.` });
         }
-        // Guardar en Boss_Sessions (Base de datos)
+        // Guardar en boss_sessions (Base de datos)
         // CORRECCIÓN: Usar `creadorId` (camelCase) para que coincida con schema.sql
+        // CORRECCIÓN 2: Usar `creador_id` (snake_case) para que coincida con schema.sql actualizado
         await db_pool.query(
-            "INSERT INTO Boss_Sessions (id, creadorId, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO boss_sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
             [sessionId, creadorId, jefeVidaMax, jefeVidaMax, 'oberta', maxParticipants]
         );
         // Guardar en memoria
@@ -163,12 +166,12 @@ app.post('/api/salas/crear', async (req, res) => {
             if (users.length === 0) {
                 return res.status(400).json({ error: `El creador amb ID ${creadorId} no existeix.` });
             }
-            // Soporte: si el frontend crea la incursión vía /api/salas/crear, crear Boss_Sessions (BDD usa `creadorId` según schema.sql)
+            // Soporte: si el frontend crea la incursión vía /api/salas/crear, crear boss_sessions (BDD usa `creadorId` según schema.sql)
             const sessionId = Math.floor(Math.random() * 1000000); // ID numèric de 6 dígits
             const maxP = maxJugadores || 10;
             const jefeVida = 300;
             await db_pool.query(
-                "INSERT INTO Boss_Sessions (id, creadorId, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO boss_sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
                 [sessionId, creadorId, jefeVida, jefeVida, 'oberta', maxP]
             );
 
@@ -205,14 +208,14 @@ app.get('/api/salas/check/:codigo', (req, res) => {
         return res.json({ success: true, exists: true, modo: salasActivas[codigo].modo || 'multijugador' });
     }
 
-    // 2. Revisar Boss_Sessions en BDD (Incursión)
-db_pool.query('SELECT id, creadorId, jefe_vida_max, jefe_vida_actual, estat, max_participants FROM Boss_Sessions WHERE id = ?', [codigo])
+    // 2. Revisar boss_sessions en BDD (Incursión)
+db_pool.query('SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants FROM boss_sessions WHERE id = ?', [codigo])
     .then(([rows]) => {
         if (rows.length > 0) {
             if (!salasActivas[codigo]) {
                 const bossSession = rows[0];
                 salasActivas[codigo] = {
-                    creadorId: bossSession.creadorId,
+                    creadorId: bossSession.creador_id,
                     createdAt: new Date(),
                     maxJugadores: bossSession.max_participants,
                     modo: 'incursion',
@@ -331,13 +334,13 @@ app.post('/api/boss/join', async (req, res) => { // Ahora se usa para registrars
     try {
         // Comprobar si ya está inscrito
         const [exists] = await db_pool.query(
-            'SELECT * FROM Boss_Participants WHERE id_boss_sessio=? AND id_usuari=?',
+            'SELECT * FROM boss_participants WHERE id_boss_sessio=? AND id_usuari=?',
             [bossId, usuariId]
         );
         if (exists.length === 0) {
             // Si no está, lo insertamos
             await db_pool.query(
-                'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
+                'INSERT INTO boss_participants (id_boss_sessio, id_usuari) VALUES (?,?)',
                 [bossId, usuariId]
             );
         }
@@ -355,7 +358,7 @@ app.get('/api/boss/:bossId', async (req, res) => {
     const { bossId } = req.params;
     try {
         const [rows] = await db_pool.query(
-            'SELECT jefe_vida_max, jefe_vida_actual, max_participants, estat FROM Boss_Sessions WHERE id=?',
+            'SELECT jefe_vida_max, jefe_vida_actual, max_participants, estat FROM boss_sessions WHERE id=?',
             [bossId]
         );
         if (rows.length === 0) return res.status(404).json({ success: false, error: 'Boss no encontrado' });
@@ -374,20 +377,20 @@ app.post('/api/boss/attack', async (req, res) => {
         return res.status(400).json({ success: false, error: 'bossId y danoAplicado son requeridos.' });
     }
     try {
-        const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM Boss_Sessions WHERE id = ?', [bossId]);
+        const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM boss_sessions WHERE id = ?', [bossId]);
         if (rows.length === 0) return res.status(404).json({ success: false, error: 'Boss no encontrado' });
 
         const vidaActual = rows[0].jefe_vida_actual;
         const nuevaVida = Math.max(0, vidaActual - danoAplicado);
 
         await db_pool.query(
-            'UPDATE Boss_Sessions SET jefe_vida_actual = ? WHERE id = ?',
+            'UPDATE boss_sessions SET jefe_vida_actual = ? WHERE id = ?',
             [nuevaVida, bossId]
         );
 
         if (nuevaVida === 0) {
             await db_pool.query(
-                'UPDATE Boss_Sessions SET estat = "finalitzada" WHERE id = ?',
+                'UPDATE boss_sessions SET estat = "finalitzada" WHERE id = ?',
                 [bossId]
             );
         }
@@ -528,7 +531,7 @@ async function broadcastIncursionState(sessionId) {
     try {
         // ...existing code...
      const [sessionRows] = await db_pool.query(
-    'SELECT id, creadorId, jefe_vida_max, jefe_vida_actual, estat FROM Boss_Sessions WHERE id = ?',
+    'SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat FROM boss_sessions WHERE id = ?',
     [sessionId]
 );
     if (sessionRows.length === 0) return;
@@ -537,7 +540,7 @@ async function broadcastIncursionState(sessionId) {
         
         // Obtener participantes y sus nombres de la BDD
         const [participantRows] = await db_pool.query(
-            'SELECT bp.id_usuari, u.usuari as nombre FROM Boss_Participants bp JOIN Usuaris u ON bp.id_usuari = u.id WHERE bp.id_boss_sessio = ?',
+            'SELECT bp.id_usuari, u.usuari as nombre FROM boss_participants bp JOIN Usuaris u ON bp.id_usuari = u.id WHERE bp.id_boss_sessio = ?',
             [sessionId]
         );
         
@@ -648,17 +651,17 @@ wss.on('connection', ws => {
                     if (!sessionId) { ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Falta ID de incursión.' })); ws.terminate(); return; }
 
                     // Asegurar que la sala existe en memoria (si no, cargarla de la DB)
-                    // CORRECCIÓN: Asegurarse de que la sala de incursión se carga desde la tabla correcta (`Boss_Sessions`)
+                    // CORRECCIÓN: Asegurarse de que la sala de incursión se carga desde la tabla correcta (`boss_sessions`)
                     if (!salasActivas[sessionId]) {
                         const [bossInfo] = await db_pool.query(
-                            "SELECT creadorId, jefe_vida_max, jefe_vida_actual, max_participants FROM Boss_Sessions WHERE id = ?",
+                            "SELECT creador_id, jefe_vida_max, jefe_vida_actual, max_participants FROM boss_sessions WHERE id = ?",
                             [sessionId]
                         );
                         if (bossInfo.length === 0) { ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión no existe.' })); ws.terminate(); return; }
 
                         salasActivas[sessionId] = { 
                             modo: 'incursion', 
-                            creadorId: bossInfo[0].creadorId, 
+                            creadorId: bossInfo[0].creador_id, 
                             maxJugadores: bossInfo[0].max_participants,
                             partidaFinalizada: bossInfo[0].jefe_vida_actual <= 0,
                             jefeVidaMax: bossInfo[0].jefe_vida_max,
@@ -668,12 +671,12 @@ wss.on('connection', ws => {
                     const sala = salasActivas[sessionId];
 
                     // Comprobar participantes y añadir a la DB (si no está)
-                    const [existingParticipants] = await db_pool.query("SELECT id FROM Boss_Participants WHERE id_boss_sessio = ? AND id_usuari = ?", [sessionId, userId]);
+                    const [existingParticipants] = await db_pool.query("SELECT id FROM boss_participants WHERE id_boss_sessio = ? AND id_usuari = ?", [sessionId, userId]);
                     if (existingParticipants.length === 0) {
-                         const [participantCount] = await db_pool.query("SELECT COUNT(*) as count FROM Boss_Participants WHERE id_boss_sessio = ?", [sessionId]);
+                         const [participantCount] = await db_pool.query("SELECT COUNT(*) as count FROM boss_participants WHERE id_boss_sessio = ?", [sessionId]);
                          if (participantCount[0].count >= sala.maxJugadores) { ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La sala de incursión está llena.' })); ws.terminate(); return; }
 
-                        await db_pool.query("INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?, ?)", [sessionId, userId]);
+                        await db_pool.query("INSERT INTO boss_participants (id_boss_sessio, id_usuari) VALUES (?, ?)", [sessionId, userId]);
                     }
 
                     // Registrar al cliente en memoria
@@ -697,10 +700,10 @@ wss.on('connection', ws => {
                 if (!metadata || !metadata.sessionId || salasActivas[metadata.sessionId].modo !== 'incursion') return;
                 const sala = salasActivas[metadata.sessionId];
                // ...existing code...
-const [sessionRows] = await db_pool.query('SELECT creadorId FROM Boss_Sessions WHERE id = ?', [metadata.sessionId]);
+const [sessionRows] = await db_pool.query('SELECT creador_id FROM boss_sessions WHERE id = ?', [metadata.sessionId]);
 
-if (sessionRows.length > 0 && String(sessionRows[0].creadorId) === String(metadata.userId)) {
-    await db_pool.query("UPDATE Boss_Sessions SET estat = 'en curs' WHERE id = ?", [metadata.sessionId]);
+if (sessionRows.length > 0 && String(sessionRows[0].creador_id) === String(metadata.userId)) {
+    await db_pool.query("UPDATE boss_sessions SET estat = 'en curs' WHERE id = ?", [metadata.sessionId]);
     sala.partidaIniciada = true;
     broadcastToSession(metadata.sessionId, { type: 'INCURSION_STARTED' });
     startIncursionRuleta(metadata.sessionId);
@@ -716,13 +719,13 @@ if (sessionRows.length > 0 && String(sessionRows[0].creadorId) === String(metada
                 if (!damage) return;
                 
                 try {
-                    const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM Boss_Sessions WHERE id = ?', [sessionId]);
+                    const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM boss_sessions WHERE id = ?', [sessionId]);
                     if (rows.length === 0) return;
 
                     const vidaActual = rows[0].jefe_vida_actual;
                     const nuevaVida = Math.max(0, vidaActual - damage);
                     
-                    await db_pool.query('UPDATE Boss_Sessions SET jefe_vida_actual = ? WHERE id = ?', [nuevaVida, sessionId]);
+                    await db_pool.query('UPDATE boss_sessions SET jefe_vida_actual = ? WHERE id = ?', [nuevaVida, sessionId]);
 
                     // Actualizar memoria (daño total y reps)
                     metadata.damageDealt += damage;
@@ -738,7 +741,7 @@ if (sessionRows.length > 0 && String(sessionRows[0].creadorId) === String(metada
 
                     if (nuevaVida === 0) {
                         clearInterval(salasActivas[sessionId]?.incursionTimer);
-                        await db_pool.query("UPDATE Boss_Sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId]);
+                        await db_pool.query("UPDATE boss_sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId]);
                         broadcastToSession(sessionId, { type: 'INCURSION_ENDED', winner: 'Participantes' });
                     }
                 } catch (err) { console.error('Error en INCURSIÓN_ATTACK:', err); }
@@ -810,7 +813,7 @@ if (sessionRows.length > 0 && String(sessionRows[0].creadorId) === String(metada
             delete salasActivas[sessionId];
             
             if (sala.modo === 'incursion') {
-                db_pool.query("UPDATE Boss_Sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId]).catch(err => console.error("Error al cerrar Boss_Session en BDD:", err));
+                db_pool.query("UPDATE boss_sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId]).catch(err => console.error("Error al cerrar boss_sessions en BDD:", err));
             }
             console.log(`La sala ${sessionId} ha quedado vacía y ha sido cerrada.`);
             return; 
@@ -851,41 +854,13 @@ if (sessionRows.length > 0 && String(sessionRows[0].creadorId) === String(metada
 
 // -------------------- INICIAR SERVIDOR --------------------
 let httpServer;
-// ...existing code...
-async function ensureBossSessionsCompat() {
-    try {
-        const dbName = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'fitai_db';
-        const [cols] = await db_pool.query(
-            "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Boss_Sessions' AND COLUMN_NAME IN ('creador_id','creadorId')",
-            [dbName]
-        );
-        const existing = cols.map(r => r.COLUMN_NAME);
-        // Si falta la columna snake_case que algunas consultas usan, crearla y copiar valores
-        if (!existing.includes('creador_id')) {
-            console.log('Compat DB: añadiendo columna `creador_id` en Boss_Sessions...');
-            await db_pool.query("ALTER TABLE Boss_Sessions ADD COLUMN creador_id INT NULL AFTER creadorId");
-            await db_pool.query("UPDATE Boss_Sessions SET creador_id = creadorId WHERE creadorId IS NOT NULL");
-            try {
-                await db_pool.query("ALTER TABLE Boss_Sessions ADD CONSTRAINT fk_boss_sessions_creador_id FOREIGN KEY (creador_id) REFERENCES Usuaris(id) ON DELETE CASCADE");
-            } catch (fkErr) {
-                // Si la FK ya existe o no se puede crear, lo ignoramos pero mostramos aviso
-                console.warn('Compat DB: no se pudo crear FK creador_id (puede que ya exista):', fkErr.message || fkErr);
-            }
-            console.log('Compat DB: columna `creador_id` añadida.');
-        } else {
-            console.log('Compat DB: columnas de creador ok:', existing.join(','));
-        }
-    } catch (err) {
-        console.error('Error al asegurar compatibilidad Boss_Sessions:', err);
-    }
-}
 
 db.sequelize.sync().then(async () => {
     console.log('Base de dades sincronitzada amb Sequelize.');
-    await ensureBossSessionsCompat();
+    // La función ensureBossSessionsCompat() ya no es necesaria.
+    console.log('Compat DB: Schema estandarizado, no se requiere parcheo.');
     httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
 });
-// ...existing code...
 
 async function shutdown() {
     console.log('Cerrando servidores...');
