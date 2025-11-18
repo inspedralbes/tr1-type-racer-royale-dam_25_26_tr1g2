@@ -61,6 +61,17 @@ const startButtonText = computed(() => {
   return 'Iniciar Partida';
 });
 
+// --- NUEVO: Lógica para vídeo local ---
+const localVideoUrl = ref(null);
+function onFileChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    localVideoUrl.value = URL.createObjectURL(file);
+  } else {
+    localVideoUrl.value = null;
+  }
+}
+
 
 function onFeatures(payload) {
   if (payload && !isPoseDetectorReady.value) isPoseDetectorReady.value = true;
@@ -211,6 +222,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   detenerPartida();
   if (ws.value) ws.value.close();
+  if (localVideoUrl.value) {
+    URL.revokeObjectURL(localVideoUrl.value);
+    localVideoUrl.value = null;
+  }
 })
 
 // Observar cambios en la configuración para enviarlos al servidor si eres el creador
@@ -263,7 +278,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
               <!-- Columna cámara -->
               <v-col cols="12" md="8" class="d-flex flex-column align-center">
                 <div class="webcam-container mb-4">
-                  <PoseSkeleton class="video-feed" @features="onFeatures" />
+                  <PoseSkeleton class="video-feed" @features="onFeatures" :video-src="localVideoUrl" />
 
                   <div v-if="!isPoseDetectorReady" class="webcam-overlay">
                     <v-progress-circular indeterminate color="primary"></v-progress-circular>
@@ -280,6 +295,17 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                   </transition>
                 </div>
 
+                <!-- Selector de vídeo local para pruebas -->
+                <div class="w-100 mb-4" style="max-width: 500px;">
+                  <v-file-input
+                    @change="onFileChange"
+                    label="Usar vídeo local (para pruebas)"
+                    accept="video/*"
+                    dense
+                    outlined
+                    dark
+                  ></v-file-input>
+                </div>
                 <div class="button-group d-flex gap-4 mb-4">
                   <v-btn
                     color="primary"

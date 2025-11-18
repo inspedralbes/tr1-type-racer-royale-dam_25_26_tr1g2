@@ -56,7 +56,7 @@
           
           <div class="webcam-stage mb-4">
             <!-- 1. El Skeleton con la cámara (fondo) -->
-            <PoseSkeleton @features="onFeatures" />
+            <PoseSkeleton @features="onFeatures" :video-src="localVideoUrl" />
             <div v-if="!isPoseDetectorReady" class="loader-overlay">
                 <v-progress-circular indeterminate color="primary"></v-progress-circular>
                 <p class="mt-2 text-caption">Cargando detector de pose...</p>
@@ -73,6 +73,16 @@
             
           </div>
           
+          <!-- Selector de vídeo local para pruebas -->
+          <div class="d-flex justify-center mb-4">
+            <v-file-input
+              @change="onFileChange"
+              label="Usar vídeo local (para pruebas)"
+              accept="video/*"
+              dense
+              outlined
+            ></v-file-input>
+          </div>
           <v-row align="center" class="mt-4">
             <v-col cols="12">
               <!-- Lógica de creación y unión de sala -->
@@ -272,6 +282,17 @@ const isConnected = ref(false);
 const { xsOnly, smAndUp } = useDisplay();
 
 // --- ESTADO Y TIMERS DE LA RULETA (Controlado por el servidor) ---
+
+// --- NUEVO: Lógica para vídeo local ---
+const localVideoUrl = ref(null);
+function onFileChange(event) {
+  const file = event.target.files[0];
+  if (file) {
+    localVideoUrl.value = URL.createObjectURL(file);
+  } else {
+    localVideoUrl.value = null;
+  }
+}
 const ejercicioSeleccionado = ref('Esperando...'); // El ejercicio que te toca, se inicializa a un valor neutral.
 const tiempoRestante = ref(DURACION_RULETA); // El tiempo restante para la ronda actual.
 let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
@@ -435,19 +456,19 @@ function onFeatures(payload) {
 }
 
 // --- LÓGICA DE WEBSOCKET ---
-function conectarWebSocket() {
+function conectarWebSocket(sessionIdToJoin) {
   if (ws.value) {
     ws.value.close();
   }
-  // Asegúrate de que la URL del WebSocket sea la correcta para tu entorno
-  ws.value = new WebSocket('ws://localhost:8082'); 
+  // La URL del WebSocket debe apuntar al puerto 8082, como en docker-compose.yml
+  ws.value = new WebSocket('ws://localhost:8082');
 
- ws.value.onopen = () => {
+  ws.value.onopen = () => {
     isConnected.value = true;
     const userData = JSON.parse(localStorage.getItem('user')) || {};
     ws.value.send(JSON.stringify({
       type: 'INCURSION_JOIN',
-      sessionId: bossSessionId.value, // Ahora siempre tendremos un ID de sesión válido aquí.
+      sessionId: sessionIdToJoin, // Usamos el ID numérico que nos pasan.
       userId: userData.id,
       nombre: userData.usuari || 'Invitado'
     }));
@@ -516,10 +537,9 @@ function conectarWebSocket() {
 }
 
 import axios from 'axios'; // Importamos la instancia global de axios
-const api = axios; // Usamos la instancia global
-// Configuramos la URL base para las peticiones de Axios en este componente.
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000';
-
+// Creamos una instancia de Axios con la URL base correcta para asegurar la consistencia.
+// Esto evita problemas con la configuración global.
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:9000' });
 async function gestionarUnionIncursion() {
   if (!user.value?.id) {
     añadirMensaje('Debes iniciar sesión para buscar una incursión.', 'error--text');
@@ -530,14 +550,23 @@ async function gestionarUnionIncursion() {
   // Si ya tenemos un ID de sala (por URL), nos unimos directamente.
   if (bossSessionId.value) {
     añadirMensaje(`Intentando unirse a la incursión ${bossSessionId.value}...`, 'info--text');
-    conectarWebSocket();
+    conectarWebSocket(bossSessionId.value); // Aquí usamos el código de texto porque no tenemos el numérico aún. El backend debería manejarlo.
   } else {
     // Si no, creamos una nueva.
     añadirMensaje('Creando nueva incursión...', 'info--text');
     try {
-      const response = await api.post('/api/incursiones/crear', { creadorId: user.value.id });
+      // CORRECCIÓN DEFINITIVA:
+      // 1. Usamos el endpoint correcto: /api/incursiones/crear
+      // 2. El backend genera el código, no el frontend.
+      // 3. Enviamos 'creadorId' como espera el backend.
+      const response = await api.post('/api/incursiones/crear', {
+        creadorId: user.value.id, // CORRECCIÓN: El backend espera 'creadorId' de forma consistente.
+        nombreCreador: user.value.usuari || 'Anónimo',
+        modo: 'incursion', // Especificamos que es una sala de incursión
+        maxJugadores: MAX_PARTICIPANTS
+      });
       bossSessionId.value = response.data.sessionId;
-      conectarWebSocket(); // Ahora nos conectamos con el ID de la sala recién creada.
+      conectarWebSocket(response.data.sessionId);
     } catch (error) {
       añadirMensaje('Error al crear la incursión. Inténtalo de nuevo.', 'error--text');
       console.error('Error creando incursión:', error);
@@ -613,6 +642,10 @@ onBeforeUnmount(() => {
     if (ws.value) {
       ws.value.close();
       ws.value = null;
+    }
+    if (localVideoUrl.value) {
+      URL.revokeObjectURL(localVideoUrl.value);
+      localVideoUrl.value = null;
     }
 })
 </script>

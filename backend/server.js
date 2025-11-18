@@ -28,9 +28,20 @@ const corsOptions = {
     }
 };
 app.use(cors(corsOptions));
+// ...existing code...
 app.use(express.json());
 app.set('etag', false);
 
+// Compatibilidad: normalizar campos recibidos en snake_case a camelCase
+app.use((req, res, next) => {
+    if (req.body && typeof req.body === 'object') {
+        if (req.body.creador_id && !req.body.creadorId) req.body.creadorId = req.body.creador_id;
+        if (req.body.usuario_id && !req.body.usuarioId) req.body.usuarioId = req.body.usuario_id;
+        // Añade más mapeos si encuentras otras inconsistencias
+    }
+    next();
+});
+// ...existing code...
 // --- Dependencia del pool de MySQL ---
 // NOTA: Asegúrate de que tu './config/db' exporta el pool.
 const db_pool = require('./config/db').pool; 
@@ -76,12 +87,17 @@ app.post('/api/incursiones/crear', async (req, res) => {
     const { creadorId, jefeVidaMax = 300, maxParticipants = 10 } = req.body;
     if (!creadorId) return res.status(400).json({ error: 'Falta el ID del creador.' });
 
-    const sessionId = uuidv4().slice(0, 6).toUpperCase(); // ID de 6 caracteres
+    const sessionId = Math.floor(Math.random() * 1000000); // ID numèric de 6 dígits
 
     try {
+        const [users] = await db_pool.query('SELECT id FROM Usuaris WHERE id = ?', [creadorId]);
+        if (users.length === 0) {
+            return res.status(400).json({ error: `El creador amb ID ${creadorId} no existeix.` });
+        }
         // Guardar en Boss_Sessions (Base de datos)
+        // CORRECCIÓN: Usar `creadorId` (camelCase) para que coincida con schema.sql
         await db_pool.query(
-            "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO Boss_Sessions (id, creadorId, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
             [sessionId, creadorId, jefeVidaMax, jefeVidaMax, 'oberta', maxParticipants]
         );
         // Guardar en memoria
@@ -106,22 +122,28 @@ app.post('/api/incursiones/crear', async (req, res) => {
  * Endpoint: Crear sala (SessionsVersus o Boss_Sessions).
  * Se actualiza para manejar ambos modos de creación, aunque Boss usa su propio endpoint.
  */
+// ...existing code...
 app.post('/api/salas/crear', async (req, res) => {
     const { codigo, creadorId, nombreCreador, modo, maxJugadores, ejercicio = 'Sentadillas', maxReps = 5 } = req.body;
 
-    if (!codigo || !creadorId) {
+    if (!codigo && modo !== 'incursion') {
         return res.status(400).json({ success: false, error: 'El código y el creadorId son obligatorios.' });
     }
 
     try {
         if (modo === 'multijugador') {
-            // Guardar en SessionsVersus (Base de datos)
+            // Guardar en SessionsVersus (BDD) - SessionsVersus usa columna `creador_id` en schema.sql
             await db_pool.query(
                 'INSERT INTO SessionsVersus (codi_acces, creador_id, estat) VALUES (?, ?, ?)',
                 [codigo, creadorId, 'oberta']
             );
+            // CORRECCIÓN: La tabla SessionsVersus ya no tiene un ID numérico.
+            // Simplemente registramos la sala en memoria. La persistencia se puede mejorar después.
+            // await db_pool.query(
+            //     'INSERT INTO SessionsVersus (codi_acces, creador_id, estat) VALUES (?, ?, ?)',
+            //     [codigo, creadorId, 'oberta']
+            // );
 
-            // Guardar en memoria
             salasActivas[codigo] = { 
                 creadorId, 
                 nombreCreador, 
@@ -132,20 +154,45 @@ app.post('/api/salas/crear', async (req, res) => {
                 maxReps,
                 partidaFinalizada: false 
             };
+            return res.json({ success: true, sessionId: codigo });
         } else if (modo === 'incursion') {
-            // Se asume que el frontend llama a /api/incursiones/crear para Boss
-            return res.status(400).json({ success: false, error: 'Usa /api/incursiones/crear para el modo incursión.' });
+            if (!creadorId) {
+                return res.status(400).json({ success: false, error: 'El creadorId es obligatorio para incursiones.' });
+            }
+            const [users] = await db_pool.query('SELECT id FROM Usuaris WHERE id = ?', [creadorId]);
+            if (users.length === 0) {
+                return res.status(400).json({ error: `El creador amb ID ${creadorId} no existeix.` });
+            }
+            // Soporte: si el frontend crea la incursión vía /api/salas/crear, crear Boss_Sessions (BDD usa `creadorId` según schema.sql)
+            const sessionId = Math.floor(Math.random() * 1000000); // ID numèric de 6 dígits
+            const maxP = maxJugadores || 10;
+            const jefeVida = 300;
+            await db_pool.query(
+                "INSERT INTO Boss_Sessions (id, creadorId, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+                [sessionId, creadorId, jefeVida, jefeVida, 'oberta', maxP]
+            );
+
+            salasActivas[sessionId] = { 
+                creadorId, 
+                createdAt: new Date(), 
+                maxJugadores: maxP, 
+                modo: 'incursion',
+                partidaFinalizada: false,
+                jefeVidaMax: jefeVida,
+                jefeVidaActual: jefeVida
+            };
+
+            return res.status(201).json({ success: true, sessionId });
         } else {
              return res.status(400).json({ success: false, error: 'Modo de juego no válido.' });
         }
         
-        res.json({ success: true, sessionId: codigo });
     } catch (err) {
         console.error('Error en /api/salas/crear:', err);
         res.status(500).json({ success: false, error: 'Error al crear la sala.' });
     }
 });
-
+// ...existing code...
 
 /**
  * Endpoint: Comprobar si la sala existe y qué modo usa.
@@ -159,31 +206,31 @@ app.get('/api/salas/check/:codigo', (req, res) => {
     }
 
     // 2. Revisar Boss_Sessions en BDD (Incursión)
-    db_pool.query('SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants FROM Boss_Sessions WHERE id = ?', [codigo])
-        .then(([rows]) => {
-            if (rows.length > 0) {
-                // Si la encontramos, la cargamos en memoria como incursión (solo si no estaba)
-                if (!salasActivas[codigo]) {
-                    const bossSession = rows[0];
-                    salasActivas[codigo] = {
-                        creadorId: bossSession.creador_id, 
-                        createdAt: new Date(), // Podemos usar la fecha actual, ya que es solo para memoria
-                        maxJugadores: bossSession.max_participants, 
-                        modo: 'incursion',
-                        partidaFinalizada: bossSession.estat === 'finalitzada',
-                        jefeVidaMax: bossSession.jefe_vida_max,
-                        jefeVidaActual: bossSession.jefe_vida_actual
-                    };
-                }
-                res.json({ success: true, exists: true, modo: 'incursion' });
-            } else {
-                res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+db_pool.query('SELECT id, creadorId, jefe_vida_max, jefe_vida_actual, estat, max_participants FROM Boss_Sessions WHERE id = ?', [codigo])
+    .then(([rows]) => {
+        if (rows.length > 0) {
+            if (!salasActivas[codigo]) {
+                const bossSession = rows[0];
+                salasActivas[codigo] = {
+                    creadorId: bossSession.creadorId,
+                    createdAt: new Date(),
+                    maxJugadores: bossSession.max_participants,
+                    modo: 'incursion',
+                    partidaFinalizada: bossSession.estat === 'finalitzada',
+                    jefeVidaMax: bossSession.jefe_vida_max,
+                    jefeVidaActual: bossSession.jefe_vida_actual
+                };
             }
-        })
-        .catch(err => {
-            console.error('Error en /api/salas/check/:codigo consultando la BDD:', err);
-            res.status(500).json({ success: false, error: 'Error del servidor al verificar la sala.' });
-        });
+            res.json({ success: true, exists: true, modo: 'incursion' });
+        } else {
+            res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+        }
+    })
+    .catch(err => {
+        console.error('Error en /api/salas/check/:codigo consultando la BDD:', err);
+        res.status(500).json({ success: false, error: 'Error del servidor al verificar la sala.' });
+    });
+// ...existing code...
 });
 
 /**
@@ -479,12 +526,14 @@ async function broadcastIncursionState(sessionId) {
     if (!sessions.has(sessionId) || !sala || sala.modo !== 'incursion') return;
 
     try {
-        const [sessionRows] = await db_pool.query(
-            'SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat FROM Boss_Sessions WHERE id = ?',
-            [sessionId]
-        );
-        if (sessionRows.length === 0) return;
-        const bossSession = sessionRows[0];
+        // ...existing code...
+     const [sessionRows] = await db_pool.query(
+    'SELECT id, creadorId, jefe_vida_max, jefe_vida_actual, estat FROM Boss_Sessions WHERE id = ?',
+    [sessionId]
+);
+    if (sessionRows.length === 0) return;
+    const bossSession = sessionRows[0];
+// ...existing code...
         
         // Obtener participantes y sus nombres de la BDD
         const [participantRows] = await db_pool.query(
@@ -597,15 +646,19 @@ wss.on('connection', ws => {
                     // Si no hay sessionId, el cliente ya ha llamado a /api/incursiones/crear y nos lo da. 
                     // Si el cliente no lo da, no deberíamos llegar aquí. Lo forzamos.
                     if (!sessionId) { ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Falta ID de incursión.' })); ws.terminate(); return; }
-                    
+
                     // Asegurar que la sala existe en memoria (si no, cargarla de la DB)
+                    // CORRECCIÓN: Asegurarse de que la sala de incursión se carga desde la tabla correcta (`Boss_Sessions`)
                     if (!salasActivas[sessionId]) {
-                        const [bossInfo] = await db_pool.query("SELECT creador_id, jefe_vida_max, jefe_vida_actual, max_participants FROM Boss_Sessions WHERE id = ?", [sessionId]);
+                        const [bossInfo] = await db_pool.query(
+                            "SELECT creadorId, jefe_vida_max, jefe_vida_actual, max_participants FROM Boss_Sessions WHERE id = ?",
+                            [sessionId]
+                        );
                         if (bossInfo.length === 0) { ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión no existe.' })); ws.terminate(); return; }
-                        
+
                         salasActivas[sessionId] = { 
                             modo: 'incursion', 
-                            creadorId: bossInfo[0].creador_id, 
+                            creadorId: bossInfo[0].creadorId, 
                             maxJugadores: bossInfo[0].max_participants,
                             partidaFinalizada: bossInfo[0].jefe_vida_actual <= 0,
                             jefeVidaMax: bossInfo[0].jefe_vida_max,
@@ -643,14 +696,16 @@ wss.on('connection', ws => {
             case 'INCURSION_START': {
                 if (!metadata || !metadata.sessionId || salasActivas[metadata.sessionId].modo !== 'incursion') return;
                 const sala = salasActivas[metadata.sessionId];
-                const [sessionRows] = await db_pool.query('SELECT creador_id FROM Boss_Sessions WHERE id = ?', [metadata.sessionId]);
+               // ...existing code...
+const [sessionRows] = await db_pool.query('SELECT creadorId FROM Boss_Sessions WHERE id = ?', [metadata.sessionId]);
 
-                if (sessionRows.length > 0 && String(sessionRows[0].creador_id) === String(metadata.userId)) {
-                    await db_pool.query("UPDATE Boss_Sessions SET estat = 'en curs' WHERE id = ?", [metadata.sessionId]);
-                    sala.partidaIniciada = true;
-                    broadcastToSession(metadata.sessionId, { type: 'INCURSION_STARTED' }); 
-                    startIncursionRuleta(metadata.sessionId);
-                }
+if (sessionRows.length > 0 && String(sessionRows[0].creadorId) === String(metadata.userId)) {
+    await db_pool.query("UPDATE Boss_Sessions SET estat = 'en curs' WHERE id = ?", [metadata.sessionId]);
+    sala.partidaIniciada = true;
+    broadcastToSession(metadata.sessionId, { type: 'INCURSION_STARTED' });
+    startIncursionRuleta(metadata.sessionId);
+}
+ // ...existing code...
                 break;
             }
             case 'INCURSION_ATTACK': {
@@ -796,10 +851,41 @@ wss.on('connection', ws => {
 
 // -------------------- INICIAR SERVIDOR --------------------
 let httpServer;
-db.sequelize.sync().then(() => {
+// ...existing code...
+async function ensureBossSessionsCompat() {
+    try {
+        const dbName = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'fitai_db';
+        const [cols] = await db_pool.query(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Boss_Sessions' AND COLUMN_NAME IN ('creador_id','creadorId')",
+            [dbName]
+        );
+        const existing = cols.map(r => r.COLUMN_NAME);
+        // Si falta la columna snake_case que algunas consultas usan, crearla y copiar valores
+        if (!existing.includes('creador_id')) {
+            console.log('Compat DB: añadiendo columna `creador_id` en Boss_Sessions...');
+            await db_pool.query("ALTER TABLE Boss_Sessions ADD COLUMN creador_id INT NULL AFTER creadorId");
+            await db_pool.query("UPDATE Boss_Sessions SET creador_id = creadorId WHERE creadorId IS NOT NULL");
+            try {
+                await db_pool.query("ALTER TABLE Boss_Sessions ADD CONSTRAINT fk_boss_sessions_creador_id FOREIGN KEY (creador_id) REFERENCES Usuaris(id) ON DELETE CASCADE");
+            } catch (fkErr) {
+                // Si la FK ya existe o no se puede crear, lo ignoramos pero mostramos aviso
+                console.warn('Compat DB: no se pudo crear FK creador_id (puede que ya exista):', fkErr.message || fkErr);
+            }
+            console.log('Compat DB: columna `creador_id` añadida.');
+        } else {
+            console.log('Compat DB: columnas de creador ok:', existing.join(','));
+        }
+    } catch (err) {
+        console.error('Error al asegurar compatibilidad Boss_Sessions:', err);
+    }
+}
+
+db.sequelize.sync().then(async () => {
     console.log('Base de dades sincronitzada amb Sequelize.');
+    await ensureBossSessionsCompat();
     httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
 });
+// ...existing code...
 
 async function shutdown() {
     console.log('Cerrando servidores...');

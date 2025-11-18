@@ -32,6 +32,13 @@ import '@tensorflow/tfjs-backend-wasm'  // Importa el backend de WASM como fallb
 import * as poseDetection from '@tensorflow-models/pose-detection'
 
 /* -----------------------------
+   PROPS
+------------------------------*/
+const props = defineProps({
+  videoSrc: { type: String, default: null }
+})
+
+/* -----------------------------
    STATE (abans data())
 ------------------------------*/
 const devices = ref([])           // [{ deviceId, label }]
@@ -41,10 +48,6 @@ const onDeviceChange = ref(null)  // handler per poder-lo eliminar
 
 const videoEl = ref(null)         // <video>
 const canvasRef = ref(null)       // <canvas> overlay per dibuixar esquelet
-
-let detector = null               // MoveNet detector
-let rafId = 0                     // requestAnimationFrame id per al loop
-
 // NEW: mode d'origen i URL de vídeo local
 const sourceMode = ref('camera')   // 'camera' | 'file'
 const fileUrl = ref(null)          // blob URL del vídeo local (si n'hi ha)
@@ -52,6 +55,9 @@ const fileUrl = ref(null)          // blob URL del vídeo local (si n'hi ha)
 /* -----------------------------
    HELPERS (angles, distàncies, normalització, velocitats) - NEW
 ------------------------------*/
+
+let detector = null               // MoveNet detector
+let rafId = 0                     // requestAnimationFrame id per al loop
 
 // NEW: EMA (Exponential Moving Average) senzill per suavitzar FPS
 function ema(prev, x, alpha = 0.2) {
@@ -169,6 +175,46 @@ async function startCamera (deviceId = '') {
 
   // Un cop concedit el permís, els labels ja són llegibles
   await listVideoInputs(true) // Indicar que es la carga inicial
+}
+
+async function initDetector() {
+  // Si el detector ya está creado, no hacemos nada.
+  if (detector) return;
+  
+  try {
+    console.log('Creando detector de pose MoveNet...');
+    detector = await poseDetection.createDetector(
+      poseDetection.SupportedModels.MoveNet,
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, enableSmoothing: true }
+    );
+    console.log('Detector de pose creado con éxito.');
+  } catch (err) {
+    console.error('Error creando el detector de pose:', err);
+  }
+}
+
+async function startVideoFromSrc(srcUrl) {
+  stopCurrentSource(); // Detiene la cámara o vídeo anterior
+
+  const v = videoEl.value;
+  if (!v) return;
+
+  // Asignamos la nueva URL del vídeo
+  v.srcObject = null;
+  v.src = srcUrl;
+  v.loop = true;
+  v.muted = true;
+  v.playsInline = true;
+
+  try {
+    await v.play();
+    await initDetector(); // Aseguramos que el detector se inicialice
+    // ¡CLAVE! Nos aseguramos de que el bucle de renderizado esté corriendo.
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  } catch (err) {
+    console.error('No se puede reproducir el vídeo desde la URL:', err);
+  }
 }
 
 /* -----------------------------
@@ -413,14 +459,9 @@ onMounted(async () => {
     }
     await tf.ready();
 
-    // 2. Inicia la cámara
-    await startCamera()
-
-    // 3. Crea el detector de pose MoveNet (Lightning)
-    detector = await poseDetection.createDetector(
-      poseDetection.SupportedModels.MoveNet,
-      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, enableSmoothing: true }
-    )
+    // 2. Inicia la cámara y el detector
+    await startCamera();
+    await initDetector();
 
     // 4. Inicia el bucle de renderizado
     rafId = requestAnimationFrame(loop)
@@ -460,6 +501,17 @@ watch(selectedId, (id) => {
   if (id) startCamera(id)
 })
 
+// --- NUEVO: Watcher para la prop videoSrc ---
+watch(() => props.videoSrc, (newSrc) => {
+  if (newSrc) {
+    // Si recibimos una URL de vídeo, la usamos
+    startVideoFromSrc(newSrc);
+  } else {
+    // Si la URL es nula, volvemos a la cámara
+    startCamera(selectedId.value);
+  }
+});
+
 // NEW: quan canviem de 'camera' a 'file' o viceversa
 watch(sourceMode, async (mode) => {
   if (mode === 'camera') {
@@ -488,36 +540,8 @@ watch(selectedId, (id) => {
       <canvas ref="canvasRef" class="overlay"></canvas>
     </div>
 
-    <!-- Selector de càmera sota el vídeo -->
-    <div class="camera-select">
-      <select v-model="selectedId" class="select">
-        <option v-for="d in devices" :key="d.deviceId" :value="d.deviceId">
-          {{ d.label }}
-        </option>
-      </select>
-    </div>
- 
-
-<!-- NEW: selector d'origen i entrada de fitxer -->
-<div class="source-select" style="width: min(100%, 720px); display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="camera" v-model="sourceMode">
-    Càmera
-  </label>
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="file" v-model="sourceMode">
-    Vídeo local
-  </label>
-
-  <!-- Input de fitxer activat només en mode 'file' -->
-  <input
-    v-if="sourceMode === 'file'"
-    type="file"
-    accept="video/*"
-    @change="e => e.target.files?.[0] && startFileVideo(e.target.files[0])"
-    style="grid-column: 1 / -1;"
-  />
-</div>
+    <!-- He eliminado los controles internos de selección de cámara y archivo, 
+         ya que ahora se gestionan desde los componentes padre (Incursion/Multijugador) -->
   </div>
 </template>
 
@@ -543,27 +567,6 @@ watch(selectedId, (id) => {
 /* The video element fills the frame */
 .video {
   width: 100%;
-  height: 100%;
-  object-fit: contain; /* keep proportions without cropping */
-  display: block;
-}
-
-/* Canvas overlay on top of video */
-.overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-/* Simple select below the video */
-.camera-select {
-  width: min(100%, 720px);
-}
-
-.camera-select .select {
-  width: 100%;
-  padding: 6px 8px;
-}
-</style>
+  height: 10
+  }
+  </style>
