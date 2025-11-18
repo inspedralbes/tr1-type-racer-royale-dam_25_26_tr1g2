@@ -56,7 +56,7 @@ INCURSIÓ CONTRA EL BOSS
           
           <div class="webcam-stage mb-4">
             <!-- 1. El Skeleton con la cámara (fondo) -->
-            <PoseSkeleton @features="onFeatures" />
+            <PoseSkeleton class="video-feed" @features="onFeatures" />
             <div v-if="!isPoseDetectorReady" class="loader-overlay">
                 <v-progress-circular indeterminate color="primary"></v-progress-circular>
                 <p class="mt-2 text-caption">Carregant detector de pose...</p>
@@ -642,7 +642,36 @@ onBeforeUnmount(() => {
 }
 
 .webcam-stage {
-    position: relative; /* Contenedor para el overlay */
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background-color: #000; /* Fondo negro */
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.video-feed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0,0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
 }
 
 /* --- ESTILOS DE CHAT (LÓGICA 'message-log' CORREGIDA) --- */
