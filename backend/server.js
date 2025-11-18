@@ -68,9 +68,39 @@ function broadcastToSession(sessionId, message) {
 // Ruta raíz
 app.get('/', (req, res) => { res.send('Servidor Express actiu!'); });
 
-// Rutes d'usuari (asumo que están en ./routes/userRoutes)
-const userRoutes = require('./routes/userRoutes');
-app.use('/api/users', userRoutes);
+/**
+ * Endpoint: Crear incursión (Boss Showdown)
+ * Se actualiza para usar una ID única (UUID simplificado) y guardarla en memoria/DB.
+ */
+app.post('/api/incursiones/crear', async (req, res) => {
+    const { creadorId, jefeVidaMax = 300, maxParticipants = 10 } = req.body;
+    if (!creadorId) return res.status(400).json({ error: 'Falta el ID del creador.' });
+
+    const sessionId = uuidv4().slice(0, 6).toUpperCase(); // ID de 6 caracteres
+
+    try {
+        // Guardar en Boss_Sessions (Base de datos)
+        await db_pool.query(
+            "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+            [sessionId, creadorId, jefeVidaMax, jefeVidaMax, 'oberta', maxParticipants]
+        );
+        // Guardar en memoria
+        salasActivas[sessionId] = { 
+            creadorId, 
+            createdAt: new Date(), 
+            maxJugadores: maxParticipants, 
+            modo: 'incursion',
+            partidaFinalizada: false,
+            jefeVidaMax: jefeVidaMax,
+            jefeVidaActual: jefeVidaMax
+        };
+
+        res.status(201).json({ sessionId });
+    } catch (error) {
+        console.error('Error al crear la incursión:', error);
+        res.status(500).json({ error: 'Error interno al crear la incursión.' });
+    }
+});
 
 /**
  * Endpoint: Crear sala (SessionsVersus o Boss_Sessions).
@@ -116,40 +146,6 @@ app.post('/api/salas/crear', async (req, res) => {
     }
 });
 
-/**
- * Endpoint: Crear incursión (Boss Showdown)
- * Se actualiza para usar una ID única (UUID simplificado) y guardarla en memoria/DB.
- */
-app.post('/api/incursiones/crear', async (req, res) => {
-    const { creadorId, jefeVidaMax = 300, maxParticipants = 10 } = req.body;
-    if (!creadorId) return res.status(400).json({ error: 'Falta el ID del creador.' });
-
-    const sessionId = uuidv4().slice(0, 6).toUpperCase(); // ID de 6 caracteres
-
-    try {
-        // Guardar en Boss_Sessions (Base de datos)
-        await db_pool.query(
-            "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
-            [sessionId, creadorId, jefeVidaMax, jefeVidaMax, 'oberta', maxParticipants]
-        );
-        // Guardar en memoria
-        salasActivas[sessionId] = { 
-            creadorId, 
-            createdAt: new Date(), 
-            maxJugadores: maxParticipants, 
-            modo: 'incursion',
-            partidaFinalizada: false,
-            jefeVidaMax: jefeVidaMax,
-            jefeVidaActual: jefeVidaMax
-        };
-
-        res.status(201).json({ sessionId });
-    } catch (error) {
-        console.error('Error al crear la incursión:', error);
-        res.status(500).json({ error: 'Error interno al crear la incursión.' });
-    }
-});
-
 
 /**
  * Endpoint: Comprobar si la sala existe y qué modo usa.
@@ -163,12 +159,21 @@ app.get('/api/salas/check/:codigo', (req, res) => {
     }
 
     // 2. Revisar Boss_Sessions en BDD (Incursión)
-    db_pool.query('SELECT id FROM Boss_Sessions WHERE id = ?', [codigo])
+    db_pool.query('SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants FROM Boss_Sessions WHERE id = ?', [codigo])
         .then(([rows]) => {
             if (rows.length > 0) {
                 // Si la encontramos, la cargamos en memoria como incursión (solo si no estaba)
                 if (!salasActivas[codigo]) {
-                    salasActivas[codigo] = { modo: 'incursion', creadorId: null, partidaFinalizada: false };
+                    const bossSession = rows[0];
+                    salasActivas[codigo] = {
+                        creadorId: bossSession.creador_id, 
+                        createdAt: new Date(), // Podemos usar la fecha actual, ya que es solo para memoria
+                        maxJugadores: bossSession.max_participants, 
+                        modo: 'incursion',
+                        partidaFinalizada: bossSession.estat === 'finalitzada',
+                        jefeVidaMax: bossSession.jefe_vida_max,
+                        jefeVidaActual: bossSession.jefe_vida_actual
+                    };
                 }
                 res.json({ success: true, exists: true, modo: 'incursion' });
             } else {
@@ -210,6 +215,10 @@ app.post('/api/sessions/start', async (req, res) => {
 
     res.json({ success: true, message: `Sala ${codigo} iniciada.` });
 });
+
+// Rutes d'usuari (asumo que están en ./routes/userRoutes)
+const userRoutes = require('./routes/userRoutes');
+app.use('/api/users', userRoutes);
 
 
 // -------------------- RUTAS ORIGINALES MANTENIDAS (Rutinas/Boss) --------------------
@@ -269,34 +278,25 @@ app.post('/api/session/save', async (req, res) => {
     }
 });
 
-// Crear Boss (Tu ruta original)
-app.post('/api/boss/create', async (req, res) => {
-    const { jefeVidaMax = 300, maxParticipants = 10 } = req.body;
-    try {
-        const [result] = await db_pool.query(
-            'INSERT INTO Boss_Sessions (jefe_vida_max, jefe_vida_actual, max_participants) VALUES (?,?,?)',
-            [jefeVidaMax, jefeVidaMax, maxParticipants]
-        );
-        res.json({ success: true, bossId: result.insertId });
-    } catch (err) {
-        res.status(500).json({ success: false, error: 'Error al crear boss' });
-    }
-});
-
 // Unirse al Boss (Tu ruta original)
-app.post('/api/boss/join', async (req, res) => {
+app.post('/api/boss/join', async (req, res) => { // Ahora se usa para registrarse antes de conectar por WS
     const { bossId, usuariId } = req.body;
     try {
+        // Comprobar si ya está inscrito
         const [exists] = await db_pool.query(
             'SELECT * FROM Boss_Participants WHERE id_boss_sessio=? AND id_usuari=?',
             [bossId, usuariId]
         );
-        if (exists.length > 0) return res.status(400).json({ error: 'Ya estás inscrito a esta sesión' });
+        if (exists.length === 0) {
+            // Si no está, lo insertamos
+            await db_pool.query(
+                'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
+                [bossId, usuariId]
+            );
+        }
+        // Notificar a todos los clientes en la sala (si hay alguno conectado) sobre el nuevo participante
+        await broadcastIncursionState(bossId);
 
-        await db_pool.query(
-            'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
-            [bossId, usuariId]
-        );
         res.json({ success: true, message: 'Participante agregado' });
     } catch (err) {
         res.status(500).json({ error: 'Error al unirse a la sesión de boss' });

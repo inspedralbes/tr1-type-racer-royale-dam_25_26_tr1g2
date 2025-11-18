@@ -641,6 +641,10 @@ onBeforeUnmount(() => {
     backdrop-filter: blur(5px);
 }
 
+.webcam-stage {
+    position: relative; /* Contenedor para el overlay */
+}
+
 /* --- ESTILOS DE CHAT (LÓGICA 'message-log' CORREGIDA) --- */
 
 .combat-log-overlay {
