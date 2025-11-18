@@ -47,7 +47,6 @@ let rafId = 0                     // requestAnimationFrame id per al loop
 
 // NEW: mode d'origen i URL de vídeo local
 const sourceMode = ref('camera')   // 'camera' | 'file'
-const fileUrl = ref(null)          // blob URL del vídeo local (si n'hi ha)
 
 /* -----------------------------
    HELPERS (angles, distàncies, normalització, velocitats) - NEW
@@ -460,21 +459,6 @@ watch(selectedId, (id) => {
   if (id) startCamera(id)
 })
 
-// NEW: quan canviem de 'camera' a 'file' o viceversa
-watch(sourceMode, async (mode) => {
-  if (mode === 'camera') {
-    // tornem a la càmera
-    await startCamera(selectedId.value || '')
-  } else {
-    // res a fer fins que l'usuari triï un fitxer
-    stopCurrentSource()
-  }
-})
-
-// (ja el tens) quan canvia el deviceId i som en mode càmera
-watch(selectedId, (id) => {
-  if (id && sourceMode.value === 'camera') startCamera(id)
-})
 
 
 </script>
@@ -498,47 +482,36 @@ watch(selectedId, (id) => {
     </div>
  
 
-<!-- NEW: selector d'origen i entrada de fitxer -->
-<div class="source-select" style="width: min(100%, 720px); display: grid; gap: 8px; grid-template-columns: 1fr 1fr;">
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="camera" v-model="sourceMode">
-    Càmera
-  </label>
-  <label style="display:flex; align-items:center; gap:.5rem;">
-    <input type="radio" value="file" v-model="sourceMode">
-    Vídeo local
-  </label>
 
-  <!-- Input de fitxer activat només en mode 'file' -->
-  <input
-    v-if="sourceMode === 'file'"
-    type="file"
-    accept="video/*"
-    @change="e => e.target.files?.[0] && startFileVideo(e.target.files[0])"
-    style="grid-column: 1 / -1;"
-  />
-</div>
   </div>
 </template>
 
 <style scoped>
 /* Container: stack video and select vertically to save horizontal space */
-.skeleton-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-start;
-}
+/* PoseSkeleton.vue -> <style scoped> */
 
 /* Video frame with fixed aspect ratio and rounded corners */
 .stage {
   position: relative;
-  width: min(100%, 720px);
-  aspect-ratio: 4 / 3;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
+  width: 100%; /* Important: Ocupa el 100% de la columna que t'assigni Multijugador.vue */
+  aspect-ratio: 4 / 3; /* Torna a afegir aspect-ratio per adaptar-se a l'amplada */
+  min-height: auto; /* Permet que l'alçada es defineixi per l'aspect-ratio */
+  /* ... altres propietats ... */
 }
+
+/* Assegura't que l'element que conté tot (`.skeleton-wrap`) també sigui flexible */
+.skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%; /* Ocupa tota l'amplada disponible */
+}
+
+/* Elimina o revisa aquestes línies si les tens, ja que limiten l'amplada: */
+/* .stage { width: min(100%, 720px); ... } */ 
+/* .skeleton-wrap { width: min(100%, 720px); ... } */ 
+/* Substitueix-los per un simple `width: 100%;` */
 
 /* The video element fills the frame */
 .video {

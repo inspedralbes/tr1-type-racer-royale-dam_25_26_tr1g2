@@ -17,7 +17,7 @@ const route = useRoute()
 const router = useRouter()
 
 const salaId = ref(route.query.sala || null)
-const userId = ref(null); // Se inicializa a null y se obtiene en onMounted
+const userId = ref(null); // S'inicialitza a null i s'obté a onMounted
 
 function obtenerUsuarioId() {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -32,7 +32,8 @@ const jugadores = ref([])
 
 const isPoseDetectorReady = ref(true) 
 const isPartidaActiva = ref(false)
-const ejercicioSeleccionado = ref('Sentadillas')
+// Nom de l'exercici en català
+const ejercicioSeleccionado = ref('Sentadilles') 
 const mostrarMensajeObjetivo = ref(false)
 const features = shallowRef(null)
 const ganador = ref(null)
@@ -52,11 +53,12 @@ const todosListos = computed(() =>
 
 const startButtonText = computed(() => {
   if (jugadores.value.length < 2) {
-    return 'Se necesitan al menos 2 jugadores';
+    return 'Mínim 2 jugadors';
   }
   if (!todosListos.value) {
     const faltan = jugadores.value.filter(j => !j.ready).length;
-    return `Esperando a ${faltan} jugador(es)`;
+    // Corregit: 'Esperant a X jugador(s)'
+    return `Esperant a ${faltan} jugador(s)`; 
   }
   return 'Iniciar Partida';
 });
@@ -70,24 +72,25 @@ function onFeatures(payload) {
 
   if (!isPartidaActiva.value || !features.value?.angles) return;
 
+  // Exercicis traduïts al català
   const exerciseHandlers = {
-    'Sentadillas': { detect: checkSquatRep, state: squatState },
-    'Flexiones': { detect: checkPushupRep, state: pushupState },
-    'Abdominales': { detect: checkSitupRep, state: situpState },
-    'Zancadas': { detect: checkLungeRep, state: lungeState },
-    'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState },
-    'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState }
+    'Sentadilles': { detect: checkSquatRep, state: squatState },
+    'Flexions': { detect: checkPushupRep, state: pushupState },
+    'Abdominals': { detect: checkSitupRep, state: situpState },
+    'Zancades': { detect: checkLungeRep, state: lungeState }, // Zancadas -> Fetes
+    'Salts de Tisora': { detect: checkJumpingJacksRep, state: jumpingJacksState }, // Jumping Jacks -> Salts de Tisora
+    'Escaladors': { detect: checkMountainClimbersRep, state: mountainClimbersState } // Mountain Climbers -> Escaladors
   };
 
   const handler = exerciseHandlers[ejercicioSeleccionado.value];
   const jugador = jugadores.value.find(j => j.id == userId.value);
 
   if (handler && jugador) {
-    const currentState = handler.state.value[userId.value] || (ejercicioSeleccionado.value === 'Jumping Jacks' ? 'down' : 'up');
-    const detectionInput = ejercicioSeleccionado.value === 'Jumping Jacks' ? features.value : features.value.angles;
+    const currentState = handler.state.value[userId.value] || (ejercicioSeleccionado.value === 'Salts de Tisora' ? 'down' : 'up');
+    const detectionInput = ejercicioSeleccionado.value === 'Salts de Tisora' ? features.value : features.value.angles;
     const result = handler.detect(detectionInput, currentState);
 
-    // Actualizamos el estado del ejercicio para este jugador
+    // Actualitzem l'estat de l'exercici per a aquest jugador
     handler.state.value = { ...handler.state.value, [userId.value]: result.newState };
 
     if (result.repCompleted && ws.value && ws.value.readyState === WebSocket.OPEN) {
@@ -111,7 +114,8 @@ async function iniciarPartida() {
     await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value });
   } catch (error) {
     console.error("Error al iniciar la partida:", error);
-    alert("No se pudo iniciar la partida.");
+    // Traduït: "No es va poder iniciar la partida."
+    alert("No es va poder iniciar la partida."); 
   }
 }
 
@@ -123,7 +127,8 @@ onMounted(() => {
   userId.value = obtenerUsuarioId();
 
   if (!salaId.value || !userId.value) {
-    alert("No se ha especificado una sala o no has iniciado sesión.");
+    // Traduït: "No s'ha especificat una sala o no has iniciat sessió."
+    alert("No s'ha especificat una sala o no has iniciat sessió."); 
     router.push('/inicial');
     return;
   }
@@ -138,7 +143,7 @@ onMounted(() => {
       userId: userId.value,
       nombre: (() => {
         const user = JSON.parse(localStorage.getItem('user'));
-        // El modelo Sequelize usa 'usuari', no 'username'
+        // El model Sequelize usa 'usuari', no 'username'
         return user?.usuari || user?.username || `Jugador ${userId.value}`;
       })()
     }));
@@ -163,7 +168,7 @@ onMounted(() => {
           if (!jumpingJacksState.value[jugador.id]) jumpingJacksState.value[jugador.id] = 'down';
           if (!mountainClimbersState.value[jugador.id]) mountainClimbersState.value[jugador.id] = 'up';
         });
-        // Actualizar también la configuración de la sala
+        // Actualitzar també la configuració de la sala
         if (data.ejercicio) ejercicioSeleccionado.value = data.ejercicio;
         if (data.maxReps) maxReps.value = data.maxReps;
 
@@ -172,7 +177,7 @@ onMounted(() => {
         isPartidaActiva.value = true;
         mostrarMensajeObjetivo.value = false;
         ganador.value = null;
-        // Reiniciar estados de ejercicios para todos los jugadores
+        // Reiniciar estats d'exercicis per a tots els jugadors
         squatState.value = {};
         pushupState.value = {};
         situpState.value = {};
@@ -182,16 +187,18 @@ onMounted(() => {
         jugadores.value.forEach(j => j.repeticiones = 0);
         break;
       case 'JOIN_ERROR':
-        alert(`Error al unirse: ${data.message}`);
+        // Traduït: "Error en unir-se:"
+        alert(`Error en unir-se: ${data.message}`); 
         router.push('/unirsala');
         break;
       case 'SETTINGS_UPDATED':
-        // El servidor nos informa de la nueva configuración
+        // El servidor ens informa de la nova configuració
         if (data.ejercicio) ejercicioSeleccionado.value = data.ejercicio;
         if (data.maxReps) maxReps.value = data.maxReps;
         break;
       case 'LEADER_LEFT':
-        alert(data.message || 'El líder ha abandonado la sala. Serás redirigido.');
+        // Traduït: "El líder ha abandonat la sala. Seràs redirigit."
+        alert(data.message || 'El líder ha abandonat la sala. Seràs redirigit.'); 
         detenerPartida();
         router.push('/inicial');
         break;
@@ -199,13 +206,14 @@ onMounted(() => {
         ganador.value = data.winnerName || 'Un jugador';
         mostrarMensajeObjetivo.value = true;
         isPartidaActiva.value = false;
-        // Opcional: añadir un timeout para poder volver a jugar
+        // Opcional: afegir un timeout per a poder tornar a jugar
         break;
     }
   };
 
   ws.value.onclose = () => isConnected.value = false;
-  ws.value.onerror = () => alert("Error de conexión con el servidor de juego.");
+  // Traduït: "Error de connexió amb el servidor de joc."
+  ws.value.onerror = () => alert("Error de connexió amb el servidor de joc."); 
 });
 
 onBeforeUnmount(() => {
@@ -213,7 +221,7 @@ onBeforeUnmount(() => {
   if (ws.value) ws.value.close();
 })
 
-// Observar cambios en la configuración para enviarlos al servidor si eres el creador
+// Observar canvis en la configuració per enviar-los al servidor si ets el creador
 watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
   if (esCreador.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
     ws.value.send(JSON.stringify({
@@ -235,7 +243,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
         <v-card elevation="16" class="pa-6 rounded-xl card-elevated" dark>
           <v-card-title class="justify-center pb-2">
             <h2 class="text-h5 font-weight-black">
-              Modo Multijugador - {{ ejercicioSeleccionado }}
+              Mode Multijugador - {{ ejercicioSeleccionado }}
             </h2>
           </v-card-title>
 
@@ -248,33 +256,32 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
             dark
           >
             <v-icon left>mdi-arrow-left</v-icon>
-            Volver al Inicio
+            Tornar a l'Inici
           </v-btn>
           
           <div class="text-center mb-4">
             <v-chip small :color="isConnected ? 'green' : 'red'">
-              {{ isConnected ? 'CONECTADO' : 'DESCONECTADO' }}
+              {{ isConnected ? 'CONNECTAT' : 'DESCONNECTAT' }}
             </v-chip>
             <v-chip small class="ml-2">Sala: {{ salaId }}</v-chip>
           </div>
 
           <v-card-text>
             <v-row align="start">
-              <!-- Columna cámara -->
               <v-col cols="12" md="8" class="d-flex flex-column align-center">
                 <div class="webcam-container mb-4">
                   <PoseSkeleton class="video-feed" @features="onFeatures" />
 
                   <div v-if="!isPoseDetectorReady" class="webcam-overlay">
                     <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                    <p class="mt-3">Cargando detector de pose...</p>
+                    <p class="mt-3">Carregant detector de pose...</p>
                   </div>
 
                   <transition name="fade">
                     <div v-if="mostrarMensajeObjetivo" class="objetivo-overlay">
                       <v-icon size="64" color="amber lighten-1">mdi-trophy</v-icon>
                       <h2 class="mt-3 text-h5 font-weight-black text-amber-lighten-2">
-                        ¡Objetivo alcanzado! Ganador: {{ ganador }}
+                        Objectiu aconseguit! Guanyador: {{ ganador }}
                       </h2>
                     </div>
                   </transition>
@@ -303,12 +310,11 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                     :disabled="!isPartidaActiva"
                   >
                     <v-icon left>mdi-stop</v-icon>
-                    Detener
+                    Aturar
                   </v-btn>
                 </div>
               </v-col>
 
-              <!-- Columna jugadores + configuraciones -->
               <v-col cols="12" md="4" class="d-flex flex-column align-center">
                 <v-card
                   v-for="jugador in jugadores"
@@ -327,10 +333,10 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                   </div>
                   
                   <div class="mt-2 text-caption font-weight-bold" v-if="isPartidaActiva">
-                      Estado: 
-                      <span v-if="ejercicioSeleccionado === 'Sentadillas'">{{ squatState[jugador.id] }}</span>
-                      <span v-else-if="ejercicioSeleccionado === 'Flexiones'">{{ pushupState[jugador.id] }}</span>
-                      <span v-else>Listo</span>
+                      Estat: 
+                      <span v-if="ejercicioSeleccionado === 'Sentadilles'">{{ squatState[jugador.id] }}</span>
+                      <span v-else-if="ejercicioSeleccionado === 'Flexions'">{{ pushupState[jugador.id] }}</span>
+                      <span v-else>Llest</span> 
                   </div>
 
                   <v-btn
@@ -341,7 +347,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                     @click="marcarListo"
                   >
                     <v-icon left>mdi-check</v-icon>
-                    Estoy listo
+                    Estic llest
                   </v-btn>
 
                   <v-chip
@@ -351,7 +357,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                     block
                     class="mt-2"
                   >
-                    ✅ Listo
+                    ✅ Llest
                   </v-chip>
                   
                   <v-chip
@@ -361,16 +367,15 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                     block
                     class="mt-2"
                   >
-                    {{ jugador.repeticiones >= maxReps ? '¡META!' : 'COMPITIENDO...' }}
+                    {{ jugador.repeticiones >= maxReps ? '¡META!' : 'COMPETINT...' }}
                   </v-chip>
                   
                 </v-card>
 
-                <!-- Selector de ejercicio -->
                 <v-select
                   v-model="ejercicioSeleccionado"
-                  :items="['Sentadillas','Flexiones','Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']"
-                  label="Ejercicio"
+                  :items="['Sentadilles','Flexions','Abdominals', 'Zancades', 'Salts de Tisora', 'Escaladors']" 
+                  label="Exercici"
                   outlined
                   dense
                   dark
@@ -378,11 +383,10 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                   :disabled="isPartidaActiva || !esCreador"
                 ></v-select>
 
-                <!-- Selector de repeticiones -->
                 <div class="d-flex flex-column w-100 mb-4">
                   <v-slider
                     v-model="maxReps"
-                    label="Repeticiones objetivo"
+                    label="Repeticions objectiu" 
                     :min="1"
                     :max="20"
                     step="1"
@@ -394,7 +398,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                   <v-text-field
                     v-model="maxReps"
                     type="number"
-                    label="Repeticiones"
+                    label="Repeticions" 
                     dense
                     outlined
                     dark
@@ -413,7 +417,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
                 >
                   <v-expansion-panel>
                     <v-expansion-panel-title class="text-caption font-weight-bold text-center text-primary">
-                      DATOS DEL SENSOR (Ángulos Clave)
+                      DADES DEL SENSOR (Angles Clau)
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
                       <PoseFeatures :features="features" />
@@ -437,6 +441,7 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
 .custom-container { max-width: 1000px !important; }
 .webcam-container { position: relative; width: 100%; padding-top: 0%; min-height: 500px; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
 @media (max-width: 768px) { .webcam-container { min-height: 300px; } }
+
 .repetitions-card { 
   width: 100%; 
   max-width: 250px; 
@@ -462,8 +467,14 @@ watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
 .v-row > .v-col { display: flex; flex-direction: column; align-items: center; }
 .features-card { width: 100%; max-width: 250px; background-color: #2c2c2c !important; border: 1px solid #444; border-radius: 8px; color: #fff !important; }
 .v-btn { width: 100%; max-width: 300px; text-align: center; }
-.v-btn.button-pulse { white-space: normal; word-break: break-word; }
-.objetivo-overlay h2 { font-size: 1.2rem; word-break: break-word; }
+/* ... dins de <style scoped> */
+.v-btn.button-pulse { 
+  white-space: normal; /* Permet que el text salti de línia */
+  word-break: break-word; /* Trenca paraules llargues si és necessari */
+  line-height: 1.2; /* Ajusta l'altura de línia si el text salta */
+  height: auto !important; /* Permet que el botó creixi en altura */
+  min-height: 50px; /* Assegura una altura mínima si és necessari */
+}.objetivo-overlay h2 { font-size: 1.2rem; word-break: break-word; }
 .button-group { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
 @media (min-width: 992px) { .button-group { flex-wrap: nowrap; } }
 @media (max-width: 768px) { .v-btn { max-width: 100%; font-size: 0.9rem; } .repetitions-card, .features-card { max-width: 100%; margin-bottom: 1rem; } .objetivo-overlay h2 { font-size: 1rem; } }
