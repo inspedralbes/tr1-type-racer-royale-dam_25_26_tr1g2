@@ -569,7 +569,7 @@ async function gestionarUnionIncursion() {
         creadorId: user.value.id, // CORRECCIÓN: El backend espera 'creadorId' de forma consistente.
         nombreCreador: user.value.usuari || 'Anónimo',
         modo: 'incursion', // Especificamos que es una sala de incursión
-        maxJugadores: MAX_PARTICIPANTS
+        maxParticipants: MAX_PARTICIPANTS
       });
       bossSessionId.value = response.data.sessionId;
       conectarWebSocket(response.data.sessionId);
