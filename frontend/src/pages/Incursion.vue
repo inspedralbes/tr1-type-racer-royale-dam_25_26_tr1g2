@@ -517,6 +517,8 @@ function conectarWebSocket() {
 
 import axios from 'axios'; // Importamos la instancia global de axios
 const api = axios; // Usamos la instancia global
+// Configuramos la URL base para las peticiones de Axios en este componente.
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000';
 
 async function gestionarUnionIncursion() {
   if (!user.value?.id) {
