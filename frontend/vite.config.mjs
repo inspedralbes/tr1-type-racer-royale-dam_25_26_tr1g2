@@ -62,6 +62,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true,
+    // Use '0.0.0.0' to allow access from outside the container
+    host: '0.0.0.0', 
   },
 })

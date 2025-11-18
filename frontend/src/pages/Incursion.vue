@@ -487,6 +487,12 @@ function conectarWebSocket(sessionIdToJoin) {
           añadirMensaje(data.message, 'info--text');
         } 
         break;
+      case 'PARTICIPANT_UPDATE':
+        // El servidor nos envía la lista de participantes actualizada
+        participantes.value = data.participantes;
+        // Opcional: mostrar un mensaje de que alguien se unió/salió
+        if (data.message) añadirMensaje(data.message, 'info--text');
+        break;
       case 'INCURSION_STARTED':
         iniciarPartida();
         break;

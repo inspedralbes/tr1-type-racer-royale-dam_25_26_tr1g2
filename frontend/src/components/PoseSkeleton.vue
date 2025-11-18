@@ -567,6 +567,6 @@ watch(selectedId, (id) => {
 /* The video element fills the frame */
 .video {
   width: 100%;
-  height: 10
-  }
-  </style>
+  height: 100%;
+}
+</style>
