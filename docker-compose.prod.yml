@@ -16,6 +16,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    networks:
+      - trainai-net
 
   # -------------------------------------------------------------
   # Backend Service
