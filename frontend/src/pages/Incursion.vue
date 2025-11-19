@@ -395,7 +395,7 @@ function onFeatures(payload) {
             'Sentadillas': { detect: checkSquatRep, state: squatState },
             'Flexiones': { detect: checkPushupRep, state: pushupState },
             'Abdominales': { detect: checkSitupRep, state: situpState },
-            'Zancadas': { detect: checkLungeRep, state: lungeState },
+            'Zancades': { detect: checkLungeRep, state: lungeState },
             'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState },
             'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState }
         };
