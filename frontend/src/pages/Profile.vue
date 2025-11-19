@@ -129,9 +129,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
-
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000'
+import apiClient from '@/plugins/axios.js'
 
 const userId = ref(null)
 const username = ref('Invitado')
@@ -167,7 +165,8 @@ function formatDate(dateString) {
 const loadRoutines = async () => {
   if (!userId.value) { routines.value = []; return }
   try {
-    const res = await axios.get(`/api/rutines/user/${userId.value}?t=${Date.now()}`)
+    // Corregido: Usar apiClient y la ruta correcta sin /api
+    const res = await apiClient.get(`/rutinas/user/${userId.value}?t=${Date.now()}`)
     routines.value = res.data.rutines || []
   } catch { routines.value = [] }
 }

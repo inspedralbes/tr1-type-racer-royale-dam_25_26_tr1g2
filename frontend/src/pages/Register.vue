@@ -128,7 +128,4 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-.v-container {
-  background-color:rgba(245, 245, 245, 0.13);
-}
 </style>

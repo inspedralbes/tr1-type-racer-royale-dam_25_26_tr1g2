@@ -128,7 +128,7 @@ async function guardarRutina() {
     )
 
     // Llamada al backend
-    const response = await apiClient.post('/session/save', {
+    const response = await apiClient.post('/rutinas', {
       userId,
       nom: nombreRutina.value,
       descripcio: null, // opcional: añadir descripción si quieres

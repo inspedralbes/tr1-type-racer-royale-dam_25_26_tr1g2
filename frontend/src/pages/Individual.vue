@@ -190,7 +190,7 @@ const loadUserRoutines = async () => {
   const userId = userData?.id || userData?.userId
   if (userId) {
     try {
-      const resp = await apiClient.get(`/rutines/user/${userId}`)
+      const resp = await apiClient.get(`/rutinas/user/${userId}`)
       userRoutines.value = resp.data.rutines || []
     } catch (e) { console.error(e); userRoutines.value = [] }
   } else userRoutines.value = []

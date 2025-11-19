@@ -113,6 +113,87 @@ app.post('/api/sessions/start', (req, res) => {
   res.json({ success: true, message: `Sala ${codigo} iniciada.` });
 });
 
+// Guardar una nueva rutina y sus ejercicios
+app.post('/api/rutinas', async (req, res) => {
+  const { userId, nom, descripcio, exercicis } = req.body;
+
+  if (!userId || !nom || !exercicis || !Array.isArray(exercicis)) {
+    return res.status(400).json({ success: false, error: 'Faltan datos obligatorios: userId, nom, exercicis.' });
+  }
+
+  let connection;
+  try {
+    connection = await db_pool.getConnection();
+    await connection.beginTransaction();
+
+    // 1. Insertar la rutina principal
+    const [rutinaResult] = await connection.query(
+      'INSERT INTO Rutines (id_usuari, nom, descripcio) VALUES (?, ?, ?)',
+      [userId, nom, descripcio]
+    );
+    const rutinaId = rutinaResult.insertId;
+
+    // 2. Insertar los ejercicios de la rutina
+    if (exercicis.length > 0) {
+      const ejerciciosValues = exercicis.map(ex => [rutinaId, ex.nom_exercicis, ex.n_repeticions]);
+      await connection.query(
+        'INSERT INTO Exercicis_Rutina (id_rutina, nom_exercicis, n_repeticions) VALUES ?',
+        [ejerciciosValues]
+      );
+    }
+
+    await connection.commit();
+    res.status(201).json({ success: true, rutinaId: rutinaId, message: 'Rutina guardada correctamente.' });
+
+  } catch (err) {
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error('Error en /api/rutines:', err);
+    res.status(500).json({ success: false, error: 'Error del servidor al guardar la rutina.' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
+// Obtener todas las rutinas de un usuario
+app.get('/api/rutinas/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'Falta el ID de usuario.' });
+  }
+
+  try {
+    // 1. Obtener todas las rutinas del usuario
+    const [rutinas] = await db_pool.query(
+      'SELECT * FROM Rutines WHERE id_usuari = ? ORDER BY data_creacio DESC',
+      [userId]
+    );
+
+    if (rutinas.length === 0) {
+      return res.json({ success: true, rutines: [] });
+    }
+
+    // 2. Para cada rutina, obtener sus ejercicios
+    for (let i = 0; i < rutinas.length; i++) {
+      const [exercicis] = await db_pool.query(
+        'SELECT * FROM Exercicis_Rutina WHERE id_rutina = ?',
+        [rutinas[i].id]
+      );
+      rutinas[i].exercicis = exercicis; // Añadir el array de ejercicios a cada objeto de rutina
+    }
+
+    res.json({ success: true, rutines: rutinas });
+
+  } catch (err) {
+    console.error(`Error en /api/rutinas/user/${userId}:`, err);
+    res.status(500).json({ success: false, error: 'Error del servidor al obtener las rutinas.' });
+  }
+});
+
 // -------------------- WEBSOCKET --------------------
 const wss = new WebSocket.Server({ port: WS_PORT });
 const sessions = new Map(); // Map<sessionId, Map<userId, clientId>>
