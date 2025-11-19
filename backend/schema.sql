@@ -25,7 +25,7 @@ CREATE TABLE Exercicis_Rutina (
     FOREIGN KEY (id_rutina) REFERENCES Rutines(id)
 );
 
--- Mode 2v2 (Versus Sessions)
+-- Mode (Versus Sessions)
 CREATE TABLE SessionsVersus (
     id INT AUTO_INCREMENT PRIMARY KEY,
     codi_acces CHAR(8) UNIQUE NOT NULL,

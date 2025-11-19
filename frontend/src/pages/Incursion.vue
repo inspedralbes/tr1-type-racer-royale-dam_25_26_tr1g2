@@ -83,7 +83,7 @@
                   class="action-btn"
                 >
                   <v-icon left>mdi-magnify</v-icon>
-                  Crear / Buscar Incursión
+                  Crear Incursión
                 </v-btn>
               </div>
 
@@ -221,7 +221,7 @@ const CURACION_JUGADOR_POR_REP = 5
 const DAÑO_AL_JUGADOR_POR_FALLO = 5
 const MAX_PARTICIPANTS = 10
 const DURACION_RULETA = 60
-const UMBRAL_POBRE_SCORE = 0.65
+const UMBRAL_POBRE_SCORE = 0.25
 const JEFE_VIDA_BASE = 300
 const JUGADOR_VIDA_MAXIMA = 100
 

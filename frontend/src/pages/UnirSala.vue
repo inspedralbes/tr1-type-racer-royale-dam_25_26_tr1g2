@@ -49,7 +49,7 @@
                 block
               >
                 <v-icon left size="28">mdi-sword-cross</v-icon>
-                Unirse a Multijugador (2vs2)
+                Unirse a Multijugador
               </v-btn>
 
               <v-btn
