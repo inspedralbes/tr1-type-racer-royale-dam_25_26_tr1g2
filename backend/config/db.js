@@ -40,7 +40,7 @@ async function connectWithRetry(retries = 10, delay = 3000) {
 // Ejecutar la conexión para verificarla al inicio, pero no bloquear el proceso ni iniciar un servidor
 // La lógica de reintento de conexión del pool de mysql2/promise ya maneja la reconexión si la DB se cae temporalmente.
 // Para el inicio, el healthcheck de Docker Compose es más robusto.
-connectWithRetry()
-  .catch(err => console.error('Error inicial de conexión al pool de MySQL:', err));
+// connectWithRetry()
+//  .catch(err => console.error('Error inicial de conexión al pool de MySQL:', err));
 
-module.exports = { pool };
+module.exports = { pool, connectWithRetry };

@@ -37,7 +37,7 @@ app.set('etag', false);
 const userRoutes = require('./routes/userRoutes');
 app.use('/api/users', userRoutes);
 
-const db_pool = require('./config/db').pool; 
+const { pool: db_pool, connectWithRetry } = require('./config/db');
 
 // Objeto en memoria para rastrear las salas activas (USADO SÓLO PARA VERSUS)
 const salasActivas = {}; 
