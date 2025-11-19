@@ -4,13 +4,13 @@
       <v-col cols="12" sm="8" md="6" lg="4">
         <v-card class="elevation-12 pa-6">
           <v-card-title class="text-h5 text-center mb-4">
-            Iniciar Sesión
+Inicia la Sessió
           </v-card-title>
           <v-form @submit.prevent="handleLogin" v-model="isFormValid">
             <v-text-field
               v-model="email"
               :rules="emailRules"
-              label="Email"
+              label="Correu Electrònic"
               type="email"
               required
               prepend-icon="mdi-email"
@@ -21,7 +21,7 @@
             <v-text-field
               v-model="password"
               :rules="passwordRules"
-              label="Contraseña"
+              label="Contrasenya"
               type="password"
               required
               prepend-icon="mdi-lock"
@@ -37,8 +37,7 @@
               :disabled="!isFormValid"
               :loading="loading"
             >
-              Iniciar Sesión
-            </v-btn>
+Inicia la Sessió            </v-btn>
 
             <v-alert
               v-if="error"
@@ -51,10 +50,8 @@
           </v-form>
 
           <div class="text-center mt-4">
-            ¿No tienes una cuenta?
-            <router-link to="/register" class="text-decoration-none">
-              Regístrate aquí
-            </router-link>
+No tens un compte?            <router-link to="/register" class="text-decoration-none">
+Registra-t'hi aquí            </router-link>
           </div>
         </v-card>
       </v-col>
@@ -77,13 +74,13 @@ const password = ref('')
 
 // Reglas de validación
 const emailRules = [
-  v => !!v || 'El email es requerido',
-  v => /.+@.+\..+/.test(v) || 'El email debe ser válido'
+  v => !!v || 'El correu electrònic és requerit',
+  v => /.+@.+\..+/.test(v) || 'El correu electrònic ha de ser vàlid'
 ]
 
 const passwordRules = [
-  v => !!v || 'La contraseña es requerida',
-  v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
+  v => !!v || 'La contrasenya és requerida',
+  v => v.length >= 6 || 'La contrasenya ha de tenir almenys 6 caràcters'
 ]
 
 import { useAuth } from '@/composables/useAuth'
@@ -113,7 +110,7 @@ const handleLogin = async () => {
       // Redirigir a la página principal
       router.push('/inicial')
     } else {
-      error.value = response.data.error || 'Error al iniciar sesión.'
+      error.value = response.data.error || 'Error en iniciar la sessió.'
     }
   } catch (err) {
     if (err.response && err.response.data && err.response.data.error) {
@@ -121,7 +118,7 @@ const handleLogin = async () => {
       error.value = err.response.data.error;
     } else {
       // Error de red u otro problema
-      error.value = 'Error al iniciar sesión. Por favor, verifica tus credenciales y la conexión.'
+      error.value = 'Error en iniciar la sessió. Si us plau, verifica les teves credencials i la connexió.'
     }
     console.error('Error de login:', err)
   } finally {
