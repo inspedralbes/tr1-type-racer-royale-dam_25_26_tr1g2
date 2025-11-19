@@ -5,7 +5,7 @@ services:
   # Database Service
   # -------------------------------------------------------------
   db:
-    image: mariadb:10.6
+    image: mariadb:12
     container_name: fitai_db
     restart: always
     environment:
@@ -16,11 +16,6 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # -------------------------------------------------------------
   # Backend Service
@@ -42,8 +37,7 @@ services:
       # AHORA CAMBIAMOS A HTTPS EN LOS ORÍGENES
       FRONTEND_ORIGINS: "https://trainai.dam.inspedralbes.cat,http://localhost"
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     networks:
       - trainai-net
 
