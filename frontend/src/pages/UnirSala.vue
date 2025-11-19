@@ -78,13 +78,11 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import apiClient from '@/plugins/axios.js' // Usar el cliente centralizado
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const codigoSala = ref('')  
-const API_BASE_URL = 'http://localhost:9000'
-const api = axios.create({ baseURL: API_BASE_URL });
 
 function obtenerUsuarioId() {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -98,13 +96,14 @@ async function unirseSala(modo) {
   try {
     const userId = obtenerUsuarioId();
     if (!userId) {
-      alert('Debes iniciar sesión para unirte a una sala.'); // Usamos alert para notificaciones simples
+      alert('Debes iniciar sesión para unirte a una sala.');
       await router.push({ name: 'login' });
       return;
     }
 
     // 1. Comprobar si la sala existe y su modo en el servidor
-    const response = await api.get(`/api/salas/check/${codigo}`);
+    // Corregido: Usar apiClient y la ruta relativa
+    const response = await apiClient.get(`/salas/check/${codigo}`);
     const salaInfo = response.data;
 
     // 2. Validar que la sala existe y el modo coincide

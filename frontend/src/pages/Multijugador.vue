@@ -11,7 +11,7 @@ import {
   checkJumpingJacksRep,
   checkMountainClimbersRep
 } from '../utils/exercise-detection.js' 
-import axios from 'axios'
+import apiClient from '@/plugins/axios.js' // CORREGIDO: Usar apiClient
 
 const route = useRoute()
 const router = useRouter()
@@ -109,7 +109,8 @@ async function iniciarPartida() {
   if (isPartidaActiva.value) return;
 
   try {
-    await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value })
+    // CORREGIDO: Usar apiClient y ruta relativa
+    await apiClient.post('/sessions/start', { codigo: salaId.value })
   } catch (error) {
     console.error("Error al iniciar la partida:", error)
     alert("No se pudo iniciar la partida.")
@@ -127,7 +128,10 @@ onMounted(() => {
     return
   }
 
-  ws.value = new WebSocket('ws://localhost:8082')
+  // CORREGIDO: URL del WebSocket dinámica
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/`;
+  ws.value = new WebSocket(wsUrl);
 
   ws.value.onopen = () => {
     isConnected.value = true

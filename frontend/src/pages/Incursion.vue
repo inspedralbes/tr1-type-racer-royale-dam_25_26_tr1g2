@@ -408,7 +408,11 @@ function curarJugador(cantidad) {
 
 function conectarWebSocket() {
   if (ws.value) ws.value.close()
-  ws.value = new WebSocket('ws://localhost:8082')
+  
+  // CORREGIDO: URL del WebSocket dinámica
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/`;
+  ws.value = new WebSocket(wsUrl);
 
   ws.value.onopen = () => {
     isConnected.value = true
