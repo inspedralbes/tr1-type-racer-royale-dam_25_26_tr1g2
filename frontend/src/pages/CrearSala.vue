@@ -59,7 +59,7 @@
             <!-- Contenedor adaptativo para selección y botón -->
             <div class="d-flex flex-wrap align-center justify-center mt-4 responsive-container">
               <div class="mb-3 mode-display">
-                <p class="text-subtitle-1 font-weight-bold">Modo: 2 vs 2</p>
+                <p class="text-subtitle-1 font-weight-bold">Modo: Multijugador</p>
               </div>
               <v-btn
                 color="success"
