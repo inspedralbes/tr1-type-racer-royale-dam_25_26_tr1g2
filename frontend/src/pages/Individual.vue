@@ -19,9 +19,7 @@ const selectedRoutineId = ref(null)
 
 // Ejercicios disponibles
 const allExercises = [
-  'Sentadillas','Flexiones','Abdominales','Burpees','Dominadas','Fondos',
-  'Zancadas','Plancha','Jumping Jacks','Mountain Climbers','Curl de Bíceps',
-  'Press de Hombros','Peso Muerto','Press de Banca','Remo'
+  'Sentadillas','Flexiones','Abdominales', 'Zancadas','Jumping Jacks','Mountain Climbers'
 ]
 
 const ejerciciosDisponibles = computed(() => {
