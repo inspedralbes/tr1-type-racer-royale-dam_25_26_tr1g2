@@ -272,7 +272,7 @@ const isConnected = ref(false);
 const { xsOnly, smAndUp } = useDisplay();
 
 // --- ESTADO Y TIMERS DE LA RULETA (Controlado por el servidor) ---
-const ejercicioSeleccionado = ref('Esperando...'); // El ejercicio que te toca, se inicializa a un valor neutral.
+const ejercicioSeleccionado = ref('Esperant...'); // El ejercicio que te toca, se inicializa a un valor neutral.
 const tiempoRestante = ref(DURACION_RULETA); // El tiempo restante para la ronda actual.
 let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
 
