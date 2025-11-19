@@ -1,2 +1,17 @@
-db_data/
+#Dependencias
+
 node_modules/
+
+#Builds de producción
+
+dist/
+build/
+
+#Variables de entorno (¡SEGURIDAD!)
+
+.env
+
+#Logs y sistema
+
+*.log
+.DS_Store

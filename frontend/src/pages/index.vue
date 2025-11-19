@@ -7,18 +7,22 @@
           class="pa-6 rounded-xl text-center card-elevated"
           max-width="800"
         >
-          <v-card-title class="justify-center pt-0 pb-2">
+          <v-card-title class="justify-center flex-column pt-0 pb-2">
             <span class="text-h6 font-weight-bold text-main text-uppercase mb-1">
               <v-icon small left color="primary">mdi-lightning-bolt</v-icon>
               Tecnologia en temps real
             </span>
-            <h1 class="text-h4 text-md-h3 font-weight-black mb-2 text-main">
-              TRAIN AI
-            </h1>
-          </v-card-title>
+            <div class="d-flex align-center justify-center mb-2">
+              <v-avatar size="64" class="mr-3 logo-border-glow">
+                <v-img src="@/assets/trainai-logo.jpg" alt="Logo TRAIN AI"></v-img>            </v-avatar>
+              <h1 class="text-h4 text-md-h3 font-weight-black text-main">
+                TRAIN AI
+              </h1>
+            </div>
+            </v-card-title>
 
           <v-card-text>
-            <p class="text-body-1 mb-3 text-muted {color: 'white'}">
+            <p class="text-body-1 mb-3 text-muted">
               Benvingut/da a la plataforma d'entrenament sincronitzat. Analitzem els teus moviments amb MoveNet de TensorFlow.js per oferir feedback instantani i precís.
             </p>
             <p class="text-body-2 mb-4 text-secondary-text">
@@ -102,7 +106,7 @@ const features = [
 
 <style>
 /* -------------------------------------------------------------------------- */
-/* DEFINICIÓN DE VARIABLES CSS NATIVAS (CSS Custom Properties)                 */
+/* DEFINICIÓN DE VARIABLES CSS NATIVAS (CSS Custom Properties)                 */
 /* -------------------------------------------------------------------------- */
 
 /* MODO CLARO (Default) */
@@ -114,6 +118,7 @@ const features = [
   --text-muted: #555; /* Texto para párrafos */
   --secondary-color-text: #757575; /* Texto secundario */
   --primary-color-text: #1976D2; /* Color 'primary' de Vuetify en modo claro */
+  --logo-shadow-color: rgba(33, 150, 243, 0.4); /* Sombra para el logo en modo claro */
 }
 
 /* MODO OSCURO (Anula las variables anteriores si el sistema lo prefiere) */
@@ -126,11 +131,12 @@ const features = [
     --text-muted: #aaa;
     --secondary-color-text: #999;
     --primary-color-text: #4FC3F7; /* Un azul más claro para 'primary' en modo oscuro */
+    --logo-shadow-color: rgba(79, 195, 247, 0.6); /* Sombra para el logo en modo oscuro */
   }
 }
 
 /* -------------------------------------------------------------------------- */
-/* APLICACIÓN DE ESTILOS PERSONALIZADOS                                       */
+/* APLICACIÓN DE ESTILOS PERSONALIZADOS                                       */
 /* -------------------------------------------------------------------------- */
 
 /* CLASES DE TEXTO ADAPTATIVAS (Para reemplazar clases de Vuetify como primary--text) */
@@ -167,6 +173,13 @@ const features = [
 
 .technologies-card {
   background-color: var(--tech-card-color) !important;
+}
+
+/* --- ESTILO PARA EL LOGO (NUEVO) --- */
+.logo-border-glow {
+  /* Opcional: añade un ligero resplandor azul alrededor del logo */
+  box-shadow: 0 0 10px 0 var(--logo-shadow-color);
+  border: 2px solid var(--primary-color-text);
 }
 
 /* --- OTROS ESTILOS (BOTONES, CHIPS, ETC.) --- */

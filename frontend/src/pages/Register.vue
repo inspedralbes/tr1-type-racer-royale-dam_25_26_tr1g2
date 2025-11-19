@@ -75,66 +75,56 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-
+// 1. Importamos nuestro cliente Axios centralizado
+import apiClient from '@/plugins/axios.js'
 
 const router = useRouter()
 const isFormValid = ref(false)
 const loading = ref(false)
 const error = ref(null)
 
-// Campos del formulario
 const username = ref('')
 const email = ref('')
 const password = ref('')
 
-// Reglas de validación
 const usernameRules = [
   v => !!v || 'El nombre de usuario es requerido',
   v => v.length >= 3 || 'El nombre de usuario debe tener al menos 3 caracteres'
 ]
-
 const emailRules = [
   v => !!v || 'El email es requerido',
   v => /.+@.+\..+/.test(v) || 'El email debe ser válido'
 ]
-
 const passwordRules = [
   v => !!v || 'La contraseña es requerida',
   v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
 ]
 
-const API_URL = 'http://localhost:9000';
-
+// 2. Modificamos la función para usar apiClient
 const handleRegister = async () => {
   try {
     loading.value = true
     error.value = null
-
-    const res = await fetch(`${API_URL}/api/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: username.value,
-        email: email.value,
-        password: password.value
-      })
+    // La URL base ("/api" en producción) se añade automáticamente.
+    await apiClient.post('/users/register', {
+      username: username.value,
+      email: email.value,
+      password: password.value
     })
-
-    if (res.ok) {
-      router.push('/login')
-    } else {
-      const data = await res.json()
-      error.value = data.error || 'Error al registrar el usuario.'
-    }
+    // Si la petición tiene éxito, redirigimos al login.
+    router.push('/login')
   } catch (err) {
-    error.value = 'Error al registrar el usuario. Por favor, inténtalo de nuevo.'
+    // Axios pone los errores del servidor en `err.response`.
+    if (err.response && err.response.data && err.response.data.error) {
+      error.value = err.response.data.error
+    } else {
+      error.value = 'Error al conectar con el servidor. Por favor, inténtalo de nuevo.'
+    }
     console.error('Error de registro:', err)
   } finally {
     loading.value = false
   }
 }
-
-
 </script>
 
 <style scoped>

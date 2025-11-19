@@ -1,262 +1,305 @@
 <template>
-  <v-container fluid class="pa-4 incursion-background">
-    
-    <v-row class="mb-4 align-center">
-      <v-col cols="12">
-        <h1 class="text-h3 font-weight-black text-center battle-title">
-            INCURSIÓN CONTRA EL JEFE
-        </h1>
-        <!-- CONTADOR DE JUGADORES -->
-        <div v-if="bossSessionId" class="text-center mt-2">
-          <v-chip color="primary" large>
-            <v-icon left>mdi-account-group</v-icon>
-            Jugadores: {{ participantes.length }} / {{ MAX_PARTICIPANTS }}
-          </v-chip>
-        </div>
-      </v-col>
-    </v-row>
-    
-    <v-row>
-      
-      <v-col cols="12" md="6" order-md="1">
-        <v-card class="pa-4 game-card player-card fill-height">
-          <h2 class="text-h5 font-weight-bold mb-4 text-center player-title">TU ENTRENADOR</h2>
+  <div class="incursion-container">
+    <div class="background-overlay" :class="{ 'bg-damage': jugadorVidaActual < 30, 'bg-dead': jugadorVidaActual <= 0 }"></div>
 
-          <div class="mb-4">
-            <div class="d-flex align-center justify-space-between mb-1">
-                <div class="text-caption font-weight-bold">TU HP</div>
-                <div class="text-caption font-weight-bold">
-                    {{ jugadorVidaActual }} / {{ jugadorVidaMaxima }}
+    <v-container fluid class="pa-4 content-wrapper">
+      <v-row class="mb-4 align-center justify-space-between">
+        <v-col cols="auto">
+          <v-btn color="error" rounded large to="/inicial">
+            <v-icon left>mdi-arrow-left</v-icon>
+            Volver
+          </v-btn>
+        </v-col>
+        
+        <v-col cols="auto" class="text-center">
+          <h1 class="text-h4 text-sm-h3 font-weight-black battle-title">
+            INCURSIÓN CONTRA EL JEFE
+          </h1>
+          <div v-if="bossSessionId" class="text-center mt-2">
+            <v-chip color="primary" small class="text-caption text-sm-body-2">
+              <v-icon left small>mdi-account-group</v-icon>
+              Jugadores: {{ numParticipantes }} / {{ maxParticipants }}
+            </v-chip>
+            <v-chip color="secondary" small class="text-caption text-sm-body-2 ml-2" @click="copiarCodigo">
+              <v-icon left small>mdi-pound</v-icon>
+              Código: {{ bossSessionId }}
+            </v-chip>
+          </div> 
+        </v-col>
+        
+        <v-col cols="auto" class="text-right" v-if="bossSessionId">
+          <div class="reps-display">
+            MIS REPS: <span class="text-h4">{{ misReps }}</span>
+          </div>
+        </v-col>
+      </v-row> 
+      
+      <v-row>
+        <v-col cols="12" md="6" order-md="1">
+          <v-card class="pa-3 pa-sm-4 game-card player-card fill-height">
+            <h2 class="text-h6 text-sm-h5 font-weight-bold mb-3 text-center player-title">TU ENTRENADOR</h2>
+
+            <div class="mb-4">
+              <div class="d-flex align-center justify-space-between mb-1">
+                  <div class="text-caption font-weight-bold text-truncate">TU HP ({{ jugadorVidaActual }}/{{ jugadorVidaMaxima }})</div>
+              </div>
+              <v-progress-linear
+                  :model-value="jugadorVidaPorcentaje"
+                  height="25"
+                  rounded
+                  color="#4CAF50" 
+                  class="hp-bar"
+              >
+                   <template v-slot:default="{ value }">
+                    <strong class="health-text text-body-2">{{ Math.ceil(value) }}%</strong>
+                  </template>
+              </v-progress-linear>
+            </div>
+            
+            <div class="webcam-stage mb-4">
+              <PoseSkeleton @features="onFeatures" />
+              
+              <div v-if="!isPoseDetectorReady" class="loader-overlay">
+                  <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+                  <p class="mt-2 text-caption font-weight-bold">Cargando modelos...</p>
+              </div>
+              
+              <div class="combat-log-overlay">
+                <div class="message-log" ref="messageLogRef">
+                  <p v-for="msg in logMensajes" :key="msg.id" :class="[msg.type, { 'fade-out': msg.leaving }]">
+                    <strong>[{{ msg.time }}]</strong> {{ msg.text }}
+                  </p>
                 </div>
+              </div>
+              
+              <div v-if="jugadorVidaActual <= 0" class="death-overlay">
+                 <v-icon size="80" color="red">mdi-skull</v-icon>
+                 <h2 class="text-h3 font-weight-black red--text text--lighten-1 mt-4">HAS MUERTO</h2>
+                 <p class="white--text mt-2">Has sido eliminado de la incursión.</p>
+              </div>
+
             </div>
-            <v-progress-linear
-                :value="jugadorVidaPorcentaje"
-                height="20"
-                rounded
-                :color="calcularColorVida(jugadorVidaPorcentaje)" >
-                 <template v-slot:default="{ value }">
-                  <strong class="health-text">{{ Math.ceil(value) }}%</strong>
-                </template>
-            </v-progress-linear>
-          </div>
-          
-          <div class="webcam-stage mb-4">
-            <PoseSkeleton @features="onFeatures" />
-            <div v-if="!isPoseDetectorReady" class="loader-overlay">
-                <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                <p class="mt-2">Cargando detector de pose...</p>
-            </div>
-          </div>
-          
-          <v-row align="center" class="mt-4">
-            <v-col cols="6">
-              <div class="d-flex justify-center gap-2" v-if="!buscandoPartida && !bossSessionId">
-                <v-btn
+            
+            <v-row align="center" class="mt-4">
+              <v-col cols="12">
+                <div v-if="!bossSessionId" class="d-flex justify-center">
+                  <v-btn
                     color="success"
                     large
-                    @click="mostrarDialogoUnirse = true"
-                    :disabled="!isPoseDetectorReady"
+                    @click="gestionarUnionIncursion"
+                    :loading="buscandoPartida"
+                    :disabled="buscandoPartida || !isPoseDetectorReady"
                     class="action-btn"
-                >
+                  >
                     <v-icon left>mdi-magnify</v-icon>
-                    BUSCAR INCURSIÓN
-                </v-btn>
-              </div>
-              <div class="d-flex justify-center gap-2" v-else>
-                <v-btn
-                  v-if="esCreador"
-                  color="success"
-                  large
-                  @click="iniciarPartida"
-                  :disabled="isPartidaActiva || !isPoseDetectorReady"
-                  class="action-btn"
-                >
-                  <v-icon left>mdi-sword</v-icon>
-                  INICIAR
-                </v-btn>
-                <v-btn
-                  color="error"
-                  large
-                  @click="isPartidaActiva ? detenerPartida() : salirDeLaIncursion()"
-                  :disabled="!bossSessionId"
-                  class="action-btn"
-                >
-                  <v-icon left>{{ isPartidaActiva ? 'mdi-shield-off' : 'mdi-exit-run' }}</v-icon>
-                  {{ isPartidaActiva ? 'DETENER' : 'SALIR' }}
-                </v-btn>
-              </div>
-            </v-col>
-            <v-col cols="6" class="text-center">
-              <div class="reps-display">REPETICIONES: <span>{{ repeticiones }}</span></div>
-            </v-col>
-          </v-row>
-        </v-card>
-      </v-col>
+                    Crear Incursión
+                  </v-btn>
+                </div>
 
-      <v-col cols="12" md="6" order-md="2">
-        
-        <v-card class="pa-4 game-card mb-4 ruleta-card" dark>
-            <div class="d-flex align-center justify-space-between">
-                <h3 class="text-h6 font-weight-bold">PRÓXIMO ATAQUE EN:</h3>
-                <div class="text-h4 font-weight-black" :class="{'error--text': tiempoRestante < 15}">
-                    {{ tiempoFormateado }}
+                <div class="d-flex justify-center gap-2 flex-wrap" v-else>
+                  <v-btn
+                    v-if="esCreador"
+                    color="success"
+                    small
+                    @click="iniciarPartidaAPI"
+                    :disabled="isPartidaActiva || !isPoseDetectorReady"
+                    class="action-btn flex-grow-1"
+                  >
+                    <v-icon left small>mdi-sword</v-icon>
+                    <span class="text-truncate">{{ textoBotonInicio }}</span>
+                  </v-btn>
+                  <v-btn
+                    color="error"
+                    small
+                    @click="salirDeLaIncursion"
+                    :disabled="buscandoPartida"
+                    class="action-btn flex-grow-1"
+                  >
+                    <v-icon left small>mdi-exit-run</v-icon>
+                    <span class="text-truncate">SALIR</span>
+                  </v-btn> 
+                </div>
+              </v-col>
+            </v-row>
+          </v-card>
+        </v-col>
+
+        <v-col cols="12" md="6" order-md="2">
+          
+          <v-card class="pa-3 pa-sm-4 game-card mb-4 ruleta-card" dark>
+              <div class="d-flex align-center justify-space-between">
+                  <h3 class="text-subtitle-1 font-weight-bold text-truncate">PRÓXIMO ATAQUE:</h3>
+                  <div class="text-h5 text-sm-h4 font-weight-black" :class="{'error--text': tiempoRestante < 15}">
+                      {{ tiempoFormateado }}
+                  </div>
+              </div>
+              
+              <v-divider class="my-2"></v-divider>
+              
+              <div class="text-center">
+                  <p class="mb-1 text-caption text-sm-subtitle-1">¡El Jefe exige!</p>
+                  <h2 class="text-h5 text-sm-h3 font-weight-black exercise-demand text-truncate">
+                      {{ ejercicioMostrado }}
+                  </h2>
+                  <v-progress-linear
+                      :model-value="porcentajeTiempo"
+                      height="8"
+                      rounded
+                      color="amber"
+                      class="mt-3"
+                  ></v-progress-linear>
+              </div>
+          </v-card>
+          
+          <v-card 
+              class="pa-3 pa-sm-4 game-card enemy-card"
+              :class="{'hit-animation': isJefeGolpeado}"
+          >
+            <div class="d-flex align-center justify-space-between mb-3">
+              <h2 class="text-h6 text-sm-h5 font-weight-bold enemy-title text-truncate">JEFE DE GIMNASIO</h2>
+              <div class="text-subtitle-2 font-weight-bold">
+                HP: {{ jefeVidaActual }} / {{ jefeVidaMaximaEscalada }}
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <v-progress-linear
+                :model-value="jefeVidaPorcentajeEscalada"
+                height="25"
+                rounded
+                color="#FF5252"
+                class="hp-bar"
+              >
+                <template v-slot:default="{ value }">
+                  <strong class="health-text text-body-2">{{ Math.ceil(value) }}%</strong>
+                </template>
+              </v-progress-linear>
+            </div>
+            
+            <div class="text-center boss-image-area">
+                <v-icon size="80" class="boss-icon">mdi-robot-angry</v-icon>
+                <div v-if="isJefeGolpeado" class="hit-indicator">
+                  <v-icon size="80" color="yellow lighten-1">mdi-flash</v-icon>
+                </div>
+                
+                <div v-if="victoria" class="victory-overlay">
+                   <v-icon size="100" color="yellow">mdi-trophy</v-icon>
+                   <h2 class="text-h4 font-weight-black yellow--text text--accent-2">¡VICTORIA!</h2>
                 </div>
             </div>
-            
-            <v-divider class="my-2"></v-divider>
-            
-            <div class="text-center">
-                <p class="mb-1 text-subtitle-1">¡El Jefe exige!</p>
-                <h2 class="text-h3 font-weight-black exercise-demand">
-                    {{ ejercicioSeleccionado.toUpperCase() }}
-                </h2>
-                <v-progress-linear
-                    :value=" (tiempoRestante / DURACION_RULETA) * 100 "
-                    height="10"
-                    rounded
-                    :color="calcularColorVida( (tiempoRestante / DURACION_RULETA) * 100 )"
-                    class="mt-3"
-                ></v-progress-linear>
-            </div>
-        </v-card>
-        
-        <v-card 
-            class="pa-4 game-card enemy-card mb-4"
-            :class="{'hit-animation': isJefeGolpeado}"
-        >
-          <div class="d-flex align-center justify-space-between mb-3">
-            <h2 class="text-h5 font-weight-bold enemy-title">JEFE DE GIMNASIO</h2>
-            <div class="text-subtitle-1 font-weight-bold">
-              HP: {{ jefeVidaActual }} / {{ jefeVidaMaxima }}
-            </div>
-          </div>
-          
-          <div class="mb-3">
-            <v-progress-linear
-              :value="jefeVidaPorcentaje"
-              height="25"
-              rounded
-              :color="calcularColorVida(jefeVidaPorcentaje)"
-            >
-              <template v-slot:default="{ value }">
-                <strong class="health-text">{{ Math.ceil(value) }}%</strong>
-              </template>
-            </v-progress-linear>
-          </div>
-          
-          <div class="text-center boss-image-area">
-             <v-icon size="120" class="boss-icon">mdi-robot-angry</v-icon>
-             <div v-if="isJefeGolpeado" class="hit-indicator">
-               <v-icon size="100" color="yellow lighten-1">mdi-flash</v-icon>
-             </div>
-          </div>
-        </v-card>
-        
-        <v-card class="pa-4 game-card message-console">
-          <h3 class="text-h6 mb-2 console-title">REGISTRO DE COMBATE</h3>
-          <div class="message-log" ref="messageLogRef">
-            <p v-for="(msg, index) in logMensajes" :key="index" :class="msg.type">
-                <strong>[{{ msg.time }}]</strong> {{ msg.text }}
-            </p>
-          </div>
-        </v-card>
-        
-      </v-col>
-    </v-row>
 
-    <!-- DIÁLOGO DE CONFIRMACIÓN -->
-    <v-dialog v-model="mostrarDialogoUnirse" persistent max-width="400">
-      <v-card class="game-card">
-        <v-card-title class="text-h5 player-title">¿Unirte a la Incursión?</v-card-title>
-        <v-card-text>
-          Se buscará una sala de incursión abierta. Si no hay ninguna disponible, se creará una nueva para ti y otros jugadores.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" text @click="mostrarDialogoUnirse = false">
-            Cancelar
-          </v-btn>
-          <v-btn
-            color="success"
-            text
-            @click="unirseAIncursion"
-            :loading="buscandoPartida"
-          >
-            Confirmar
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+            <v-list dense class="participants-list mt-4">
+              <v-list-subheader class="white--text font-weight-bold">EQUIPO DE INCURSIÓN ({{ numParticipantes }})</v-list-subheader>
+              <v-list-item
+                v-for="p in participantesOrdenados"
+                :key="p.id"
+                class="participant-item"
+              >
+                <v-list-item-title class="font-weight-bold white--text">
+                  {{ p.nombre }} <span v-if="String(p.id) === String(userId)">(Tú)</span>
+                </v-list-item-title>
+                
+                <v-list-item-subtitle class="grey--text text--lighten-1">
+                   Reps: <strong class="white--text">{{ calcularReps(p.damageDealt) }}</strong> 
+                   <span class="text-caption ml-1">(Daño: {{ p.damageDealt || 0 }})</span>
+                </v-list-item-subtitle>
+                
+                <template v-slot:append>
+                  <v-icon v-if="String(p.id) === String(creadorId)" color="amber">mdi-crown</v-icon>
+                </template>
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </v-col>
+      </v-row>
 
-  </v-container>
+    </v-container>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
-import PoseSkeleton from '../components/PoseSkeleton.vue' // Asegúrate que la ruta sea correcta
+import { ref, computed, nextTick, onBeforeUnmount, onMounted } from 'vue'
+import PoseSkeleton from '../components/PoseSkeleton.vue'
+import { useRoute, useRouter } from 'vue-router'
 import { 
-    checkSquatRep, 
-    checkPushupRep, 
-    checkSitupRep,    
-    checkLungeRep,
-    checkJumpingJacksRep,
-    checkMountainClimbersRep
+  checkSquatRep, 
+  checkPushupRep, 
+  checkSitupRep,    
+  checkLungeRep,
+  checkJumpingJacksRep,
+  checkMountainClimbersRep
 } from '../utils/exercise-detection.js' 
+import { useDisplay } from 'vuetify'
 
-// --- CONSTANTES DE JUEGO Y SIMULACIÓN DE BOSS ---
-const jefeVidaMaxima = 100 // Usada como referencia visual, la real viene del servidor
-const jugadorVidaMaxima = 100 
-const DURACION_RULETA = 180 // 3 minutos
-const MAX_PARTICIPANTS = 10;
-const DAÑO_AL_JEFE_BASE = 8;
-const DAÑO_AL_JUGADOR_POR_FALLO = 5;
-const UMBRAL_POBRE_SCORE = 0.65; // Calidad mínima de la pose para no recibir daño
+const DAÑO_AL_JEFE_POR_REP = 5
+const CURACION_JUGADOR_POR_REP = 5
+const DAÑO_AL_JUGADOR_POR_FALLO = 5
+const MAX_PARTICIPANTS = 10 
+const DURACION_RULETA = 60
+const UMBRAL_POBRE_SCORE = 0.25
+const JEFE_VIDA_BASE = 350
+const JUGADOR_VIDA_MAXIMA = 100
 
-// --- ESTADO GENERAL Y SENSORES ---
 const features = ref(null)
 const isPoseDetectorReady = ref(false)
 const isPartidaActiva = ref(false)
-const user = ref(JSON.parse(localStorage.getItem('user')) || {});
+const user = ref(JSON.parse(localStorage.getItem('user')) || {})
+const router = useRouter()
+const route = useRoute()
+const { xsOnly, smAndUp } = useDisplay()
 
-// --- LÓGICA MULTIJUGADOR ---
-const bossSessionId = ref(null);
-const esCreador = ref(false);
-const mostrarDialogoUnirse = ref(false);
-const buscandoPartida = ref(false);
-const participantes = ref([]);
+const bossSessionId = ref(null)
+const creadorId = ref(null)
+const buscandoPartida = ref(false)
+const participantes = ref([])
 
-// --- ESTADO DEL COMBATE ---
-const jefeVidaActual = ref(jefeVidaMaxima)
-const jugadorVidaActual = ref(jugadorVidaMaxima)
-const repeticiones = ref(0)
+const jefeVidaActualServer = ref(JEFE_VIDA_BASE)
+const jugadorVidaActual = ref(JUGADOR_VIDA_MAXIMA)
+const logMensajes = ref([{ time: '00:00', text: '¡Bienvenido! Busca una incursión.', type: '' }])
+const messageLogRef = ref(null)
+const isJefeGolpeado = ref(false)
+const victoria = ref(false)
 
-// Máquinas de estado para cada ejercicio
 const squatState = ref('up')
 const pushupState = ref('up')
-const situpState = ref('up')   
+const situpState = ref('up')    
 const lungeState = ref('up')
-const jumpingJacksState = ref('down');
-const mountainClimbersState = ref('up');
+const jumpingJacksState = ref('down')
+const mountainClimbersState = ref('up')
 
-const logMensajes = ref([
-    { time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }
-])
-const messageLogRef = ref(null)
-
-// NUEVO: Estado para la animación de golpe
-const isJefeGolpeado = ref(false) 
-
-// --- ESTADO Y TIMERS DE LA RULETA ---
-const ejerciciosDisponibles = ref(['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']) 
-const ejercicioSeleccionado = ref(ejerciciosDisponibles.value[0]) // Inicial
-const timerRuleta = ref(null)
+const ejercicioSeleccionado = ref('Esperando...')
 const tiempoRestante = ref(DURACION_RULETA)
-let dañoJugadorTimeout = null; // Para evitar spam de daño al jugador
+let dañoJugadorTimeout = null
 
+const ws = ref(null)
+const isConnected = ref(false)
 
-// --- COMPUTED ---
-const jefeVidaPorcentaje = computed(() => (jefeVidaActual.value / jefeVidaMaxima) * 100);
-const jugadorVidaPorcentaje = computed(() => (jugadorVidaActual.value / jugadorVidaMaxima) * 100);
+const userId = computed(() => user.value?.id)
+const esCreador = computed(() => String(creadorId.value) === String(userId.value))
+const numParticipantes = computed(() => participantes.value.length)
+const maxParticipants = computed(() => MAX_PARTICIPANTS)
+const jugadorVidaMaxima = computed(() => JUGADOR_VIDA_MAXIMA)
+const misReps = computed(() => {
+    const me = participantes.value.find(p => String(p.id) === String(userId.value))
+    return me ? Math.floor((me.damageDealt || 0) / 5) : 0
+})
+const textoBotonInicio = computed(() => isPartidaActiva.value ? 'EN CURSO' : 'INICIAR COMBATE')
+const ejercicioMostrado = computed(() => ejercicioSeleccionado.value ? ejercicioSeleccionado.value.toUpperCase() : '')
+
+const jefeVidaMaximaEscalada = computed(() => {
+    return JEFE_VIDA_BASE + (participantes.value.length * 50)
+})
+
+const jefeVidaActual = computed(() => {
+    const porcentajeServer = jefeVidaActualServer.value / JEFE_VIDA_BASE
+    return Math.floor(jefeVidaMaximaEscalada.value * porcentajeServer)
+})
+
+const jefeVidaPorcentajeEscalada = computed(() => (jefeVidaActual.value / jefeVidaMaximaEscalada.value) * 100)
+const jugadorVidaPorcentaje = computed(() => {
+  const val = (jugadorVidaActual.value / JUGADOR_VIDA_MAXIMA) * 100
+  return Math.max(0, Math.min(100, val))
+})
 
 const tiempoFormateado = computed(() => {
     const min = Math.floor(tiempoRestante.value / 60)
@@ -264,479 +307,293 @@ const tiempoFormateado = computed(() => {
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
 })
 
+const porcentajeTiempo = computed(() => (tiempoRestante.value / DURACION_RULETA) * 100)
 
-// --- MÉTODOS DE UTILIDAD ---
-function calcularColorVida(porcentaje) {
-    if (porcentaje <= 20) return 'error'; 
-    if (porcentaje <= 50) return 'warning'; 
-    return 'success'; 
+const participantesOrdenados = computed(() => {
+  return [...participantes.value].sort((a, b) => (b.damageDealt || 0) - (a.damageDealt || 0))
+})
+
+function calcularReps(dano) {
+    return Math.floor((dano || 0) / 5)
 }
 
 function añadirMensaje(text, type = '') {
     const time = new Date().toLocaleTimeString('es-ES', { minute: '2-digit', second: '2-digit' })
-    logMensajes.value.push({ time, text, type })
-    nextTick(() => {
-        if (messageLogRef.value) {
-            messageLogRef.value.scrollTop = messageLogRef.value.scrollHeight
-        }
-    })
+    const id = Date.now() + Math.random()
+    logMensajes.value.unshift({ id, time, text, type, leaving: false })
+    if (logMensajes.value.length > 8) logMensajes.value.pop()
 }
 
-
-// --- LÓGICA DE DAÑO ---
-
-function aplicarDanoJugador(dano, razon) {
-    if (!isPartidaActiva.value) return;
-    if (dañoJugadorTimeout) return; 
-
-    jugadorVidaActual.value = Math.max(0, jugadorVidaActual.value - dano);
-    
-    añadirMensaje(` ¡FALLO! (${razon}) Pierdes ${dano} HP.`, 'error--text');
-
-    if (jugadorVidaActual.value === 0) {
-        detenerPartida();
-        añadirMensaje(` ¡DERROTA! Tu HP ha llegado a 0. ¡El Jefe ha ganado!`, 'critical--text');
-    }
-    
-    // Invulnerabilidad temporal de 3 segundos
-    dañoJugadorTimeout = setTimeout(() => {
-        dañoJugadorTimeout = null;
-    }, 3000); 
+function copiarCodigo() {
+  if (!bossSessionId.value) return
+  navigator.clipboard.writeText(bossSessionId.value)
+  añadirMensaje('Código copiado', 'info--text')
 }
 
-// MODIFICADA para incluir la llamada a la API y la animación
-async function aplicarDanoJefe(dano, ataque) {
-    if (!isPartidaActiva.value) return
-    
-    // 1. Llamada a la API para aplicar daño y obtener la nueva vida (requiere que el endpoint POST /api/boss/attack esté activo)
-    // try {
-    //     const response = await fetch('/api/boss/attack', {
-    //         method: 'POST',
-    //         headers: { 'Content-Type': 'application/json' },
-    //         body: JSON.stringify({ bossId: bossSessionId.value, danoAplicado: dano }),
-    //     });
-    //     const data = await response.json();
-
-    //     if (!response.ok || !data.success) {
-    //         console.error("Error al atacar al boss:", data.error || response.statusText);
-    //         añadirMensaje(`ERROR: Falló la comunicación con el Jefe.`, 'error--text');
-    //         return;
-    //     }
-
-    //     // 2. Actualizar vida local con el valor devuelto por el servidor
-    //     jefeVidaActual.value = data.nuevaVida;
-
-    // } catch (error) {
-    //     console.error("Error de red al atacar al boss:", error);
-    //     añadirMensaje(`ERROR DE RED: No se pudo contactar con el Jefe.`, 'error--text');
-    //     return;
-    // }
-    
-    // 3. Animación de golpe
-    isJefeGolpeado.value = true
-    setTimeout(() => {
-        isJefeGolpeado.value = false
-    }, 200) 
-    
-    // 4. Mensajes y chequeo de fin de partida
-    const isCritico = dano > DAÑO_AL_JEFE_BASE
-    const tipoDano = isCritico ? 'critical--text' : 'success--text'
-    const textoDano = isCritico ? '💥 ¡GOLPE CRÍTICO!' : ' 💪 ¡ATAQUE EXITOSO!'
-    
-    añadirMensaje(`(${ataque}) ${textoDano} Jefe pierde ${dano} HP.`, tipoDano)
-    
-    if (jefeVidaActual.value === 0) {
-        detenerPartida()
-        añadirMensaje(`🥳 ¡FELICIDADES! ¡Has derrotado al Jefe!`, 'info--text')
-    } else {
-        añadirMensaje(`Jefe tiene ${jefeVidaActual.value}/${jefeVidaMaxima} de vida restante.`)
-    }
+function resetExerciseStates() {
+    squatState.value = 'up'
+    pushupState.value = 'up'
+    situpState.value = 'up'
+    lungeState.value = 'up'
+    jumpingJacksState.value = 'down'
+    mountainClimbersState.value = 'up'
 }
-
-
-// --- LÓGICA DE RULETA ---
-function seleccionarEjercicioRandom() {
-    const ejercicios = ejerciciosDisponibles.value;
-    const randomIndex = Math.floor(Math.random() * ejercicios.length);
-    const nuevoEjercicio = ejercicios[randomIndex];
-    
-    // Simple chequeo para evitar seleccionar el mismo dos veces seguidas si hay más opciones
-    if (nuevoEjercicio === ejercicioSeleccionado.value && ejercicios.length > 1) {
-        seleccionarEjercicioRandom();
-        return;
-    }
-    
-    ejercicioSeleccionado.value = nuevoEjercicio;
-    añadirMensaje(` ¡ATENCIÓN! El Jefe exige el ataque: ${nuevoEjercicio}`, 'warning--text');
-}
-
-function iniciarRuleta() {
-    if (timerRuleta.value) clearInterval(timerRuleta.value);
-    
-    timerRuleta.value = setInterval(() => {
-        if (!isPartidaActiva.value) {
-            clearInterval(timerRuleta.value);
-            timerRuleta.value = null;
-            return;
-        }
-
-        if (tiempoRestante.value > 0) {
-            tiempoRestante.value--;
-        } else {
-            seleccionarEjercicioRandom();
-            tiempoRestante.value = DURACION_RULETA; 
-        }
-    }, 1000);
-}
-
-function detenerRuleta() {
-    if (timerRuleta.value) {
-        clearInterval(timerRuleta.value);
-        timerRuleta.value = null;
-    }
-    tiempoRestante.value = DURACION_RULETA; 
-}
-
-
-// --- GESTIÓN DE LA DETECCIÓN (UNIFICADA) ---
 
 function onFeatures(payload) {
-    if (payload && !isPoseDetectorReady.value) {
-        isPoseDetectorReady.value = true
-        añadirMensaje('Detector de pose cargado. ¡Listo para empezar!', 'info--text')
-    }
-
+    if (payload && !isPoseDetectorReady.value) isPoseDetectorReady.value = true
     features.value = payload ? structuredClone(payload) : null
-    if (!isPartidaActiva.value || !features.value) return
+    
+    // Si estamos muertos o no hay partida, no procesamos nada
+    if (!isPartidaActiva.value || !features.value || ejercicioSeleccionado.value === 'Esperando...' || jugadorVidaActual.value <= 0) return
 
-    // 1. CHEQUEO DE CALIDAD DE POSE (Daño al jugador si es pobre)
     if (features.value?.score < UMBRAL_POBRE_SCORE) {
-        aplicarDanoJugador(DAÑO_AL_JUGADOR_POR_FALLO, "Mala Pose / Pérdida de Puntos Clave");
-        return 
+        aplicarDanoJugador(DAÑO_AL_JUGADOR_POR_FALLO, "Mala Pose")
+        return
     }
 
-    // 2. CHEQUEO DE REPETICIÓN (Daño al jefe si es buena)
-    if (features.value?.angles) {
-        const angles = features.value.angles
-        let newRep = false
-        let result = { newState: 'up', repCompleted: false }
+    const detectionInput = ejercicioSeleccionado.value === 'Jumping Jacks' ? features.value : features.value.angles
+    
+    const exerciseHandlers = {
+        'Sentadillas': { detect: checkSquatRep, state: squatState },
+        'Flexiones': { detect: checkPushupRep, state: pushupState },
+        'Abdominales': { detect: checkSitupRep, state: situpState },
+        'Zancadas': { detect: checkLungeRep, state: lungeState },
+        'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState },
+        'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState }
+    }
 
-        // Mapeo de ejercicio a función de detección y estado
-        switch(ejercicioSeleccionado.value) {
-            case 'Sentadillas':
-                result = checkSquatRep(angles, squatState.value);
-                squatState.value = result.newState;
-                break;
-            case 'Flexiones':
-                result = checkPushupRep(angles, pushupState.value);
-                pushupState.value = result.newState;
-                break;
-            case 'Abdominales':
-                result = checkSitupRep(angles, situpState.value);
-                situpState.value = result.newState;
-                break;
-            case 'Zancadas':
-                result = checkLungeRep(angles, lungeState.value);
-                lungeState.value = result.newState;
-                break;
-            case 'Jumping Jacks':
-                result = checkJumpingJacksRep(features.value, jumpingJacksState.value);
-                jumpingJacksState.value = result.newState;
-                break;
-            case 'Mountain Climbers':
-                result = checkMountainClimbersRep(angles, mountainClimbersState.value);
-                mountainClimbersState.value = result.newState;
-                break;
-        }
-        
-        newRep = result.repCompleted
-        
-        if (newRep) {
-            repeticiones.value++
-            
-            // Daño base con ajuste por ejercicio
-            let baseDano = DAÑO_AL_JEFE_BASE;
-            if (ejercicioSeleccionado.value === 'Flexiones') baseDano = 10;
-            if (ejercicioSeleccionado.value === 'Abdominales') baseDano = 7;
-            if (ejercicioSeleccionado.value === 'Zancadas') baseDano = 9;
-            if (ejercicioSeleccionado.value === 'Jumping Jacks') baseDano = 6;
-            if (ejercicioSeleccionado.value === 'Mountain Climbers') baseDano = 8;
-            
-            const dano = Math.floor(Math.random() * 5) + baseDano; 
-            aplicarDanoJefe(dano, ejercicioSeleccionado.value)
+    const handler = exerciseHandlers[ejercicioSeleccionado.value]
+    if (handler) {
+        const result = handler.detect(detectionInput, handler.state.value)
+        handler.state.value = result.newState
+
+        if (result.repCompleted) {
+            aplicarDanoJefe(DAÑO_AL_JEFE_POR_REP)
+            curarJugador(CURACION_JUGADOR_POR_REP)
         }
     }
 }
 
+function aplicarDanoJefe(dano) {
+    if (!isPartidaActiva.value || !ws.value || jugadorVidaActual.value <= 0) return
 
-// --- LÓGICA DE UNIÓN Y PARTIDA ---
-async function unirseAIncursion() {
-  const userId = user.value?.id || user.value?.userId;
-  if (!userId) {
-    añadirMensaje('Debes iniciar sesión para unirte a una incursión.', 'error--text');
-    // Opcional: redirigir a login
-    // import { useRouter } from 'vue-router'; const router = useRouter(); router.push('/login');
-    mostrarDialogoUnirse.value = false;
-    return;
+    ws.value.send(JSON.stringify({ type: 'INCURSION_ATTACK', damage: dano }))
+
+    isJefeGolpeado.value = true
+    setTimeout(() => { isJefeGolpeado.value = false }, 200)
+    
+    const me = participantes.value.find(p => String(p.id) === String(userId.value))
+    if (me) me.damageDealt = (me.damageDealt || 0) + dano
+}
+
+function aplicarDanoJugador(dano, razon) {
+    if (dañoJugadorTimeout || jugadorVidaActual.value <= 0) return
+    
+    jugadorVidaActual.value = Math.max(0, jugadorVidaActual.value - dano)
+    añadirMensaje(`¡${razon}! -${dano} HP`, 'error--text')
+    
+    if (jugadorVidaActual.value <= 0) {
+        // MUERTE DEL JUGADOR
+        añadirMensaje('¡DERROTA! Has sido eliminado.', 'critical--text')
+        // No detenemos la partida global, solo local
+    }
+    dañoJugadorTimeout = setTimeout(() => { dañoJugadorTimeout = null }, 2000)
+}
+
+function curarJugador(cantidad) {
+    if (jugadorVidaActual.value > 0 && jugadorVidaActual.value < JUGADOR_VIDA_MAXIMA) {
+        jugadorVidaActual.value = Math.min(JUGADOR_VIDA_MAXIMA, jugadorVidaActual.value + cantidad)
+    }
+}
+
+function conectarWebSocket() {
+  if (ws.value) ws.value.close()
+  ws.value = new WebSocket('ws://localhost:8082')
+
+  ws.value.onopen = () => {
+    isConnected.value = true
+    ws.value.send(JSON.stringify({
+      type: 'INCURSION_JOIN',
+      sessionId: bossSessionId.value,
+      userId: user.value?.id,
+      nombre: user.value?.usuari || 'Jugador'
+    }))
+    buscandoPartida.value = false
   }
 
-  buscandoPartida.value = true;
-  mostrarDialogoUnirse.value = false;
-  añadirMensaje('Buscando una incursión abierta...', 'info--text');
+  ws.value.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+    switch (data.type) {
+      case 'INCURSION_STATE':
+        bossSessionId.value = data.sessionId 
+        participantes.value = data.participantes 
+        creadorId.value = data.creadorId
+        jefeVidaActualServer.value = data.jefeVidaActual
+        
+        if (data.message) añadirMensaje(data.message, 'info--text')
+        
+        if (jefeVidaActualServer.value <= 0 && isPartidaActiva.value) {
+             finalizarVictoria()
+        }
+        break
 
+      case 'INCURSION_STARTED':
+        iniciarPartidaLocal()
+        break
 
-  // Simulación de llamada a un backend que busca o crea una sala
-  // En un caso real, aquí harías:
-  // const response = await axios.post('/api/boss/join', { userId: user.value.id });
-  // const { sessionId, isCreator, participants } = response.data;
-  
-  // --- SIMULACIÓN ---
-  await new Promise(resolve => setTimeout(resolve, 1500)); // Simula espera de red
-  const sessionId = 1; // ID de sesión simulado
-  const isCreator = true; // Simula que este usuario es el creador
-  const initialParticipants = [user.value]; // Añadir al usuario actual a la lista
-  // --- FIN SIMULACIÓN ---
+      case 'BOSS_HEALTH_UPDATE':
+        jefeVidaActualServer.value = data.jefeVidaActual
+        añadirMensaje(`¡${data.attackerName} golpea! -5 PS`, 'success--text')
+        if (jefeVidaActualServer.value <= 0) finalizarVictoria()
+        break
 
-  bossSessionId.value = sessionId;
-  esCreador.value = isCreator;
-  buscandoPartida.value = false;
-  participantes.value = initialParticipants;
-
-  if (isCreator) {
-    añadirMensaje('¡Has creado una nueva sala de incursión! Esperando a otros jugadores...', 'success--text');
-  } else {
-    añadirMensaje('¡Te has unido a una incursión! Esperando al líder para iniciar.', 'success--text');
+      case 'NEW_EXERCISE':
+        if (String(data.userId) === String(user.value?.id)) {
+            ejercicioSeleccionado.value = data.exercise
+            añadirMensaje(`¡NUEVA ORDEN! Haz: ${data.exercise}`, 'warning--text')
+            resetExerciseStates()
+        }
+        break;
+        
+      case 'TIMER_UPDATE':
+        tiempoRestante.value = data.tiempo
+        break
+        
+      case 'JOIN_ERROR':
+        añadirMensaje(`Error: ${data.message}`, 'error--text')
+        buscandoPartida.value = false
+        salirDeLaIncursion()
+        break
+        
+      case 'LEADER_LEFT':
+        añadirMensaje('El líder se fue. Incursión terminada.', 'error--text')
+        salirDeLaIncursion()
+        break
+    }
   }
-  
-  // Aquí conectarías al WebSocket con el ID de la sesión
-  // conectarWebSocket(sessionId);
-  
-  await cargarEstadoJefe();
+
+  ws.value.onclose = () => isConnected.value = false
+}
+
+function gestionarUnionIncursion() {
+    if (!user.value?.id) return alert("Inicia sesión primero")
+    buscandoPartida.value = true
+    añadirMensaje('Conectando...', 'info--text')
+    conectarWebSocket()
+}
+
+function iniciarPartidaAPI() {
+    if (ws.value) ws.value.send(JSON.stringify({ type: 'INCURSION_START' }))
+}
+
+function iniciarPartidaLocal() {
+    isPartidaActiva.value = true
+    jugadorVidaActual.value = JUGADOR_VIDA_MAXIMA
+    victoria.value = false
+    añadirMensaje('¡INCURSIÓN INICIADA! ¡Protege tu HP!', 'critical--text')
+}
+
+function finalizarVictoria() {
+    isPartidaActiva.value = false
+    victoria.value = true
+    añadirMensaje('¡VICTORIA! Jefe derrotado.', 'success--text')
 }
 
 function salirDeLaIncursion() {
-  // Aquí harías una llamada a la API para salir de la sala
-  // y desconectarías el WebSocket
-  bossSessionId.value = null;
-  esCreador.value = false;
-  isPartidaActiva.value = false;
-  participantes.value = [];
-  logMensajes.value = [{ time: '00:00', text: '¡Bienvenido! Busca una incursión para empezar.', type: '' }];
-  detenerRuleta();
-}
-
-// --- LÓGICA DE INICIO/FIN DE PARTIDA ---
-function iniciarPartida() {
-  if (isPartidaActiva.value || !isPoseDetectorReady.value || !bossSessionId.value) return;
-  
-  // El creador envía un mensaje por WebSocket para que todos inicien
-  // En esta simulación, lo iniciamos localmente
-  
-  jugadorVidaActual.value = jugadorVidaMaxima;
-  repeticiones.value = 0;
-  squatState.value = 'up';
-  pushupState.value = 'up';
-  situpState.value = 'up';
-  lungeState.value = 'up';
-  jumpingJacksState.value = 'down';
-  mountainClimbersState.value = 'up';
-  
-  seleccionarEjercicioRandom();
-  tiempoRestante.value = DURACION_RULETA;
-  
-  isPartidaActiva.value = true;
-  añadirMensaje(`¡Comienza el combate! El primer ataque es: ${ejercicioSeleccionado.value}.`, 'critical--text');
-  
-  iniciarRuleta();
-}
-
-function detenerPartida() {
-  if (!isPartidaActiva.value) return;
-  isPartidaActiva.value = false;
-  detenerRuleta();
-  if (dañoJugadorTimeout) clearTimeout(dañoJugadorTimeout);
-  añadirMensaje('Combate detenido.', 'warning--text');
-}
-
-// --- LLAMADA INICIAL AL MONTAR ---
-// Función para cargar la vida inicial del jefe desde el servidor
-async function cargarEstadoJefe() {
-  if (!bossSessionId.value) return;
-  try {
-    // const response = await fetch(`/api/boss/${bossSessionId.value}`);
-    // const data = await response.json();
-    // jefeVidaActual.value = data.boss.jefe_vida_actual;
-    
-    // Simulación
-    jefeVidaActual.value = jefeVidaMaxima;
-    añadirMensaje(`Estado del Jefe cargado: ${jefeVidaActual.value} HP.`, 'info--text');
-
-  } catch (error) {
-    console.error("Error de red al cargar el estado del jefe:", error);
-    añadirMensaje('ERROR DE RED: No se pudo cargar el estado inicial del Jefe.', 'error--text');
-  }
+    bossSessionId.value = null
+    isPartidaActiva.value = false
+    participantes.value = []
+    victoria.value = false
+    if (ws.value) {
+        ws.value.close()
+        ws.value = null
+    }
+    if (route.query.sala) router.replace('/inicial')
 }
 
 onMounted(() => {
-    // Ya no cargamos el jefe al montar, sino al unirnos a una sesión.
+    if (route.query.sala) {
+        bossSessionId.value = route.query.sala
+        gestionarUnionIncursion()
+    }
 })
 
 onBeforeUnmount(() => {
-    detenerPartida()
+    if (ws.value) ws.value.close()
 })
 </script>
 
 <style scoped>
-/* Estilos del Esqueleto de la Batalla (Adaptados de tu código anterior) */
-.incursion-background {
-  background: linear-gradient(135deg, #1d2630 0%, #313c4a 100%);
-  min-height: 100vh;
-  color: #f5f5f5;
-}
+.incursion-background { background: linear-gradient(135deg, #1d2630 0%, #313c4a 100%); min-height: 100vh; color: #f5f5f5; }
+.incursion-container { position: relative; width: 100%; height: 100%; }
 
-.battle-title {
-    color: #FFD700; /* Oro */
-    text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
-    letter-spacing: 1.5px;
-}
+/* OVERLAYS DE FONDO PARA FEEDBACK */
+.background-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 0; transition: background-color 0.3s; }
+.bg-damage { background-color: rgba(255, 0, 0, 0.2); animation: pulse-red 1s infinite; }
+.bg-dead { background-color: rgba(50, 0, 0, 0.9); z-index: 9999; }
 
-.game-card {
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-  background-color: rgba(40, 50, 60, 0.8) !important; 
-  color: white;
-  position: relative; /* Necesario para la animación */
-  backdrop-filter: blur(5px);
-}
+.battle-title { color: #FFD700; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+.game-card { background-color: rgba(30, 30, 30, 0.9) !important; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; position: relative; z-index: 1; }
+.enemy-card { border-color: #FF5252; }
+.player-card { border-color: #42A5F5; }
+.reps-display { font-weight: 900; font-size: 1.2rem; }
 
-.enemy-card {
-  border-color: rgba(255, 82, 82, 0.5);
-}
+.webcam-stage { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 8px; overflow: hidden; }
+.webcam-overlay, .loader-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); z-index: 20; color: white; flex-direction: column; }
 
-.enemy-title {
-  color: #FF5252; /* Rojo brillante */
-}
+/* OVERLAY DE MUERTE */
+.death-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; }
 
-.player-card {
-  border-color: rgba(66, 165, 245, 0.5);
-}
+/* OVERLAY DE VICTORIA */
+.victory-overlay { position: absolute; inset: 0; background: rgba(255, 215, 0, 0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; animation: fadeIn 0.5s; backdrop-filter: blur(2px); }
 
-.player-title {
-  color: #42A5F5; /* Azul brillante */
-}
-
-.health-text {
-  color: white;
-  text-shadow: 1px 1px 2px black;
-}
-
-.message-console {
-  background-color: #212121 !important;
-  border: 4px solid #444;
-  border-radius: 8px;
-  font-family: 'Courier New', Courier, monospace;
-  background-color: rgba(20, 20, 20, 0.8) !important;
-}
-
-.console-title {
-  color: #00E676; /* Verde terminal */
-}
-
-.message-log {
-    height: 200px;
-    overflow-y: auto;
-    background-color: rgba(0,0,0,0.3);
-    padding-right: 8px;
-    color: #eee;
-}
-
-.message-log p {
-    margin: 0;
-    line-height: 1.4;
-    font-size: 0.9rem;
-}
-
-.success--text { color: #69F0AE !important; }
-.warning--text { color: #FFD600 !important; }
-.critical--text { color: #FF1744 !important; font-weight: bold; text-transform: uppercase; }
-.info--text { color: #40C4FF !important; }
-
-/* Webcam Stage (para contener el PoseSkeleton) */
-.webcam-stage {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    background: #000;
-    border-radius: 8px;
+.combat-log-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 70%;
+    height: 50%;
+    z-index: 15;
+    pointer-events: none;
     overflow: hidden;
 }
 
-.webcam-stage .loader-overlay {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.8);
+.message-log {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column; 
+    gap: 4px;
+}
+
+.message-log p {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
     color: white;
-    z-index: 10;
-    
-}
-.ruleta-card {
-  border-color: rgba(255, 171, 0, 0.5);
-  color: white;
+    width: fit-content;
+    backdrop-filter: blur(2px);
+    animation: slideIn 0.3s ease;
 }
 
-.exercise-demand {
-  color: #FFAB00; /* Naranja ámbar */
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
+@keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes pulse-red { 0% { background-color: rgba(255, 0, 0, 0.1); } 50% { background-color: rgba(255, 0, 0, 0.3); } 100% { background-color: rgba(255, 0, 0, 0.1); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.reps-display {
-  font-size: 1.5rem;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-  letter-spacing: 1px;
-}
+.hit-animation { animation: shake 0.2s ease-in-out; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
-/* --- ESTILOS DE ANIMACIÓN DE GOLPE --- */
-@keyframes shake {
-  0% { transform: translate(1px, 1px) rotate(0deg); }
-  25% { transform: translate(-1px, -2px) rotate(-1deg); }
-  50% { transform: translate(-3px, 0px) rotate(1deg); }
-  75% { transform: translate(1px, 2px) rotate(-1deg); }
-  100% { transform: translate(1px, -1px) rotate(0deg); }
-}
+.boss-image-area { min-height: 120px; display: flex; align-items: center; justify-content: center; position: relative; }
+.hit-indicator { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
 
-.hit-animation {
-  animation: shake 0.2s ease-in-out;
-}
+.hp-bar { box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
-.boss-image-area {
-    min-height: 150px; /* Asegura que hay espacio para el indicador de golpe */
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+.action-btn { width: 100%; max-width: 300px; }
+.success--text { color: #69F0AE !important; }
+.warning--text { color: #FFD600 !important; }
+.error--text { color: #FF5252 !important; }
+.critical--text { color: #FF1744 !important; font-weight: bold; }
+.info--text { color: #40C4FF !important; }
 
-.boss-icon {
-  color: #BDBDBD;
-  text-shadow: 0 0 15px rgba(0,0,0,0.8);
-}
-
-.hit-indicator {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 5;
-    filter: brightness(1.5);
-    opacity: 1;
-}
-/* -------------------------------------- */
+.participants-list { background: rgba(0,0,0,0.3) !important; border-radius: 8px; }
+.participant-item { border-bottom: 1px solid rgba(255,255,255,0.1); }
 </style>

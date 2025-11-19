@@ -92,17 +92,14 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
 import { useRouter } from 'vue-router'
+import apiClient from '@/plugins/axios.js'
 
 const codigoSala = ref('')
 const router = useRouter()
 const salaIniciada = ref(false)
 const maxPersonas = ref(2)
 const personasOptions = [2,3,4,5,6,7,8]
-
-const API_BASE_URL = 'http://localhost:9000'
-const api = axios.create({ baseURL: API_BASE_URL, timeout: 8000, headers: { 'Content-Type': 'application/json' } })
 
 function obtenerCreadorId() {
   return localStorage.getItem('userId') || null
@@ -126,13 +123,13 @@ async function generarCodigo() {
     creadorId,
     nombreCreador: nombre,
     tipo: 'public',
-    modo: '2vs2',
+    modo: 'multijugador',
     jugadores: [{ id: String(creadorId), nombre, rol: 'host', conectado: true }],
     opciones: {}
   }
 
   try {
-    const resp = await api.post('/api/salas/crear', payload)
+    const resp = await apiClient.post('/salas/crear', payload)
     const sid = resp.data?.sessionId ?? resp.data?.id ?? resp.data?.insertId ?? null
     if (sid) {
       // solo guardamos el código, no redirigimos todavía
@@ -162,7 +159,7 @@ async function iniciarSala() {
   if (!codigoSala.value) return alert('Genera la sala antes de iniciar.')
   salaIniciada.value = true
   try {
-    await api.post('/api/sessions/start', {
+    await apiClient.post('/sessions/start', {
       codigo: codigoSala.value,
       iniciadorId: obtenerCreadorId() || 'invitado'
     })

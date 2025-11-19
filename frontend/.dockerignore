@@ -1,0 +1,12 @@
+Ignorar dependencias locales (ya instaladas en el Dockerfile)
+
+node_modules
+
+Ignorar archivos de entorno locales/de desarrollo
+
+Esto previene que se filtren la URL absoluta 'http://localhost:9000'
+
+.env
+.env.local
+.env.development
+.env.*

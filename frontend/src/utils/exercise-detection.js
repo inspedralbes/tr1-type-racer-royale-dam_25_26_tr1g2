@@ -25,6 +25,22 @@ export const MIN_JUMPING_JACKS_WRIST_Y_RATIO = 0.8; // Posición Y de muñecas v
 export const MIN_MOUNTAIN_CLIMBERS_KNEE_ANGLE = 80;
 export const MAX_MOUNTAIN_CLIMBERS_KNEE_ANGLE = 150;
 
+// Curl de Bíceps (Bicep Curls)
+export const MIN_BICEP_CURL_ANGLE = 70;
+export const MAX_BICEP_CURL_ANGLE = 140;
+
+// Press de Hombros (Shoulder Press)
+export const MIN_SHOULDER_PRESS_ANGLE = 80;
+export const MAX_SHOULDER_PRESS_ANGLE = 160;
+
+// Fondos (Dips)
+export const MIN_DIPS_ANGLE = 80;
+export const MAX_DIPS_ANGLE = 160;
+
+// Plancha (Plank)
+export const MIN_PLANK_HIP_ANGLE = 150; // Cadera casi recta
+export const MIN_PLANK_KNEE_ANGLE = 150; // Rodillas casi rectas
+
 
 /**
  * Máquina de estados genérica para contar repeticiones.
@@ -150,4 +166,52 @@ export function checkLungeRep(angles, currentState) {
   
   // Usamos la función genérica checkRep para la lógica.
   return checkRep(kneeAngle, currentState, MIN_LUNGE_KNEE_ANGLE, MAX_LUNGE_KNEE_ANGLE);
+}
+
+/**
+ * Curl de Bíceps: mide el ángulo del codo.
+ */
+export function checkBicepCurlRep(angles, currentState) {
+  if (!angles.leftElbow || !angles.rightElbow)
+    return { newState: currentState, repCompleted: false };
+
+  const avgElbowAngle = (angles.leftElbow + angles.rightElbow) / 2;
+  return checkRep(avgElbowAngle, currentState, MIN_BICEP_CURL_ANGLE, MAX_BICEP_CURL_ANGLE);
+}
+
+/**
+ * Press de Hombros: mide el ángulo del codo, similar a una flexión pero en vertical.
+ */
+export function checkShoulderPressRep(angles, currentState) {
+  if (!angles.leftElbow || !angles.rightElbow)
+    return { newState: currentState, repCompleted: false };
+
+  const avgElbowAngle = (angles.leftElbow + angles.rightElbow) / 2;
+  return checkRep(avgElbowAngle, currentState, MIN_SHOULDER_PRESS_ANGLE, MAX_SHOULDER_PRESS_ANGLE);
+}
+
+/**
+ * Fondos (Dips): mide el ángulo del codo, es funcionalmente idéntico a las flexiones.
+ */
+export function checkDipsRep(angles, currentState) {
+  if (!angles.leftElbow || !angles.rightElbow)
+    return { newState: currentState, repCompleted: false };
+
+  const avgElbowAngle = (angles.leftElbow + angles.rightElbow) / 2;
+  return checkRep(avgElbowAngle, currentState, MIN_DIPS_ANGLE, MAX_DIPS_ANGLE);
+}
+
+/**
+ * Plancha (Plank): verifica que el cuerpo esté recto.
+ * @returns {boolean} - True si la postura es correcta, false si no.
+ */
+export function checkPlankPose(angles) {
+  if (!angles.leftHip || !angles.rightHip || !angles.leftKnee || !angles.rightKnee) {
+    return false;
+  }
+
+  const isHipsStraight = angles.leftHip > MIN_PLANK_HIP_ANGLE && angles.rightHip > MIN_PLANK_HIP_ANGLE;
+  const isKneesStraight = angles.leftKnee > MIN_PLANK_KNEE_ANGLE && angles.rightKnee > MIN_PLANK_KNEE_ANGLE;
+
+  return isHipsStraight && isKneesStraight;
 }

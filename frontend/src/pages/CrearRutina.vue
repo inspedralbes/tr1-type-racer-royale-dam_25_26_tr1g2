@@ -83,12 +83,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import apiClient from '@/plugins/axios.js'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const API_URL = 'http://localhost:9000'
-axios.defaults.baseURL = API_URL
 
 const nombreRutina = ref('')
 const ejerciciosRutina = ref([{ nom_exercicis: '', n_repeticions: '' }])
@@ -130,7 +128,7 @@ async function guardarRutina() {
     )
 
     // Llamada al backend
-    const response = await axios.post('/api/session/save', {
+    const response = await apiClient.post('/session/save', {
       userId,
       nom: nombreRutina.value,
       descripcio: null, // opcional: añadir descripción si quieres

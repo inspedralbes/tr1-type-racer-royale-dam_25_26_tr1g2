@@ -1,0 +1,23 @@
+# ETAPA 1: BUILD
+FROM node:20-slim as builder
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY . .
+
+# Si usas TS, activa esto:
+# RUN npm run build
+
+# ETAPA 2: RUNTIME
+FROM node:20-slim
+WORKDIR /app
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app .
+
+EXPOSE 9000
+EXPOSE 8082
+
+CMD ["npm", "start"]

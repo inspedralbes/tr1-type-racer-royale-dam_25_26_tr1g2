@@ -1,21 +1,26 @@
-# -----------------------------------------------------------------
-# STAGE 1: Build the Vue application (Using node:20-alpine as the base image)
-# -----------------------------------------------------------------
-    FROM node:20-alpine AS build
-    WORKDIR /app
-    
-    # 1. Define el argumento de compilación para la URL de la API (para Vite)
-    ARG VITE_API_URL
-    
-    # Copia los archivos del paquete e instala dependencias
-    COPY package*.json ./
-    RUN npm install
-    
-    # Copia el código fuente
-    COPY . .
-    
-    # 2. Configura la variable de entorno que Vite usa durante el 'npm run build'
-    ENV VITE_API_URL=$VITE_API_URL
-    
-    # Ejecuta el build, generando los estáticos en /app/dist
-    RUN npm run build
+# ETAPA 1: BUILD
+# En esta etapa, instalamos dependencias y construimos los archivos estáticos.
+FROM node:20-slim as builder
+
+# Argumento que recibiremos desde docker-compose.prod.yml
+ARG VITE_API_URL
+
+# Hacemos que la variable esté disponible en el entorno del contenedor
+ENV VITE_API_URL=${VITE_API_URL}
+
+WORKDIR /app
+
+COPY package*.json ./
+# CORRECCIÓN: Eliminamos --omit=dev. Las dependencias de desarrollo (como Vite)
+# son necesarias para ejecutar `npm run build`.
+# CORRECCIÓN 2: Usamos 'npm install' en lugar de 'npm ci'.
+# 'npm install' regenerará el árbol de dependencias si package-lock.json está desactualizado.
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+# ETAPA 2: SERVE (Opcional, pero buena práctica)
+# Esta etapa es solo para copiar los archivos de 'dist' a una imagen limpia de Nginx.
+# En tu caso, ya usas un volumen, por lo que esta etapa es más bien ilustrativa.
+# La clave es que la etapa 'builder' ya ha generado los archivos en /app/dist.

@@ -9,6 +9,10 @@ import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
+// Determinar el valor de VITE_API_URL para la inyección.
+// Esto lee la variable pasada por el entorno de Docker (que es '/api' en producción).
+const apiBaseUrl = process.env.VITE_API_URL || '/api';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -16,7 +20,6 @@ export default defineConfig({
     Vue({
       template: { transformAssetUrls },
     }),
-    // https://github.com/vuetifyjs/vuetify-loader/tree/master/packages/vite-plugin#readme
     Vuetify({
       autoImport: true,
       styles: {
@@ -45,7 +48,12 @@ export default defineConfig({
       'unplugin-vue-router/data-loaders/basic',
     ],
   },
-  define: { 'process.env': {} },
+  define: { 
+    'process.env': {},
+    // CORRECCIÓN CLAVE: Sobrescribir forzadamente el valor de VITE_API_URL.
+    // JSON.stringify es necesario porque Vite realiza una sustitución literal de cadenas.
+    //'import.meta.env.VITE_API_URL': JSON.stringify(apiBaseUrl),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('src', import.meta.url)),

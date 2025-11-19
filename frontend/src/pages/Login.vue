@@ -89,15 +89,15 @@ const passwordRules = [
 import { useAuth } from '@/composables/useAuth'
 const { login } = useAuth()
 
-import axios from 'axios'
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9000'
+// 1. Importamos nuestro cliente Axios centralizado en lugar de 'axios'
+import apiClient from '@/plugins/axios.js'
 
 // Función de login
 const handleLogin = async () => {
   try {
     loading.value = true
     error.value = null
-    const response = await axios.post('/api/users/login', {
+    const response = await apiClient.post('/users/login', {
       email: email.value,
       password: password.value
     })

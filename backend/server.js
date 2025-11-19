@@ -11,6 +11,7 @@ const app = express();
 
 const API_PORT = process.env.API_PORT || 9000; // Puerto para el servidor HTTP
 const WS_PORT = process.env.WS_PORT || 8082; // Puerto para el servidor WebSocket
+const HOST_IP = '0.0.0.0'; // <<-- AÑADIDO: Definición global de la variable
 
 // --- Configuración de CORS ---
 // Esta es la única configuración de CORS necesaria.
@@ -21,7 +22,6 @@ const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,h
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permitir peticiones sin origen (como Postman o server-to-server) y desde los orígenes permitidos
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -29,47 +29,39 @@ const corsOptions = {
     }
   }
 };
-app.use(cors(corsOptions)); // Aplicar la configuración de CORS
-app.use(express.json()); // Usar el parser de JSON integrado de Express (reemplaza a bodyParser.json())
-app.set('etag', false); // Deshabilitar ETag para evitar problemas de caché con algunos proxies
+app.use(cors(corsOptions));
+app.use(express.json());
+app.set('etag', false);
 
 // -------------------- RUTAS API --------------------
-
-// Ruta raíz
-app.get('/', (req, res) => { res.send('Servidor Express actiu!'); });
-
-// Rutes d'usuari amb Sequelize
 const userRoutes = require('./routes/userRoutes');
 app.use('/api/users', userRoutes);
 
-const db_pool = require('./config/db').pool; // Mantenim el pool per a les altres consultes
+const db_pool = require('./config/db').pool; 
 
-// Objeto en memoria para rastrear las salas activas
-const salasActivas = {};
+// Objeto en memoria para rastrear las salas activas (USADO SÓLO PARA VERSUS)
+const salasActivas = {}; 
 
+app.get('/', (req, res) => { res.send('Servidor Express actiu!'); });
+
+// Crear sala Versus
 app.post('/api/salas/crear', async (req, res) => {
-  const { codigo, creadorId, nombreCreador, tipo, modo, jugadores, opciones } = req.body;
+  const { codigo, creadorId, nombreCreador, tipo, modo, jugadores, opciones, maxJugadores } = req.body;
 
   if (!codigo || !creadorId) {
     return res.status(400).json({ success: false, error: 'El código y el creadorId son obligatorios.' });
   }
 
   try {
-    // Guardar la sala en memoria para poder validarla después
-    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date() };
+    // Guardar la sala en memoria (SÓLO PARA VERSUS)
+    salasActivas[codigo] = { creadorId, nombreCreador, jugadores, createdAt: new Date(), maxJugadores: maxJugadores || 2, modo, partidaFinalizada: false };
 
-    // Aquí iría la lógica para guardar la sala en la base de datos.
-    // Por ahora, simulamos que se guarda y devolvemos el código como ID de sesión.
-    // Ejemplo de inserción (deberás adaptarlo a tu tabla de salas/sesiones):
-    /*
-    const [result] = await db_pool.query(
-      'INSERT INTO Sesiones (codigo, creador_id, nombre_creador, tipo, modo, opciones) VALUES (?, ?, ?, ?, ?, ?)',
-      [codigo, creadorId, nombreCreador, tipo, modo, JSON.stringify(opciones)]
+    // Guardar la sala en la tabla 'SessionsVersus' 
+    await db_pool.query(
+      'INSERT INTO SessionsVersus (codi_acces, creador_id, estat) VALUES (?, ?, ?)',
+      [codigo, creadorId, 'oberta']
     );
-    const sessionId = result.insertId;
-    */
 
-    // Simulación: devolvemos el código generado en el frontend como si fuera el ID.
     const sessionId = codigo;
     res.json({ success: true, sessionId: sessionId });
   } catch (err) {
@@ -78,17 +70,31 @@ app.post('/api/salas/crear', async (req, res) => {
   }
 });
 
+// Comprobar existencia de sala
 app.get('/api/salas/check/:codigo', (req, res) => {
   const { codigo } = req.params;
+  
+  // 1. Revisamos las salas activas de "Versus"
   if (salasActivas[codigo]) {
-    // La sala existe en memoria
-    res.json({ success: true, exists: true });
-  } else {
-    // La sala no existe o el servidor se reinició
-    res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+    return res.json({ success: true, exists: true, modo: salasActivas[codigo].modo || '2vs2' });
   }
+
+  // 2. Si no está en las salas activas, revisamos si es una sala de "Incursión" de la BDD
+  db_pool.query('SELECT id FROM Boss_Sessions WHERE id = ? AND estat <> "finalitzada"', [codigo])
+    .then(([rows]) => {
+      if (rows.length > 0) {
+        res.json({ success: true, exists: true, modo: 'incursion' });
+      } else {
+        res.status(404).json({ success: false, error: 'La sala no existe o ha expirado.' });
+      }
+    })
+    .catch(err => {
+      console.error('Error en /api/salas/check/:codigo consultando la BDD:', err);
+      res.status(500).json({ success: false, error: 'Error del servidor al verificar la sala.' });
+    });
 });
 
+// Iniciar sesión Versus
 app.post('/api/sessions/start', (req, res) => {
   const { codigo } = req.body;
 
@@ -96,10 +102,10 @@ app.post('/api/sessions/start', (req, res) => {
     return res.status(400).json({ success: false, error: 'El código de la sala es obligatorio.' });
   }
 
-  // Aquí podrías actualizar el estado de la sala en la base de datos a 'iniciada'
-  // Por ejemplo: await db_pool.query('UPDATE Sesiones SET estado = "iniciada" WHERE codigo = ?', [codigo]);
+  if (salasActivas[codigo]) {
+    salasActivas[codigo].partidaFinalizada = false;
+  }
 
-  // Notificar a todos los clientes en la sala que la partida ha comenzado
   if (sessions.has(codigo)) {
     broadcastToSession(codigo, { type: 'SESSION_STARTED' });
   }
@@ -107,237 +113,15 @@ app.post('/api/sessions/start', (req, res) => {
   res.json({ success: true, message: `Sala ${codigo} iniciada.` });
 });
 
-// ...existing code...
-
-// Crear sesión Versus
-app.post('/api/session/save', async (req, res) => {
-  const { userId, nom, descripcio, exercicis } = req.body;
-  let finalUserId = userId;
-
-  try {
-    // validar si el userId existe
-    if (finalUserId) {
-      const [rows] = await db_pool.query('SELECT id FROM Usuaris WHERE id = ?', [finalUserId]);
-      if (rows.length === 0) finalUserId = null; // si no existe, tratar como invitado
-    }
-
-    // si no hay userId válido, usar o crear invitado
-    if (!finalUserId) {
-      const [rows] = await db_pool.query('SELECT id FROM Usuaris WHERE usuari = ?', ['invitado']);
-      if (rows.length > 0) {
-        finalUserId = rows[0].id;
-      } else {
-        const hashed = await bcrypt.hash('invitado123', 10);
-        const [createRes] = await db_pool.query(
-          'INSERT INTO Usuaris (usuari, correu, contrasenya) VALUES (?,?,?)',
-          ['invitado', 'invitado@local', hashed]
-        );
-        finalUserId = createRes.insertId;
-      }
-    }
-    // crear rutina
-    const [result] = await db_pool.query(
-      'INSERT INTO Rutines (id_usuari, nom, descripcio) VALUES (?, ?, ?)',
-      [finalUserId, nom, descripcio]
-    );
-
-    const rutinaId = result.insertId;
-
-    // insertar ejercicios
-    if (Array.isArray(exercicis)) {
-      for (const ex of exercicis) {
-        await db_pool.query(
-          'INSERT INTO Exercicis_Rutina (id_rutina, nom_exercicis, n_repeticions) VALUES (?, ?, ?)',
-          [rutinaId, ex.nom_exercicis, ex.n_repeticions]
-        );
-      }
-    }
-
-    res.json({ success: true, message: 'Rutina guardada correctamente', rutinaId });
-
-  } catch (err) {
-    console.error('Error en /api/session/save:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// -------------------- BOSS --------------------
-
-// Crear Boss
-app.post('/api/boss/create', async (req, res) => {
-  const { jefeVidaMax = 300, maxParticipants = 10 } = req.body;
-  try {
-    const [result] = await db_pool.query(
-      'INSERT INTO Boss_Sessions (jefe_vida_max, jefe_vida_actual, max_participants) VALUES (?,?,?)',
-      [jefeVidaMax, jefeVidaMax, maxParticipants]
-    );
-    res.json({ success: true, bossId: result.insertId });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Error al crear boss' });
-  }
-});
-
-// Unirse al Boss
-app.post('/api/boss/join', async (req, res) => {
-  const { bossId, usuariId } = req.body;
-  try {
-    const [exists] = await db_pool.query(
-      'SELECT * FROM Boss_Participants WHERE id_boss_sessio=? AND id_usuari=?',
-      [bossId, usuariId]
-    );
-    if (exists.length > 0) return res.status(400).json({ error: 'Ya estás inscrito a esta sesión' });
-
-    await db_pool.query(
-      'INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?,?)',
-      [bossId, usuariId]
-    );
-    res.json({ success: true, message: 'Participante agregado' });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al unirse a la sesión de boss' });
-  }
-});
-
-// -------------------- BOSS --------------------
-
-// 1. Obtener estado del Boss
-app.get('/api/boss/:bossId', async (req, res) => {
-  const { bossId } = req.params;
-  try {
-    const [rows] = await db_pool.query(
-      'SELECT jefe_vida_max, jefe_vida_actual, max_participants, estat FROM Boss_Sessions WHERE id=?',
-      [bossId]
-    );
-    if (rows.length === 0) return res.status(404).json({ success: false, error: 'Boss no encontrado' });
-    res.json({ success: true, boss: rows[0] });
-  } catch (err) {
-    console.error('Error al obtener estado del boss:', err);
-    res.status(500).json({ success: false, error: 'Error del servidor' });
-  }
-});
-
-// 2. Aplicar Ataque al Boss (Actualizar vida)
-app.post('/api/boss/attack', async (req, res) => {
-  const { bossId, danoAplicado } = req.body;
-  if (!bossId || danoAplicado == null) {
-    return res.status(400).json({ success: false, error: 'bossId y danoAplicado son requeridos.' });
-  }
-  try {
-    // 1. Obtener vida actual
-    const [rows] = await db_pool.query('SELECT jefe_vida_actual FROM Boss_Sessions WHERE id = ?', [bossId]);
-    if (rows.length === 0) return res.status(404).json({ success: false, error: 'Boss no encontrado' });
-
-    const vidaActual = rows[0].jefe_vida_actual;
-    const nuevaVida = Math.max(0, vidaActual - danoAplicado);
-
-    // 2. Actualizar vida
-    await db_pool.query(
-      'UPDATE Boss_Sessions SET jefe_vida_actual = ? WHERE id = ?',
-      [nuevaVida, bossId]
-    );
-
-    // Opcional: Actualizar el estado a 'finalitzada' si la vida llega a 0
-    if (nuevaVida === 0) {
-      await db_pool.query(
-        'UPDATE Boss_Sessions SET estat = "finalitzada" WHERE id = ?',
-        [bossId]
-      );
-    }
-
-    res.json({ success: true, nuevaVida });
-  } catch (err) {
-    console.error('Error al aplicar daño al boss:', err);
-    res.status(500).json({ success: false, error: 'Error al actualizar vida del boss' });
-  }
-});
-
-app.post('/api/exercicis_rutina', async (req, res) => {
-  const { id_rutina, nom_exercicis, n_repeticions } = req.body;
-  if (!id_rutina || !nom_exercicis || !String(nom_exercicis).trim()) {
-    return res.status(400).json({ success: false, error: 'id_rutina y nom_exercicis son requeridos.' });
-  }
-  try {
-    const [result] = await db_pool.query(
-      'INSERT INTO Exercicis_Rutina (id_rutina, nom_exercicis, n_repeticions) VALUES (?,?,?)',
-      [id_rutina, nom_exercicis, n_repeticions || null]
-    );
-    res.json({ success: true, id: result.insertId });
-  } catch (err) {
-    console.error('Error al insertar ejercicio en rutina:', err);
-    res.status(500).json({ success: false, error: 'Error al insertar ejercicio.' });
-  }
-});
-
-// ...existing code...
-
-// Endpoint: obtener rutinas del usuario con ejercicios
-app.get('/api/rutines/user/:id', async (req, res) => {
-  const userId = req.params.id;
-  try {
-    const [rows] = await db_pool.query(
-  `SELECT 
-      r.id AS rutina_id,
-      r.nom,
-      r.descripcio,
-      r.data_creacio,
-      er.id AS ejercicio_id,
-      er.nom_exercicis,
-      er.n_repeticions
-   FROM Rutines r
-   LEFT JOIN Exercicis_Rutina er ON er.id_rutina = r.id
-   WHERE r.id_usuari = ?
-   ORDER BY r.data_creacio DESC`,
-  [userId]
-);
-
-    const map = new Map();
-    for (const row of rows) {
-      if (!map.has(row.rutina_id)) {
-        map.set(row.rutina_id, { id: row.rutina_id, nom: row.nom, descripcio: row.descripcio, data_creacio: row.data_creacio, exercicis: [] });
-      }
-      if (row.ejercicio_id) {
-        map.get(row.rutina_id).exercicis.push({ id: row.ejercicio_id, nom_exercicis: row.nom_exercicis, n_repeticions: row.n_repeticions });
-      }
-    }
-    const rutines = Array.from(map.values());
-    res.json({ success: true, rutines });
-  } catch (err) {
-    console.error('Error al obtener rutinas del usuario:', err);
-    res.status(500).json({ success: false, error: 'Error del servidor' });
-  }
-});
-
-// Endpoint: eliminar rutina (y sus ejercicios)
-app.delete('/api/rutines/:id', async (req, res) => {
-  const { id } = req.params
-  try {
-    // Eliminar los ejercicios relacionados primero
-    await db_pool.query('DELETE FROM Exercicis_Rutina WHERE id_rutina = ?', [id])
-    // Luego eliminar la rutina
-    await db_pool.query('DELETE FROM Rutines WHERE id = ?', [id])
-    res.json({ success: true })
-  } catch (err) {
-    console.error('Error al eliminar rutina:', err)
-    res.status(500).json({ success: false })
-  }
-})
-
-// ...existing code...
-
 // -------------------- WEBSOCKET --------------------
 const wss = new WebSocket.Server({ port: WS_PORT });
-const clients = new Map();
-
-// Estructuras de datos mejoradas
-// sessions: Map<sessionId, Map<userId, clientId>>
-// clientMetadata: Map<clientId, { ws: WebSocket, userId: string, sessionId: string }>
-const sessions = new Map();
-const clientMetadata = new Map();
+const sessions = new Map(); // Map<sessionId, Map<userId, clientId>>
+const clientMetadata = new Map(); // Map<clientId, { ws, userId, sessionId, modo, ... }>
 
 function broadcastToSession(sessionId, message) {
   if (!sessions.has(sessionId)) return;
   const userMap = sessions.get(sessionId);
 
-  // Enviar el mensaje a todos los clientes de la sesión
   userMap.forEach(clientId => {
     const metadata = clientMetadata.get(clientId);
     if (metadata && metadata.ws.readyState === WebSocket.OPEN) {
@@ -346,12 +130,103 @@ function broadcastToSession(sessionId, message) {
   });
 }
 
+async function broadcastIncursionState(sessionId) {
+  if (!sessions.has(sessionId)) return;
+
+  try {
+    const [sessionRows] = await db_pool.query(
+      'SELECT id, creador_id, jefe_vida_max, jefe_vida_actual, estat FROM Boss_Sessions WHERE id = ?',
+      [sessionId]
+    );
+
+    if (sessionRows.length === 0) return;
+    const bossSession = sessionRows[0];
+
+    const [participantRows] = await db_pool.query(
+      `SELECT 
+          bp.id_usuari, 
+          u.usuari as nombre,
+          bp.damage AS damageDealt
+      FROM Boss_Participants bp 
+      JOIN Usuaris u ON bp.id_usuari = u.id 
+      WHERE bp.id_boss_sessio = ?`,
+      [sessionId]
+    );
+
+    const message = {
+      type: 'INCURSION_STATE',
+      sessionId: bossSession.id,
+      creadorId: bossSession.creador_id,
+      jefeVidaMax: bossSession.jefe_vida_max,
+      jefeVidaActual: bossSession.jefe_vida_actual,
+      participantes: participantRows.map(p => ({ 
+        id: p.id_usuari, 
+        nombre: p.nombre, 
+        damageDealt: p.damageDealt || 0 
+      })), 
+      message: 'Estado de la incursión actualizado.'
+    };
+
+    broadcastToSession(sessionId, message);
+  } catch (error) {
+    console.error('Error en broadcastIncursionState:', error);
+  }
+}
+
+
+// --- LÓGICA DE INCURSIÓN: RULETA DE EJERCICIOS ---
+const INCURSION_TIMER_DURATION = 60;
+const INCURSION_EXERCISES = ['Sentadillas', 'Flexiones', 'Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers'];
+
+function startIncursionRuleta(sessionId) {
+    const sessionClients = Array.from(clientMetadata.values()).filter(meta => meta.sessionId === sessionId);
+    if (sessionClients.length === 0) return;
+
+    sessionClients.forEach(meta => {
+        if (meta.incursionTimer) {
+            clearInterval(meta.incursionTimer);
+            delete meta.incursionTimer;
+        }
+    });
+
+    let tiempoRestante = INCURSION_TIMER_DURATION;
+
+    sessionClients.forEach(meta => {
+        const randomExercise = INCURSION_EXERCISES[Math.floor(Math.random() * INCURSION_EXERCISES.length)];
+        broadcastToSession(sessionId, { type: 'NEW_EXERCISE', userId: meta.userId, exercise: randomExercise });
+    });
+    
+    const timer = setInterval(() => {
+        if (!sessions.has(sessionId) || sessions.get(sessionId).size === 0) {
+            clearInterval(timer);
+            return;
+        }
+
+        tiempoRestante--;
+
+        if (tiempoRestante <= 0) {
+            sessions.get(sessionId).forEach((clientId) => {
+                const meta = clientMetadata.get(clientId);
+                if (meta) {
+                    const randomExercise = INCURSION_EXERCISES[Math.floor(Math.random() * INCURSION_EXERCISES.length)];
+                    broadcastToSession(sessionId, { type: 'NEW_EXERCISE', userId: meta.userId, exercise: randomExercise });
+                }
+            });
+            tiempoRestante = INCURSION_TIMER_DURATION; 
+        } else {
+            broadcastToSession(sessionId, { type: 'TIMER_UPDATE', tiempo: tiempoRestante });
+        }
+    }, 1000);
+
+    sessionClients.forEach(meta => { meta.incursionTimer = timer; });
+}
+
 wss.on('connection', ws => {
   const clientId = uuidv4();
-  clientMetadata.set(clientId, { ws }); // Almacenamiento inicial solo con el objeto ws
+  clientMetadata.set(clientId, { ws }); 
   ws.send(JSON.stringify({ type: 'welcome', clientId }));
 
-  ws.on('message', message => {
+  ws.on('message', async message => { 
     let data;
     try {
       data = JSON.parse(message);
@@ -359,123 +234,290 @@ wss.on('connection', ws => {
       data = { type: 'text', message };
     }
     const { type, sessionId, userId } = data;
+    
+    let metadata = clientMetadata.get(clientId);
+    if (!metadata) {
+         metadata = { ws, userId, sessionId };
+         clientMetadata.set(clientId, metadata);
+    }
+
     switch (type) {
       case 'JOIN_SESSION': {
-        if (!sessionId || !userId) return;
-        // 1. Crear la sesión si no existe
-        if (!sessions.has(sessionId)) {
-          sessions.set(sessionId, new Map());
+            metadata.modo = 'versus';
+            metadata.userId = userId;
+            metadata.sessionId = sessionId;
+            clientMetadata.set(clientId, metadata); 
+
+            if  (!userId) return;
+            const sala = salasActivas[sessionId];
+            if (!sala) {
+                 ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Sala no encontrada' }));
+                 return;
+            }
+
+            if (!sessions.has(sessionId)) sessions.set(sessionId, new Map());
+            if (sessions.get(sessionId).size >= sala.maxJugadores) {
+              ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La sala está llena.' }));
+              return;
+            }
+        
+            const userMap = sessions.get(sessionId);
+            userMap.set(userId, clientId);
+        
+            metadata.reps = 0;
+            metadata.nombre = data.nombre || `Jugador ${userId}`;
+            metadata.ready = false;
+            clientMetadata.set(clientId, metadata);
+
+            const sessionState = {};
+            userMap.forEach((cId, uId) => {
+                const meta = clientMetadata.get(cId);
+                if (meta) {
+                    sessionState[uId] = { nombre: meta.nombre, reps: meta.reps, ready: meta.ready };
+                }
+            });
+
+            broadcastToSession(sessionId, { 
+                type: 'SESSION_STATE', 
+                state: sessionState, 
+                creatorId: sala.creadorId,
+                ejercicio: sala.ejercicio,
+                maxReps: sala.maxReps
+            });
+            break;
         }
-        const userMap = sessions.get(sessionId);
-        // 2. Validar si el usuario ya está en la sesión.
-        if (userMap.has(userId)) {
-          const oldClientId = userMap.get(userId);
-          // Si el cliente anterior sigue conectado, rechazar la nueva conexión.
-          if (clientMetadata.has(oldClientId) && clientMetadata.get(oldClientId).ws.readyState === WebSocket.OPEN) {
-            console.log(`Usuario ${userId} ya está en la sesión ${sessionId}. Rechazando nueva conexión.`);
-            ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Ya estás en esta sala desde otro dispositivo o pestaña.' }));
-            ws.terminate();
+      
+      case 'INCURSION_JOIN':
+        try {
+          let bossSessionId = data.sessionId;
+          const userId = data.userId;
+          
+          metadata.modo = 'incursion';
+          metadata.userId = userId;
+          metadata.nombre = data.nombre;
+          metadata.damageDealt = 0;
+          
+          if (!userId) return;
+
+          if (!bossSessionId) {
+            bossSessionId = `BOSS-${uuidv4().slice(0, 6)}`;
+            await db_pool.query(
+              "INSERT INTO Boss_Sessions (id, creador_id, jefe_vida_max, jefe_vida_actual, estat, max_participants) VALUES (?, ?, ?, ?, ?, ?)",
+              [bossSessionId, userId, 300, 300, 'oberta', 10]
+            );
+          }
+          
+          metadata.sessionId = bossSessionId;
+          clientMetadata.set(clientId, metadata);
+
+          const [sessionInfo] = await db_pool.query("SELECT max_participants, estat FROM Boss_Sessions WHERE id = ?", [bossSessionId]);
+          if (sessionInfo.length === 0) {
+               ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Incursión no encontrada.' }));
+               return;
+          }
+          const estat = sessionInfo[0]?.estat;
+
+          if (estat !== 'oberta' && estat !== 'en curs') {
+            ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'La incursión ha finalizado.' }));
             return;
           }
+
+          const [existingParticipant] = await db_pool.query("SELECT id FROM Boss_Participants WHERE id_boss_sessio = ? AND id_usuari = ?", [bossSessionId, userId]);
+          
+          if (existingParticipant.length === 0) {
+            await db_pool.query("INSERT INTO Boss_Participants (id_boss_sessio, id_usuari) VALUES (?, ?)", [bossSessionId, userId]);
+          }
+
+          if (!sessions.has(bossSessionId)) sessions.set(bossSessionId, new Map());
+          sessions.get(bossSessionId).set(userId, clientId);
+
+          await broadcastIncursionState(bossSessionId);
+        } catch (err) {
+          console.error('Error en INCURSION_JOIN:', err);
+          ws.send(JSON.stringify({ type: 'JOIN_ERROR', message: 'Error del servidor al unirse a la incursión.' }));
         }
-        // 3. Registrar al cliente
-        userMap.set(userId, clientId);
-        // Añadimos nombre y estado 'ready' a los metadatos del cliente
-        clientMetadata.set(clientId, { ws, userId, sessionId, reps: 0, nombre: data.nombre || `Jugador ${userId}`, ready: false });
-        // 4. Enviar estado actualizado a todos en la sesión
-        const sessionState = {};
-        userMap.forEach((cId, uId) => {
-          const meta = clientMetadata.get(cId);
-          if (meta) {
-            sessionState[uId] = {
-              nombre: meta.nombre,
-              reps: meta.reps,
-              ready: meta.ready
-            };
-          }
-        });
+      break;
 
-        const creatorId = salasActivas[sessionId]?.creadorId;
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
+      case 'INCURSION_START': {
+        if (metadata.modo !== 'incursion') return;
+        const bossSessionId = metadata.sessionId;
+        const [sessionRows] = await db_pool.query('SELECT creador_id FROM Boss_Sessions WHERE id = ?', [bossSessionId]);
+
+        if (sessionRows.length > 0 && String(sessionRows[0].creador_id) === String(metadata.userId)) {
+            await db_pool.query("UPDATE Boss_Sessions SET estat = 'en curs' WHERE id = ?", [bossSessionId]);
+            broadcastToSession(bossSessionId, { type: 'INCURSION_STARTED' }); 
+            startIncursionRuleta(bossSessionId);
+        }
         break;
       }
-      case 'REPS_UPDATE': {
-        const metadata = clientMetadata.get(clientId);
-        if (!metadata || !metadata.sessionId) return;
-        // Actualizar las repeticiones del usuario
-        metadata.reps = data.reps;
-        clientMetadata.set(clientId, metadata);
+      
+      case 'INCURSION_ATTACK': {
+        if (metadata.modo !== 'incursion') return;
+
+        const { sessionId, userId } = metadata;
+        const { damage } = data;
+
+        try {
+            const [rows] = await db_pool.query('SELECT jefe_vida_actual, estat FROM Boss_Sessions WHERE id = ?', [sessionId]);
+            if (rows.length === 0 || rows[0].estat !== 'en curs') return;
+
+            const vidaActual = rows[0].jefe_vida_actual;
+            const nuevaVida = Math.max(0, vidaActual - damage);
+
+            await db_pool.query(
+                'UPDATE Boss_Participants SET damage = damage + ? WHERE id_boss_sessio = ? AND id_usuari = ?',
+                [damage, sessionId, userId]
+            );
+
+            await db_pool.query('UPDATE Boss_Sessions SET jefe_vida_actual = ? WHERE id = ?', [nuevaVida, sessionId]);
+
+            if (nuevaVida === 0) {
+                await db_pool.query('UPDATE Boss_Sessions SET estat = "finalitzada" WHERE id = ?', [sessionId]);
+                const sessionClients = Array.from(clientMetadata.values()).filter(meta => meta.sessionId === sessionId);
+                sessionClients.forEach(meta => {
+                    if (meta.incursionTimer) clearInterval(meta.incursionTimer);
+                });
+            }
+
+            await broadcastIncursionState(sessionId);
+            broadcastToSession(sessionId, { type: 'BOSS_HEALTH_UPDATE', jefeVidaActual: nuevaVida, attackerName: metadata.nombre });
+
+        } catch (err) {
+            console.error('Error en INCURSION_ATTACK:', err);
+        }
+        break;
+      }
+    
+      case 'REPS_UPDATE': 
+      case 'PLAYER_READY':
+      case 'SETTINGS_UPDATE': {
+        if (metadata.modo !== 'versus') return;
         
-        // Notificar a todos en la sesión
+        const sala = salasActivas[metadata.sessionId];
+        if (!sala) return;
+
+        if (type === 'REPS_UPDATE') {
+             if (sala.partidaFinalizada) return;
+             metadata.reps = data.reps;
+             clientMetadata.set(clientId, metadata);
+             
+             if (sala.maxReps && metadata.reps >= sala.maxReps) {
+                sala.partidaFinalizada = true;
+                broadcastToSession(metadata.sessionId, {
+                    type: 'PLAYER_WINS',
+                    winnerId: metadata.userId,
+                    winnerName: metadata.nombre
+                });
+             }
+        } else if (type === 'PLAYER_READY') {
+             metadata.ready = true;
+             clientMetadata.set(clientId, metadata);
+        } else if (type === 'SETTINGS_UPDATE') {
+             if (String(metadata.userId) === String(sala.creadorId)) {
+                 sala.ejercicio = data.ejercicio;
+                 sala.maxReps = data.maxReps;
+                 broadcastToSession(metadata.sessionId, { type: 'SETTINGS_UPDATED', ejercicio: data.ejercicio, maxReps: data.maxReps });
+                 return;
+             }
+        }
+
         const userMap = sessions.get(metadata.sessionId);
         const sessionState = {};
         userMap.forEach((cId, uId) => {
-          const meta = clientMetadata.get(cId);
-          sessionState[uId] = { nombre: meta?.nombre, reps: meta?.reps || 0, ready: meta?.ready || false };
+            const meta = clientMetadata.get(cId);
+            sessionState[uId] = { nombre: meta?.nombre, reps: meta?.reps || 0, ready: meta?.ready || false };
         });
 
-        const creatorId = salasActivas[metadata.sessionId]?.creadorId;
-        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
-        break;
-      }
-      case 'PLAYER_READY': {
-        const metadata = clientMetadata.get(clientId);
-        if (!metadata || !metadata.sessionId) return;
-
-        // Actualizar el estado 'ready' del jugador
-        metadata.ready = true;
-        clientMetadata.set(clientId, metadata);
-
-        // Notificar a todos en la sesión del cambio de estado
-        const userMap = sessions.get(metadata.sessionId);
-        const sessionState = {};
-        userMap.forEach((cId, uId) => {
-          const meta = clientMetadata.get(cId);
-          if (meta) {
-            sessionState[uId] = { nombre: meta.nombre, reps: meta.reps, ready: meta.ready };
-          }
+        broadcastToSession(metadata.sessionId, { 
+            type: 'SESSION_STATE', 
+            state: sessionState, 
+            creatorId: sala.creadorId,
+            ejercicio: sala.ejercicio,
+            maxReps: sala.maxReps
         });
-
-        const creatorId = salasActivas[metadata.sessionId]?.creadorId;
-        broadcastToSession(metadata.sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
         break;
       }
     }
   });
 
-  ws.on('close', () => {
+  // --- LÓGICA DE CIERRE MEJORADA ---
+  ws.on('close', () => { 
     const metadata = clientMetadata.get(clientId);
-    if (metadata && metadata.sessionId) {
-      const { sessionId, userId } = metadata;
-      const userMap = sessions.get(sessionId);
-      // Solo eliminar si el clientId coincide (para evitar eliminar una nueva conexión del mismo usuario)
-      if (userMap && userMap.get(userId) === clientId) {
-        userMap.delete(userId);
-      }
-      if (userMap && userMap.size === 0) {
-        sessions.delete(sessionId);
-      } else {
-        // Notificar a los restantes que alguien se fue
-        const sessionState = {};
-        userMap.forEach((cId, uId) => {
-          const meta = clientMetadata.get(cId);
-          sessionState[uId] = { nombre: meta?.nombre, reps: meta?.reps || 0, ready: meta?.ready || false };
-        });
-
-        const creatorId = salasActivas[sessionId]?.creadorId;
-        broadcastToSession(sessionId, { type: 'SESSION_STATE', state: sessionState, creatorId });
-      }
+    if (!metadata || !metadata.sessionId) {
+      clientMetadata.delete(clientId);
+      return;
     }
-    clientMetadata.delete(clientId);
+
+    const { sessionId, userId, modo } = metadata;
+    const userMap = sessions.get(sessionId);
+
+    if (!userMap) {
+      clientMetadata.delete(clientId);
+      return;
+    }
+
+    userMap.delete(userId);
+    clientMetadata.delete(clientId); 
+    
+    if (userMap.size === 0) {
+      sessions.delete(sessionId);
+      
+      if (modo === 'versus') {
+        delete salasActivas[sessionId]; 
+        // --- ACTUALIZACIÓN EN BDD PARA VERSUS ---
+        // Marcamos la sala como finalizada en la base de datos cuando se vacía
+        db_pool.query("UPDATE SessionsVersus SET estat = 'finalitzada' WHERE codi_acces = ?", [sessionId])
+            .catch(err => console.error("Error al cerrar SesionVersus en BDD:", err));
+
+      } else if (modo === 'incursion') {
+        db_pool.query("UPDATE Boss_Sessions SET estat = 'finalitzada' WHERE id = ?", [sessionId])
+          .catch(err => console.error("Error al cerrar Boss_Session en BDD:", err));
+        
+        Array.from(clientMetadata.values()).filter(meta => meta.sessionId === sessionId).forEach(meta => {
+            if (meta.incursionTimer) clearInterval(meta.incursionTimer);
+        });
+      }
+      return; 
+    }
+    
+    if (modo === 'incursion') {
+      broadcastIncursionState(sessionId);
+    } else if (modo === 'versus') {
+      const salaSettings = salasActivas[sessionId] || {};
+      const participantesVersus = {};
+      userMap.forEach((cId, uId) => {
+          const meta = clientMetadata.get(cId);
+          participantesVersus[uId] = { nombre: meta.nombre, reps: meta.reps, ready: meta.ready };
+      });
+      
+      broadcastToSession(sessionId, { 
+          type: 'SESSION_STATE', 
+          state: participantesVersus,
+          creatorId: salaSettings.creadorId,
+          ejercicio: salaSettings.ejercicio,
+          maxReps: salaSettings.maxReps,
+          message: `${metadata.nombre || 'Un jugador'} ha abandonado la sala.`
+      });
+    }
   });
-});
+
+}); 
 
 // -------------------- INICIAR SERVIDOR --------------------
 let httpServer;
-db.sequelize.sync().then(() => {
-  console.log('Base de dades sincronitzada amb Sequelize.');
-  httpServer = app.listen(API_PORT, () => console.log(`Servidor Express en puerto ${API_PORT}`));
-});
+
+// MODIFICACIÓN: Añadimos .catch() a Sequelize para atrapar errores de DB
+db.sequelize.sync()
+    .then(() => {
+        console.log('Base de dades sincronitzada amb Sequelize.');
+        // CORRECCIÓN CLAVE: El host debe ser el primer argumento de listen() para que
+        // el servidor acepte conexiones externas dentro de la red de Docker.
+        httpServer = app.listen(API_PORT, '0.0.0.0', () => console.log(`Servidor Express en 0.0.0.0:${API_PORT}`));
+    })
+    .catch(err => { 
+        console.error("ERROR CRÍTICO AL SINCRONIZAR BASE DE DATOS:", err.message);
+        shutdown(1); // Forzar cierre si la DB falla
+    });
 
 async function shutdown() {
   console.log('Cerrando servidores...');

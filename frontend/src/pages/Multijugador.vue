@@ -1,234 +1,226 @@
 <script setup>
-import { ref, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, shallowRef, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-// NOTA: Asumiendo que PoseSkeleton y PoseFeatures están correctamente importados
-// Si no están definidos, el código solo mostrará la interfaz.
-// Se recomienda tener estos componentes activos para la funcionalidad real de detección.
 import PoseSkeleton from '../components/PoseSkeleton.vue' 
 import PoseFeatures from '../components/PoseFeatures.vue'
+import { 
+  checkSquatRep, 
+  checkPushupRep, 
+  checkSitupRep,    
+  checkLungeRep,
+  checkJumpingJacksRep,
+  checkMountainClimbersRep
+} from '../utils/exercise-detection.js' 
 import axios from 'axios'
 
 const route = useRoute()
 const router = useRouter()
 
-// --- ESTADO DE USUARIO Y SALA ---
 const salaId = ref(route.query.sala || null)
-const userId = ref(localStorage.getItem('userId') || null)
-const creadorId = ref(null) // Se obtendrá desde el servidor
+const user = ref(JSON.parse(localStorage.getItem('user')) || {})
+// Computado seguro para el ID del usuario local
+const userId = computed(() => user.value?.id || null)
+
+const creadorId = ref(null)
 const esCreador = computed(() => userId.value && creadorId.value && String(userId.value) === String(creadorId.value))
 
-// --- ESTADO WEBSOCKET ---
 const ws = ref(null)
 const isConnected = ref(false)
-
-// [ESTADO MULTIJUGADOR] - Ahora se llena desde el WebSocket
 const jugadores = ref([])
 
-// [ESTADO DE LA PARTIDA]
-const isPoseDetectorReady = ref(true) 
+// Inicializado a false para que se vea el indicador de carga al principio
+const isPoseDetectorReady = ref(false) 
 const isPartidaActiva = ref(false)
 const ejercicioSeleccionado = ref('Sentadillas')
 const mostrarMensajeObjetivo = ref(false)
 const features = shallowRef(null)
+const ganador = ref(null)
 const maxReps = ref(5)
 const panelAbierto = ref([])
 
-// --- LÓGICA DE DETECCIÓN DE REPETICIONES POR JUGADOR ---
-// El estado de la repetición (arriba/abajo) DEBE ser por jugador
 const squatState = ref({}) 
 const pushupState = ref({}) 
+const situpState = ref({})
+const lungeState = ref({})
+const jumpingJacksState = ref({})
+const mountainClimbersState = ref({})
 
-// Umbrales para el conteo de repeticiones (ejemplo)
-const MIN_SQUAT_ANGLE = 120
-const MAX_SQUAT_ANGLE = 165
-const MIN_PUSHUP_ANGLE = 100
-const MAX_PUSHUP_ANGLE = 160
+// Comprueba si TODOS los jugadores en la sala han marcado "Estoy listo"
+const todosListos = computed(() => {
+  return jugadores.value.length > 0 && jugadores.value.every(j => j.ready)
+})
 
-/**
- * Verifica si se ha completado una repetición para el jugador dado.
- */
-function checkRepeticion(jugadorId, angles) {
-  if (!isPartidaActiva.value || !angles) return;
-
-  const jugador = jugadores.value.find(j => j.id == jugadorId);
-  if (!jugador) {
-    console.warn(`❌ Jugador ${jugadorId} no encontrado`);
-    return;
+function onFeatures(payload) {
+  // Activar indicador de que los modelos están listos cuando llegan datos
+  if (payload && !isPoseDetectorReady.value) {
+    isPoseDetectorReady.value = true
   }
   
-  let repeticionCompletada = false;
-  let currentStateRef = null;
-  let minAngle, maxAngle, avgAngle;
-  
-  if (ejercicioSeleccionado.value === 'Sentadillas') {
-    currentStateRef = squatState;
-    minAngle = MIN_SQUAT_ANGLE;
-    maxAngle = MAX_SQUAT_ANGLE;
-    if (!angles.leftKnee || !angles.rightKnee) return;
-    avgAngle = (angles.leftKnee + angles.rightKnee) / 2;
-  } else if (ejercicioSeleccionado.value === 'Flexiones') {
-    currentStateRef = pushupState;
-    minAngle = MIN_PUSHUP_ANGLE;
-    maxAngle = MAX_PUSHUP_ANGLE;
-    if (!angles.leftElbow || !angles.rightElbow) return;
-    avgAngle = (angles.leftElbow + angles.rightElbow) / 2;
-  } else {
-    return;
+  features.value = (typeof structuredClone === 'function') 
+    ? structuredClone(payload) 
+    : JSON.parse(JSON.stringify(payload || {}))
+
+  if (!isPartidaActiva.value || !features.value?.angles) return
+
+  const exerciseHandlers = {
+    'Sentadillas': { detect: checkSquatRep, state: squatState },
+    'Flexiones': { detect: checkPushupRep, state: pushupState },
+    'Abdominales': { detect: checkSitupRep, state: situpState },
+    'Zancadas': { detect: checkLungeRep, state: lungeState },
+    'Jumping Jacks': { detect: checkJumpingJacksRep, state: jumpingJacksState },
+    'Mountain Climbers': { detect: checkMountainClimbersRep, state: mountainClimbersState }
   }
 
-  const jugadorState = currentStateRef.value[jugadorId];
+  const handler = exerciseHandlers[ejercicioSeleccionado.value]
+  const localUserId = userId.value
+  // Buscar al jugador local en la lista
+  const jugador = jugadores.value.find(j => String(j.id) === String(localUserId))
 
-  // 1. Posición BAJA (Down)
-  if (avgAngle < minAngle && jugadorState === 'up') {
-    currentStateRef.value = { 
-      ...currentStateRef.value, 
-      [jugadorId]: 'down' 
-    };
-    // console.log(`🔽 ${jugador.nombre}: BAJANDO (${avgAngle.toFixed(1)}°)`);
-  } 
-  // 2. Posición ALTA (Up) -> ¡Suma la repetición!
-  else if (avgAngle > maxAngle && jugadorState === 'down') {
-    currentStateRef.value = { 
-      ...currentStateRef.value, 
-      [jugadorId]: 'up' 
-    };
-    repeticionCompletada = true;
-    // console.log(`✅ ${jugador.nombre}: ¡REPETICIÓN! (${avgAngle.toFixed(1)}°)`);
-  }
+  if (handler && jugador) {
+    const currentState = handler.state.value[localUserId] || (ejercicioSeleccionado.value === 'Jumping Jacks' ? 'down' : 'up')
+    const detectionInput = ejercicioSeleccionado.value === 'Jumping Jacks' ? features.value : features.value.angles
+    const result = handler.detect(detectionInput, currentState)
 
-  // Si la repetición fue completada
-  if (repeticionCompletada) {
-    // Enviar actualización de repeticiones al servidor
-    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+    // Actualizar estado local
+    handler.state.value = { ...handler.state.value, [localUserId]: result.newState }
+
+    // Enviar actualización si se completa una repetición
+    if (result.repCompleted && ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(JSON.stringify({
         type: 'REPS_UPDATE',
         reps: jugador.repeticiones + 1
-      }));
+      }))
     }
   }
 }
 
-// --- GESTIÓN DE LA PARTIDA Y FEATURES ---
-const todosListos = computed(() =>
-  jugadores.value.length > 0 && jugadores.value.every(j => j.ready)
-)
-
-function onFeatures(payload) {
-  if (payload && !isPoseDetectorReady.value) {
-    isPoseDetectorReady.value = true
-  }
-  features.value = (typeof structuredClone === 'function')
-    ? structuredClone(payload)
-    : JSON.parse(JSON.stringify(payload || {}))
-  
-  // Solo el usuario actual procesa sus propias poses
-  if (isPartidaActiva.value && features.value?.poses?.[0]) {
-      checkRepeticion(userId.value, features.value.poses[0].angles);
-  }
-}
-
 function marcarListo() {
-  if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-    ws.value.send(JSON.stringify({ type: 'PLAYER_READY' }));
+  // Solo permitir si el WS está abierto y los modelos de IA han cargado
+  if (ws.value && ws.value.readyState === WebSocket.OPEN && isPoseDetectorReady.value) {
+    ws.value.send(JSON.stringify({ type: 'PLAYER_READY' }))
   }
 }
 
 async function iniciarPartida() {
-  if (!esCreador.value || !todosListos.value || !isPoseDetectorReady.value || isPartidaActiva.value) return;
-  
+  // Validaciones estrictas antes de iniciar
+  if (!esCreador.value) return;
+  if (!todosListos.value) return; // Nadie puede iniciar si alguien no está listo
+  if (!isPoseDetectorReady.value) return;
+  if (isPartidaActiva.value) return;
+
   try {
-    // El creador notifica al servidor HTTP para iniciar la sala
-    await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value });
-    // El servidor se encargará de notificar a todos por WebSocket
+    await axios.post('http://localhost:9000/api/sessions/start', { codigo: salaId.value })
   } catch (error) {
-    console.error("Error al iniciar la partida:", error);
-    alert("No se pudo iniciar la partida.");
+    console.error("Error al iniciar la partida:", error)
+    alert("No se pudo iniciar la partida.")
   }
 }
 
 function detenerPartida() {
-  console.log('⏹️ PARTIDA DETENIDA');
   isPartidaActiva.value = false
 }
 
 onMounted(() => {
   if (!salaId.value || !userId.value) {
-    alert("No se ha especificado una sala o no has iniciado sesión.");
-    router.push('/inicial');
-    return;
+    alert("No se ha especificado una sala o no has iniciado sesión.")
+    router.push('/inicial')
+    return
   }
 
-  ws.value = new WebSocket('ws://localhost:8082'); // Apuntamos al puerto correcto
+  ws.value = new WebSocket('ws://localhost:8082')
 
   ws.value.onopen = () => {
-    console.log('🔌 Conectado al WebSocket.');
-    isConnected.value = true;
-    // Unirse a la sala
+    isConnected.value = true
     ws.value.send(JSON.stringify({
       type: 'JOIN_SESSION',
       sessionId: salaId.value,
       userId: userId.value,
-      nombre: localStorage.getItem('username') || `Jugador ${userId.value}`
-    }));
-  };
+      nombre: user.value?.username || `Jugador ${userId.value}`
+    }))
+  }
 
   ws.value.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('📩 Mensaje recibido:', data);
-
+    const data = JSON.parse(event.data)
     switch (data.type) {
       case 'SESSION_STATE':
-        // Transforma el objeto de estado en un array para la UI
         jugadores.value = Object.entries(data.state).map(([id, playerData]) => ({
-          id: String(id), // Aseguramos que el ID sea siempre un string para comparaciones consistentes
+          id: String(id),
           nombre: playerData.nombre,
           repeticiones: playerData.reps,
           ready: playerData.ready
-        }));
-        // El servidor ahora nos dice quién es el creador
-        if (data.creatorId) {
-          creadorId.value = data.creatorId;
-        }
-        // Inicializar estados de repetición para nuevos jugadores
+        }))
+        if (data.creatorId) creadorId.value = data.creatorId
+        
+        // Inicializar estados para nuevos jugadores
         jugadores.value.forEach(jugador => {
-          if (!squatState.value[jugador.id]) {
-            squatState.value[jugador.id] = 'up';
-          }
-          if (!pushupState.value[jugador.id]) {
-            pushupState.value[jugador.id] = 'up';
-          }
-        });
-        break;
+          if (!squatState.value[jugador.id]) squatState.value[jugador.id] = 'up'
+          if (!pushupState.value[jugador.id]) pushupState.value[jugador.id] = 'up'
+          if (!situpState.value[jugador.id]) situpState.value[jugador.id] = 'up'
+          if (!lungeState.value[jugador.id]) lungeState.value[jugador.id] = 'up'
+          if (!jumpingJacksState.value[jugador.id]) jumpingJacksState.value[jugador.id] = 'down'
+          if (!mountainClimbersState.value[jugador.id]) mountainClimbersState.value[jugador.id] = 'up'
+        })
+        
+        if (data.ejercicio) ejercicioSeleccionado.value = data.ejercicio
+        if (data.maxReps) maxReps.value = data.maxReps
+        break
+
       case 'SESSION_STARTED':
-        console.log('🎮 PARTIDA INICIADA POR EL SERVIDOR');
-        isPartidaActiva.value = true;
+        isPartidaActiva.value = true
         mostrarMensajeObjetivo.value = false;
-        // Reiniciar contadores locales al inicio
-        jugadores.value.forEach(j => j.repeticiones = 0);
-        break;
+        ganador.value = null
+        
+        // Resetear estados locales
+        squatState.value = {}
+        pushupState.value = {}
+        situpState.value = {}
+        lungeState.value = {}
+        jumpingJacksState.value = {}
+        mountainClimbersState.value = {}
+        jugadores.value.forEach(j => j.repeticiones = 0)
+        break
+
       case 'JOIN_ERROR':
-        alert(`Error al unirse: ${data.message}`);
-        router.push('/unirsala');
-        break;
+        alert(`Error al unirse: ${data.message}`)
+        router.push('/unirsala')
+        break
+
+      case 'SETTINGS_UPDATED':
+        if (data.ejercicio) ejercicioSeleccionado.value = data.ejercicio
+        if (data.maxReps) maxReps.value = data.maxReps
+        break
+
+      case 'LEADER_LEFT':
+        alert(data.message || 'El líder ha abandonado la sala. Serás redirigido.')
+        detenerPartida()
+        router.push('/inicial')
+        break
+
+      case 'PLAYER_WINS':
+        ganador.value = data.winnerName || 'Un jugador'
+        mostrarMensajeObjetivo.value = true
+        isPartidaActiva.value = false
+        break
     }
-  };
+  }
 
-  ws.value.onclose = () => {
-    console.log('🔌 Desconectado del WebSocket.');
-    isConnected.value = false;
-  };
-
-  ws.value.onerror = (error) => {
-    console.error('❌ Error de WebSocket:', error);
-    alert("Error de conexión con el servidor de juego.");
-  };
-});
+  ws.value.onclose = () => isConnected.value = false
+  ws.value.onerror = () => alert("Error de conexión con el servidor de juego.")
+})
 
 onBeforeUnmount(() => {
-  detenerPartida();
-  if (ws.value) {
-    ws.value.close();
+  detenerPartida()
+  if (ws.value) ws.value.close()
+})
+
+// Observar cambios para que el creador actualice la sala
+watch([ejercicioSeleccionado, maxReps], ([newEjercicio, newReps]) => {
+  if (esCreador.value && ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify({
+      type: 'SETTINGS_UPDATE',
+      ejercicio: newEjercicio,
+      maxReps: newReps
+    }))
   }
 })
 </script>
@@ -238,8 +230,11 @@ onBeforeUnmount(() => {
     <v-main>
       <v-container fluid class="pa-4 custom-container"> 
         <v-card elevation="16" class="pa-6 rounded-xl card-elevated" dark>
+          
           <v-card-title class="justify-center pb-2">
-            <h2 class="text-h5 font-weight-black">Modo Multijugador - {{ ejercicioSeleccionado }}</h2>
+            <h2 class="text-h5 font-weight-black">
+              Modo Multijugador - {{ ejercicioSeleccionado }}
+            </h2>
           </v-card-title>
 
           <v-btn
@@ -248,163 +243,194 @@ onBeforeUnmount(() => {
             rounded
             to="/inicial"
             block
-            dark
           >
             <v-icon left>mdi-arrow-left</v-icon>
             Volver al Inicio
           </v-btn>
           
-          <div class="text-center mb-4">
-            <v-chip small :color="isConnected ? 'green' : 'red'">{{ isConnected ? 'CONECTADO' : 'DESCONECTADO' }}</v-chip>
+          <div class="text-center mb-4" v-if="salaId">
+            <v-chip small :color="isConnected ? 'green' : 'red'">
+              {{ isConnected ? 'CONECTADO' : 'DESCONECTADO' }}
+            </v-chip>
             <v-chip small class="ml-2">Sala: {{ salaId }}</v-chip>
           </div>
 
           <v-card-text>
             <v-row align="start">
+              
               <v-col cols="12" md="8" class="d-flex flex-column align-center">
                 <div class="webcam-container mb-4">
-                  <!-- Se espera el componente PoseSkeleton que emite 'features' -->
-                  <!-- NOTA: Si este componente no existe en el entorno, solo verás el contenedor vacío. -->
                   <PoseSkeleton class="video-feed" @features="onFeatures" />
 
                   <div v-if="!isPoseDetectorReady" class="webcam-overlay">
-                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                    <p class="mt-3">Cargando detector de pose...</p>
+                    <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+                    <p class="mt-3 font-weight-bold">Cargando modelos IA...</p>
                   </div>
 
                   <transition name="fade">
                     <div v-if="mostrarMensajeObjetivo" class="objetivo-overlay">
                       <v-icon size="64" color="amber lighten-1">mdi-trophy</v-icon>
                       <h2 class="mt-3 text-h5 font-weight-black text-amber-lighten-2">
-                        ¡Objetivo alcanzado! Ganador: 
-                        {{ jugadores.find(j => j.repeticiones >= maxReps)?.nombre || 'Jugador' }}
+                        ¡Victoria! Ganador: {{ ganador }}
                       </h2>
                     </div>
                   </transition>
                 </div>
 
-                <div class="d-flex gap-4">
+                <div class="button-group d-flex flex-column align-center gap-3 mb-4 w-100" v-if="esCreador">
+                  
                   <v-btn
-                    color="primary"
-                    large
+                    color="success"
+                    x-large
                     rounded
-                    class="button-shadow button-pulse"
-                    v-if="esCreador"
+                    class="button-shadow button-pulse w-100"
                     @click="iniciarPartida"
                     :disabled="!todosListos || !isPoseDetectorReady || isPartidaActiva"
+                    style="max-width: 400px;"
                   >
-                    <v-icon left>mdi-play</v-icon>
-                    {{ todosListos ? 'Iniciar Partida' : `Esperando ${jugadores.filter(j => !j.ready).length} jug...` }}
+                    <v-icon left large>mdi-play-circle</v-icon>
+                    <span class="font-weight-black text-h6">
+                       {{ isPartidaActiva ? 'PARTIDA EN CURSO' : (todosListos ? 'INICIAR PARTIDA' : 'ESPERANDO JUGADORES...') }}
+                    </span>
                   </v-btn>
 
                   <v-btn
                     color="red darken-1"
                     large
                     rounded
-                    class="button-shadow button-stop"
+                    class="button-shadow button-stop w-100 mt-2"
                     @click="detenerPartida"
                     :disabled="!isPartidaActiva"
+                    style="max-width: 400px;"
                   >
                     <v-icon left>mdi-stop</v-icon>
-                    Detener
+                    DETENER PARTIDA
                   </v-btn>
                 </div>
+                
+                <div v-else class="text-center mb-4">
+                   <v-chip v-if="!isPartidaActiva" color="grey darken-3">Esperando al líder...</v-chip>
+                </div>
+
               </v-col>
 
               <v-col cols="12" md="4" class="d-flex flex-column align-center">
                 
-                <!-- Tarjetas de Jugadores -->
                 <v-card
                   v-for="jugador in jugadores"
                   :key="jugador.id"
                   class="pa-3 mb-3 rounded-lg repetitions-card"
-                  :style="{borderColor: jugador.id === 1 ? '#2196F3' : '#FF9800'}"
+                  :class="{'leader-card-border': String(jugador.id) === String(creadorId)}"
                   elevation="8"
                   dark
                 >
-                  <div class="text-h6 font-weight-bold mb-2">{{ jugador.nombre }}</div>
+                  <div class="text-h6 font-weight-bold mb-2 player-name-container">
+                    {{ jugador.nombre }}
+                    <v-icon 
+                      v-if="String(jugador.id) === String(creadorId)" 
+                      color="amber" 
+                      small
+                      class="leader-crown ml-2"
+                    >
+                      mdi-crown
+                    </v-icon>
+                    <span v-if="String(jugador.id) === String(userId)" class="text-caption ml-1">(Tú)</span>
+                  </div>
+                  
                   <div class="text-h5 font-weight-black mb-2">
                     Reps: {{ jugador.repeticiones }} / {{ maxReps }}
                   </div>
-                  
-                  <!-- Mostrar estado dinámico -->
-                  <div class="mt-2 text-caption font-weight-bold" v-if="isPartidaActiva">
-                      Estado: 
-                      <span v-if="ejercicioSeleccionado === 'Sentadillas'">{{ squatState[jugador.id] }}</span>
-                      <span v-else-if="ejercicioSeleccionado === 'Flexiones'">{{ pushupState[jugador.id] }}</span>
-                      <span v-else>Listo</span>
-                  </div>
-
-                  <v-btn
-                    v-if="!jugador.ready && !isPartidaActiva && jugador.id === userId"
-                    color="green"
-                    block
-                    rounded
-                    @click="marcarListo"
-                  >
-                    <v-icon left>mdi-check</v-icon>
-                    Estoy listo
-                  </v-btn>
 
                   <v-chip
-                    v-else-if="jugador.ready && !isPartidaActiva"
-                    color="green"
-                    text-color="white"
-                    block
-                    class="mt-2"
-                  >
-                    ✅ Listo
-                  </v-chip>
-                  
-                  <v-chip
-                    v-else-if="isPartidaActiva"
+                    v-if="isPartidaActiva"
                     :color="jugador.repeticiones >= maxReps ? 'amber' : 'primary'"
                     text-color="white"
                     block
-                    class="mt-2"
+                    class="mt-2 font-weight-bold"
                   >
-                    {{ jugador.repeticiones >= maxReps ? '¡META!' : 'COMPITIENDO...' }}
+                    {{ jugador.repeticiones >= maxReps ? '¡META!' : '🔥 COMPITIENDO...' }}
                   </v-chip>
-                  
+
+                  <template v-else>
+                    
+                    <v-chip
+                      v-if="jugador.ready"
+                      color="green"
+                      text-color="white"
+                      block
+                      class="mt-2"
+                    >
+                      ✅ Listo
+                    </v-chip>
+
+                    <template v-else>
+                      <v-btn
+                        v-if="String(jugador.id) === String(userId)"
+                        color="amber darken-3"
+                        block
+                        rounded
+                        @click="marcarListo"
+                        :disabled="!isPoseDetectorReady"
+                        :loading="!isPoseDetectorReady"
+                        class="white--text"
+                      >
+                        <v-icon left>mdi-check</v-icon>
+                        ESTOY LISTO
+                      </v-btn>
+                      
+                      <v-chip
+                        v-else
+                        color="grey darken-3"
+                        text-color="white"
+                        block
+                        class="mt-2"
+                      >
+                        🕒 Esperando...
+                      </v-chip>
+                    </template>
+
+                  </template>
                 </v-card>
-                <!-- Fin Tarjetas de Jugadores -->
+
+                <v-divider class="my-4 w-100"></v-divider>
 
                 <v-select
                   v-model="ejercicioSeleccionado"
-                  :items="['Sentadillas','Flexiones','Abdominales']"
+                  :items="['Sentadillas','Flexiones','Abdominales', 'Zancadas', 'Jumping Jacks', 'Mountain Climbers']"
                   label="Ejercicio"
                   outlined
                   dense
                   dark
-                  class="mt-4"
-                  :disabled="isPartidaActiva"
+                  class="mb-2 w-100"
+                  :disabled="isPartidaActiva || !esCreador"
                 ></v-select>
-                
-                <v-slider
-                  v-model="maxReps"
-                  label="Objetivo de Repeticiones"
-                  :min="1"
-                  :max="20"
-                  step="1"
-                  thumb-label
-                  dark
-                  :disabled="isPartidaActiva"
-                  class="mt-4"
-                ></v-slider>
 
-                <!-- Panel de Debug de Pose (Opcional, si PoseFeatures está disponible) -->
+                <div class="d-flex flex-column w-100 mb-4">
+                  <div class="text-caption mb-1">Objetivo: {{ maxReps }} Reps</div>
+                  <v-slider
+                    v-model="maxReps"
+                    :min="1"
+                    :max="50"
+                    step="1"
+                    thumb-label
+                    dense
+                    dark
+                    hide-details
+                    :disabled="isPartidaActiva || !esCreador"
+                  ></v-slider>
+                </div>
+
                 <v-expansion-panels
                   v-model="panelAbierto"
                   flat
-                  class="features-card mt-4"
+                  class="features-card w-100"
                   multiple
                 >
-                  <v-expansion-panel>
-                    <v-expansion-panel-title class="text-caption font-weight-bold text-center text-primary">
-                      DATOS DEL SENSOR (Ángulos Clave)
+                  <v-expansion-panel style="background-color: transparent;">
+                    <v-expansion-panel-title class="text-caption font-weight-bold text-center text-grey">
+                      DATOS SENSOR
                     </v-expansion-panel-title>
                     <v-expansion-panel-text>
-                      <!-- Asume que PoseFeatures puede manejar un objeto con una pose -->
                       <PoseFeatures :features="features" />
                     </v-expansion-panel-text>
                   </v-expansion-panel>
@@ -420,79 +446,58 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.app-background {
-  background: linear-gradient(135deg, #121212, #1c1c1c);
-  color: #E0E0E0;
+/* Fondo y Tarjeta Principal */
+.app-background { background: linear-gradient(135deg, #121212, #1c1c1c); color: #fff; }
+.card-elevated { background-color: #212121 !important; border: 1px solid #333; color: #fff !important; }
+.custom-container { max-width: 1000px !important; }
+
+/* Contenedor de Cámara */
+.webcam-container { position: relative; width: 100%; padding-top: 0%; min-height: 500px; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.5); background-color: #000; }
+@media (max-width: 768px) { .webcam-container { min-height: 300px; } }
+
+/* Overlays (Carga y Victoria) */
+.webcam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #fff; background-color: rgba(0,0,0,0.8); z-index: 10; }
+.objetivo-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #fff; background-color: rgba(255,193,7,0.1); backdrop-filter: blur(2px); z-index: 20; text-align: center; animation: scaleIn 0.6s ease; }
+
+/* Tarjetas de Jugador */
+.repetitions-card { 
+    width: 100%; 
+    max-width: 280px; 
+    background-color: #2c2c2c !important; 
+    text-align: center; 
+    color: #fff !important; 
+    border: 2px solid transparent; /* Borde invisible por defecto */
+    transition: all 0.3s ease;
 }
 
-.card-elevated {
-  background-color: #212121 !important;
-  border: 1px solid #333;
+/* ESTILO LÍDER: Borde Amarillo */
+.leader-card-border {
+    border-color: #FFC107 !important; 
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.3); 
 }
 
-.custom-container {
-  max-width: 1000px !important;
+/* Nombre y Corona */
+.player-name-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.leader-crown {
+    margin-bottom: 4px; /* Ajuste visual */
 }
 
-.webcam-container {
-  position: relative;
-  width: 100%;
-  padding-top: 0%;
-  min-height: 400px; 
-  border: 2px dashed #555;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+/* Botones */
+.button-group { 
+    /* Asegura que los botones se apilen verticalmente */
+    display: flex; 
+    flex-direction: column; 
 }
 
-.repetitions-card {
-  width: 100%;
-  max-width: 250px;
-  background-color: #2c2c2c !important;
-  text-align: center;
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+@keyframes scaleIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-.webcam-overlay, .objetivo-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-
-.webcam-overlay {
-  background-color: rgba(0,0,0,0.7);
-  z-index: 10;
-}
-
-.objetivo-overlay {
-  background-color: rgba(255, 193, 7, 0.1);
-  backdrop-filter: blur(2px);
-  z-index: 20;
-  text-align: center;
-  animation: scaleIn 0.6s ease;
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-
-.d-flex.gap-4 { gap: 1rem; }
-
-.features-card {
-  width: 100%;
-  max-width: 250px;
-  background-color: #2c2c2c !important;
-  border: 1px solid #444;
-  border-radius: 8px;
-}
+/* Utilidades */
+.w-100 { width: 100%; }
+.gap-3 { gap: 12px; }
 </style>
